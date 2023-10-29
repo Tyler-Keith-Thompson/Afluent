@@ -4,9 +4,23 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
 
 jobs:
-  build:
+  test:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v2
+        with:  
+            fetch-depth: 0  
+      - name: Run TESTS
+        run: swift test
+  deploy:
+    needs: test
     runs-on: ubuntu-22.04
     permissions:
       contents: write

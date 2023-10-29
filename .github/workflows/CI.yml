@@ -1,6 +1,12 @@
 name: CI
 
-on: [ push, workflow_dispatch ]
+on: 
+  push:
+    branches:    
+      - '**'    # matches every branch
+      - '!main' # excludes main
+  workflow_dispatch:
+  workflow_call:
 
 jobs:
   test:

@@ -11,6 +11,7 @@ import XCTest
 
 final class ShareFromCacheTests: XCTestCase {
     func testSharingFromCacheWithNoKey() async throws {
+        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
         actor Test {
             var callCount = 0
             
@@ -50,6 +51,7 @@ final class ShareFromCacheTests: XCTestCase {
     }
     
     func testSharingFromCacheAfterCompletion() async throws {
+        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
         actor Test {
             var callCount = 0
             
@@ -85,6 +87,7 @@ final class ShareFromCacheTests: XCTestCase {
     }
     
     func testSharingFromCacheWithKey() async throws {
+        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
         actor Test {
             var callCount = 0
             

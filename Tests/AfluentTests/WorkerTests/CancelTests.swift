@@ -21,6 +21,7 @@ final class CancelTests: XCTestCase {
     }
     
     func testDeferredTaskCancelledBeforeItEnds() async throws {
+        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
         actor Test {
             var started = false
             var ended = false

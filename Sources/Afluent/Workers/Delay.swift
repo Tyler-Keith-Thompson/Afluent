@@ -12,10 +12,11 @@ extension Workers {
     struct Delay<Success: Sendable>: AsynchronousUnitOfWork {
         let state: TaskState<Success>
 
-        init<U: AsynchronousUnitOfWork, C: Clock>(upstream: U, duration: C.Instant.Duration, tolerance: C.Instant.Duration?, clock: C) where U.Success == Success {
+        init<U: AsynchronousUnitOfWork>(upstream: U, duration: Measurement<UnitDuration>) where U.Success == Success {
+            let delayInNanoseconds = duration.converted(to: .nanoseconds).value
             state = TaskState {
                 let val = try await upstream.operation()
-                try await Task.sleep(for: duration, tolerance: tolerance, clock: clock)
+                try await Task.sleep(nanoseconds: UInt64(delayInNanoseconds))
                 return val
             }
         }
@@ -34,7 +35,7 @@ extension AsynchronousUnitOfWork {
     ///
     /// - Availability: macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0 and above.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-    public func delay<C: Clock>(for duration: C.Instant.Duration, tolerance: C.Instant.Duration? = nil, clock: C = ContinuousClock()) -> some AsynchronousUnitOfWork<Success> {
-        Workers.Delay(upstream: self, duration: duration, tolerance: tolerance, clock: clock)
+    public func delay(for duration: Measurement<UnitDuration>) -> some AsynchronousUnitOfWork<Success> {
+        Workers.Delay(upstream: self, duration: duration)
     }
 }

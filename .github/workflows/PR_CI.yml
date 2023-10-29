@@ -6,8 +6,6 @@ jobs:
   test:
     runs-on: macos-13
     steps:
-      - uses: actions/checkout@v2
-        with:  
-            fetch-depth: 0  
+      - uses: actions/checkout@v4
       - name: Run TESTS
         run: swift test

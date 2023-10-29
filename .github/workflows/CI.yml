@@ -11,10 +11,3 @@ jobs:
             fetch-depth: 0  
       - name: Run TESTS
         run: swift test
-      - name: Version  
-        id: version  
-        uses: juliansangillo/tag-version@v1  
-        with:  
-            production-branch: main  
-            test-branch: test  
-            dev-branch: develop

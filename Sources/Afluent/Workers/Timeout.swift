@@ -11,13 +11,14 @@ extension Workers {
         let state: TaskState<Success>
 
         init<U: AsynchronousUnitOfWork>(upstream: U, duration: Measurement<UnitDuration>) where U.Success == Success {
+            let nanosecondDelay = duration.converted(to: .nanoseconds).value
             state = TaskState {
                 let task = Task {
                     try await upstream.operation()
                 }
                 
                 let timeoutTask = Task {
-                    try await Task.sleep(nanoseconds: UInt64(duration.converted(to: .nanoseconds).value))
+                    try await Task.sleep(nanoseconds: UInt64(nanosecondDelay))
                     task.cancel()
                 }
                 

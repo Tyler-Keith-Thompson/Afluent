@@ -6,7 +6,7 @@
 
 # jobs:
 #   release:
-#     runs-on: macos-12
+#     runs-on: macos-13
 #     steps:
 #       - uses: actions/checkout@v2
 #       - name: Generate DocC Static Site

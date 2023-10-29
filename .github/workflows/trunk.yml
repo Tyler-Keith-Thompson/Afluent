@@ -37,10 +37,10 @@ jobs:
         DEFAULT_BUMP: patch
         RELEASE_BRANCHES: main
     - name: Create a GitHub release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
-        with:
-          tag_name: ${{ steps.bump_version.outputs.new_tag }}
-          release_name: Release ${{ steps.bump_version.outputs.new_tag }}
-          body: ''
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      with:
+        tag_name: ${{ steps.bump_version.outputs.new_tag }}
+        release_name: Release ${{ steps.bump_version.outputs.new_tag }}
+        body: ''

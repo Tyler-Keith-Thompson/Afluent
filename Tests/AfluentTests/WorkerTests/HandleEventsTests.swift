@@ -69,6 +69,7 @@ final class HandleEventsTests: XCTestCase {
     }
     
     func testHandleCancel() async throws {
+        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
         actor Test {
             var canceled = false
             

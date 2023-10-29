@@ -1,4 +1,7 @@
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/Tyler-keith-thompson/Afluent/trunk.yml) ![GitHub](https://img.shields.io/github/license/Tyler-keith-thompson/Afluent) 
 # Afluent
+
+[Click here for documentation](https://tyler-keith-thompson.github.io/Afluent/documentation/afluent/)
 
 Afluent is a Swift library that fills the gap between `async/await` and more reactive paradigms. As we move away from Combine,there is a need for a library that gives developers the same powerful, fluent feature set for handling sequences and tasks.
 

@@ -4,7 +4,7 @@
 
 [Click here for documentation](https://tyler-keith-thompson.github.io/Afluent/documentation/afluent/)
 
-Afluent is a Swift library that fills the gap between `async/await` and more reactive paradigms. As we move away from Combine,there is a need for a library that gives developers the same powerful, fluent feature set for handling sequences and tasks.
+Afluent is a Swift library that fills the gap between `async/await` and more reactive paradigms. As we move away from Combine, there is a need for a library that gives developers the same powerful, fluent feature set for handling sequences and tasks.
 
 While async/await has simplified asynchronous code, it doesn't offer the full suite of operations for transforming, combining, and error-handling that Combine does. For sequences, Afluent re-exports `async-algorithms`. For tasks, which emit a single event over time, Afluent introduces a set of methods that bring you the same reactive features you've missed.
 

@@ -40,6 +40,7 @@ final class AssertNoFailureTests: XCTestCase {
 }
 
 func XCTAssertThrowsFatalError(instructions: @escaping () -> Void, file: StaticString = #file, line: UInt = #line) {
+#if os(macOS) || os(iOS)
     var reached = false
     let exception = catchBadInstruction {
         instructions()
@@ -47,4 +48,5 @@ func XCTAssertThrowsFatalError(instructions: @escaping () -> Void, file: StaticS
     }
     XCTAssertNotNil(exception, "No fatal error thrown", file: file, line: line)
     XCTAssertFalse(reached, "Code executed past expected fatal error", file: file, line: line)
+#endif
 }

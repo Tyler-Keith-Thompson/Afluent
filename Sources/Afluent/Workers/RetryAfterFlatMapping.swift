@@ -45,7 +45,7 @@ extension Workers {
 
         let state: TaskState<Success>
 
-        init<U: AsynchronousUnitOfWork, D: AsynchronousUnitOfWork, E: Error & Equatable>(upstream: U, retries: UInt, error: E, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (Error) async throws -> D) where U.Success == Success {
+        init<U: AsynchronousUnitOfWork, D: AsynchronousUnitOfWork, E: Error & Equatable>(upstream: U, retries: UInt, error: E, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (E) async throws -> D) where U.Success == Success {
             retryCount = retries
             guard retries > 0 else {
                 state = upstream.state
@@ -60,7 +60,7 @@ extension Workers {
                     } catch(let err) {
                         guard let unwrappedError = (err as? E),
                               unwrappedError == error else { throw err }
-                        _ = try await transform(error).operation()
+                        _ = try await transform(unwrappedError).operation()
                         await decrementRetry()
                         continue
                     }
@@ -96,7 +96,7 @@ extension AsynchronousUnitOfWork {
     ///   - transform: An async closure that takes the error from the upstream and returns a new `AsynchronousUnitOfWork`.
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that emits the same output as the upstream but retries on the specified error up to the specified number of times, with the applied transformation.
-    public func retry<D: AsynchronousUnitOfWork, E: Error & Equatable>(_ retries: UInt = 1, on error: E, @_inheritActorContext @_implicitSelfCapture _ transform: @escaping @Sendable (Error) async throws -> D) -> some AsynchronousUnitOfWork<Success> {
+    public func retry<D: AsynchronousUnitOfWork, E: Error & Equatable>(_ retries: UInt = 1, on error: E, @_inheritActorContext @_implicitSelfCapture _ transform: @escaping @Sendable (E) async throws -> D) -> some AsynchronousUnitOfWork<Success> {
         Workers.RetryOnAfterFlatMapping(upstream: self, retries: retries, error: error, transform: transform)
     }
 }

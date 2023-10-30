@@ -45,7 +45,7 @@ extension AsynchronousUnitOfWork {
     ///   - handler: A closure that takes an `Error` and returns an `AsynchronousUnitOfWork`.
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that will catch and handle the specific error.
-    public func `catch`<D: AsynchronousUnitOfWork, E: Error & Equatable>(_ error: E, @_inheritActorContext @_implicitSelfCapture _ handler: @escaping @Sendable (Error) async -> D) -> some AsynchronousUnitOfWork<D.Success> where Success == D.Success {
+    public func `catch`<D: AsynchronousUnitOfWork, E: Error & Equatable>(_ error: E, @_inheritActorContext @_implicitSelfCapture _ handler: @escaping @Sendable (E) async -> D) -> some AsynchronousUnitOfWork<D.Success> where Success == D.Success {
         tryCatch { err in
             guard let unwrappedError = (err as? E),
                   unwrappedError == error else { throw err }
@@ -70,7 +70,7 @@ extension AsynchronousUnitOfWork {
     ///   - handler: A closure that takes an `Error` and returns an `AsynchronousUnitOfWork`, potentially throwing an error.
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that will try to catch and handle the specific error.
-    public func tryCatch<D: AsynchronousUnitOfWork, E: Error & Equatable>(_ error: E, @_inheritActorContext @_implicitSelfCapture _ handler: @escaping @Sendable (Error) async throws -> D) -> some AsynchronousUnitOfWork<D.Success> where Success == D.Success {
+    public func tryCatch<D: AsynchronousUnitOfWork, E: Error & Equatable>(_ error: E, @_inheritActorContext @_implicitSelfCapture _ handler: @escaping @Sendable (E) async throws -> D) -> some AsynchronousUnitOfWork<D.Success> where Success == D.Success {
         tryCatch { err in
             guard let unwrappedError = (err as? E),
                   unwrappedError == error else { throw err }

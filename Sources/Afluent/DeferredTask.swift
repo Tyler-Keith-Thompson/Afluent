@@ -6,7 +6,6 @@
 //
 
 import Foundation
-@_exported import AsyncAlgorithms
 
 /// A structure representing a deferred asynchronous unit of work.
 ///

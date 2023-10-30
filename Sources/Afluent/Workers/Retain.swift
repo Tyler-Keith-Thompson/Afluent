@@ -1,5 +1,5 @@
 //
-//  Lazy.swift
+//  Retain.swift
 //
 //
 //  Created by Tyler Thompson on 10/30/23.
@@ -8,22 +8,23 @@
 import Foundation
 
 extension Workers {
-    actor Lazy<Success>: AsynchronousUnitOfWork {
+    actor Retain<Success>: AsynchronousUnitOfWork {
         let state: TaskState<Success>
-        var cachedResult: Result<Success, Error>?
+        var cachedSuccess: Success?
         init<U: AsynchronousUnitOfWork>(upstream: U) where Success == U.Success {
             state = TaskState.unsafeCreation()
             state.setOperation { [self] in
-                if let result = await cachedResult {
-                    return try result.get()
+                if let success = await cachedSuccess {
+                    return success
                 } else {
-                    return try await cache(upstream.result).get()
+                    let result = try await upstream.operation()
+                    return await cache(result)
                 }
             }
         }
         
-        func cache(_ result: Result<Success, Error>) -> Result<Success, Error> {
-            cachedResult = result
+        func cache(_ result: Success) -> Success {
+            cachedSuccess = result
             return result
         }
     }
@@ -31,7 +32,7 @@ extension Workers {
 
 extension AsynchronousUnitOfWork {
     /// Only runs the operation once, even when retried, caches the result (including error)
-    public func `lazy`() -> some AsynchronousUnitOfWork<Success> {
-        Workers.Lazy(upstream: self)
+    public func retain() -> some AsynchronousUnitOfWork<Success> {
+        Workers.Retain(upstream: self)
     }
 }

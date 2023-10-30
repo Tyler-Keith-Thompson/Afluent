@@ -7,12 +7,15 @@
 
 import Foundation
 extension Workers {
-    struct Timeout<Success: Sendable>: AsynchronousUnitOfWork {
+    actor Timeout<Success: Sendable>: AsynchronousUnitOfWork {
         let state: TaskState<Success>
+        var customError: Error?
 
-        init<U: AsynchronousUnitOfWork>(upstream: U, duration: Measurement<UnitDuration>) where U.Success == Success {
+        init<U: AsynchronousUnitOfWork>(upstream: U, duration: Measurement<UnitDuration>, error: Error?) where U.Success == Success {
             let nanosecondDelay = duration.converted(to: .nanoseconds).value
-            state = TaskState {
+            customError = error
+            state = TaskState.unsafeCreation()
+            state.setOperation { [self] in
                 let task = Task {
                     try await upstream.operation()
                 }
@@ -29,7 +32,7 @@ extension Workers {
                         return result
                     } catch {
                         timeoutTask.cancel()
-                        throw error
+                        throw await customError ?? error
                     }
                 }.value
             }
@@ -43,8 +46,9 @@ extension AsynchronousUnitOfWork {
     /// If the operation does not complete within the specified duration, it will be terminated.
     ///
     /// - Parameter duration: The maximum duration the operation is allowed to take, represented as a `Measurement<UnitDuration>`.
+    /// - Parameter customError: A custom error to throw if timeout occurs. If no value is supplied a `CancellationError` is thrown.
     /// - Returns: An asynchronous unit of work that includes the timeout behavior, encapsulating the operation's success or failure.
-    public func timeout(_ duration: Measurement<UnitDuration>) -> some AsynchronousUnitOfWork<Success> {
-        Workers.Timeout(upstream: self, duration: duration)
+    public func timeout(_ duration: Measurement<UnitDuration>, customError: Error? = nil) -> some AsynchronousUnitOfWork<Success> {
+        Workers.Timeout(upstream: self, duration: duration, error: customError)
     }
 }

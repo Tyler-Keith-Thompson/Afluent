@@ -39,7 +39,7 @@ final class CatchTests: XCTestCase {
         let val = try await DeferredTask { 1 }
             .tryMap { _ in throw Err.e1 }
             .catch(Err.e1) { error -> DeferredTask<Int> in
-                XCTAssertEqual(error as? Err, .e1)
+                XCTAssertEqual(error, .e1)
                 return DeferredTask { 2 }
             }
             .result
@@ -56,7 +56,7 @@ final class CatchTests: XCTestCase {
         let val = try await DeferredTask { 1 }
             .tryMap { _ in throw Err.e2 }
             .catch(Err.e1) { error -> DeferredTask<Int> in
-                XCTAssertEqual(error as? Err, .e1)
+                XCTAssertEqual(error, .e1)
                 return DeferredTask { 2 }
             }
             .result
@@ -95,7 +95,7 @@ final class CatchTests: XCTestCase {
         let val = try await DeferredTask { 1 }
             .tryMap { _ in throw Err.e1 }
             .tryCatch(Err.e1) { error -> DeferredTask<Int> in
-                XCTAssertEqual(error as? Err, .e1)
+                XCTAssertEqual(error, .e1)
                 return DeferredTask { 2 }
             }
             .result
@@ -112,7 +112,7 @@ final class CatchTests: XCTestCase {
         let val = try await DeferredTask { 1 }
             .tryMap { _ in throw Err.e2 }
             .tryCatch(Err.e1) { error -> DeferredTask<Int> in
-                XCTAssertEqual(error as? Err, .e1)
+                XCTAssertEqual(error, .e1)
                 return DeferredTask { 2 }
             }
             .result

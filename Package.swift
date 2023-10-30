@@ -16,6 +16,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "0.1.0"),
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
+        .package(url: "https://github.com/AliSoftware/OHHTTPStubs.git", from: "9.1.0"),
     ],
     targets: [
         .target(name: "Afluent",
@@ -25,6 +26,11 @@ let package = Package(
                 ]),
         .testTarget(
             name: "AfluentTests",
-            dependencies: ["Afluent", "CwlPreconditionTesting"]),
+            dependencies: [
+                "Afluent",
+                .product(name: "CwlPreconditionTesting", package: "CwlPreconditionTesting"),
+                .product(name: "OHHTTPStubs", package: "OHHTTPStubs"),
+                .product(name: "OHHTTPStubsSwift", package: "OHHTTPStubs"),
+            ]),
     ]
 )

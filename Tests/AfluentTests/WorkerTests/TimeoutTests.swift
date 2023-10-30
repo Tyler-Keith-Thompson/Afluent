@@ -28,4 +28,20 @@ final class TimeoutTests: XCTestCase {
         
         XCTAssertThrowsError(try res.get())
     }
+    
+    func testTaskTimesOutIfItTakesTooLong_WithCustomError() async throws {
+        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
+        enum Err: Error {
+            case e1
+        }
+        
+        let res = try await DeferredTask { "test" }
+            .delay(for: .milliseconds(20))
+            .timeout(.milliseconds(10), customError: Err.e1)
+            .result
+        
+        XCTAssertThrowsError(try res.get()) { error in
+            XCTAssertEqual(error as? Err, .e1)
+        }
+    }
 }

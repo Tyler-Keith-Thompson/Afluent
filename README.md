@@ -22,7 +22,7 @@ Add the Afluent package to your target dependencies in `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Tyler-Keith-Thompson/Afluent.git", from: "0.0.1")
+    .package(url: "https://github.com/Tyler-Keith-Thompson/Afluent.git", from: "0.1.0")
 ]
 ```
 
@@ -41,7 +41,7 @@ struct Post: Codable {
 let posts = try await DeferredTask {
     try await URLSession.shared.data(from: URL(string: "https://jsonplaceholder.typicode.com/posts")!)
 }
-.map(\.0) // Extract the data from the URLSession response
+.map(\.data) // Extract the data from the URLSession response
 .decode(type: [Post].self, decoder: JSONDecoder()) // Decode the JSON into an array of `Post` objects
 .retry() // Automatically retry the request if it fails
 .execute() // Execute the deferred task

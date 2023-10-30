@@ -31,7 +31,7 @@ extension Workers {
 }
 
 extension AsynchronousUnitOfWork {
-    /// Only runs the operation once, even when retried, caches the result (including error)
+    /// Retains a successful result of the current unit of work, will not execute the operation again, even if retried.
     public func retain() -> some AsynchronousUnitOfWork<Success> {
         Workers.Retain(upstream: self)
     }

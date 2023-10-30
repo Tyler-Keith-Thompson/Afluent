@@ -47,7 +47,7 @@ final class CancelTests: XCTestCase {
         
         task.cancel()
         
-        await fulfillment(of: [exp], timeout: 1)
+        await fulfillment(of: [exp], timeout: 0.011)
         
         let started = await test.started
         let ended = await test.ended

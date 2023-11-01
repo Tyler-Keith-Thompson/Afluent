@@ -26,7 +26,7 @@ final class HandleEventsTests: XCTestCase {
             exp.fulfill()
         })
         
-        try task.run()
+        task.run()
 
         try await Task.sleep(for: .milliseconds(2))
         
@@ -55,7 +55,7 @@ final class HandleEventsTests: XCTestCase {
             exp.fulfill()
         })
         
-        try task.run()
+        task.run()
 
         try await Task.sleep(for: .milliseconds(2))
         
@@ -85,7 +85,7 @@ final class HandleEventsTests: XCTestCase {
             exp.fulfill()
         })
         
-        try task.run()
+        task.run()
 
         try await Task.sleep(for: .milliseconds(2))
         

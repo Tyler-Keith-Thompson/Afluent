@@ -17,7 +17,7 @@ final class AfluentTests: XCTestCase {
     func testDeferredTaskExecutesWhenAskedTo() async throws {
         let firedExpectation = expectation(description: "did not fire")
         
-        try DeferredTask {
+        DeferredTask {
             firedExpectation.fulfill()
         }.run()
         

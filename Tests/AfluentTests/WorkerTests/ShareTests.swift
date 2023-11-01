@@ -28,9 +28,9 @@ final class ShareTests: XCTestCase {
             exp.fulfill()
         }
         
-        try t.run()
-        try t.run()
-        try t.run()
+        t.run()
+        t.run()
+        t.run()
 
         await fulfillment(of: [exp], timeout: 0.001)
         let copy = await test.arr
@@ -75,9 +75,9 @@ final class ShareTests: XCTestCase {
             exp.fulfill()
         }.share()
         
-        try t.run()
-        try t.run()
-        try t.run()
+        t.run()
+        t.run()
+        t.run()
 
         await fulfillment(of: [exp], timeout: 0.001)
         let copy = await test.arr
@@ -104,5 +104,18 @@ final class ShareTests: XCTestCase {
         
         let copy = await test.arr
         XCTAssertEqual(copy, ["called"])
+    }
+    
+    func testSharedTaskExecutesOnce_WithResult_SharedToAllSubscribers() async throws {
+        let t = DeferredTask {
+            1
+        }.share()
+        
+        let v1 = try await t.execute()
+        let v2 = try await t.execute()
+        let v3 = try await t.execute()
+        XCTAssertEqual(v1, 1)
+        XCTAssertEqual(v2, 1)
+        XCTAssertEqual(v3, 1)
     }
 }

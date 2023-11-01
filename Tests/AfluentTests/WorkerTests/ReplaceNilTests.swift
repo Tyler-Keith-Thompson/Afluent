@@ -1,5 +1,5 @@
 //
-//  RepalceNilTests.swift
+//  ReplaceNilTests.swift
 //
 //
 //  Created by Tyler Thompson on 10/27/23.
@@ -9,7 +9,7 @@ import Foundation
 import Afluent
 import XCTest
 
-final class RepalceNilTests: XCTestCase {
+final class ReplaceNilTests: XCTestCase {
     func testReplaceNilTransformsValue() async throws {
         let val = try await DeferredTask { nil as Int? }
             .replaceNil(with: 0)

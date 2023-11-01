@@ -22,8 +22,11 @@ extension Workers {
             }
         }
         
-        nonisolated public func run() throws {
-            guard !state.isCancelled else { throw CancellationError() }
+        @discardableResult public func execute() async throws -> Success {
+            try await result.get()
+        }
+        
+        nonisolated public func run() {
             Task { try await task.value }
         }
     }

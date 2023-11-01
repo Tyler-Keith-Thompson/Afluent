@@ -10,14 +10,15 @@ import Afluent
 import XCTest
 
 final class CancelTests: XCTestCase {
-    func testDeferredTaskCancelledBeforeItStarts() throws {
+    func testDeferredTaskCancelledBeforeItStarts() async throws {
         let exp = self.expectation(description: "thing happened")
         exp.isInverted = true
         let task = DeferredTask { exp.fulfill() }
         task.cancel()
-        XCTAssertThrowsError(try task.run())
+        let res = try await task.result
+        XCTAssertThrowsError(try res.get())
 
-        self.wait(for: [exp], timeout: 0.001)
+        await fulfillment(of: [exp], timeout: 0.001)
     }
     
     func testDeferredTaskCancelledBeforeItEnds() async throws {
@@ -41,7 +42,7 @@ final class CancelTests: XCTestCase {
             exp.fulfill()
         }
         
-        try task.run()
+        task.run()
 
         try await Task.sleep(for: .milliseconds(2))
         

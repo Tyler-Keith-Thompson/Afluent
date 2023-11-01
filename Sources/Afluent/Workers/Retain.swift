@@ -13,7 +13,8 @@ extension Workers {
         var cachedSuccess: Success?
         init<U: AsynchronousUnitOfWork>(upstream: U) where Success == U.Success {
             state = TaskState.unsafeCreation()
-            state.setOperation { [self] in
+            state.setOperation { [weak self] in
+                guard let self else { throw CancellationError() }
                 if let success = await cachedSuccess {
                     return success
                 } else {

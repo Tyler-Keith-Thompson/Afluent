@@ -15,19 +15,17 @@ extension Workers {
             let nanosecondDelay = duration.converted(to: .nanoseconds).value
             customError = error
             state = TaskState.unsafeCreation()
-            state.setOperation { [self] in
-                let task = Task {
-                    try await upstream.operation()
-                }
-                
+            state.setOperation { [weak self] in
+                guard let self else { throw CancellationError() }
                 let timeoutTask = Task {
                     try await Task.sleep(nanoseconds: UInt64(nanosecondDelay))
-                    task.cancel()
+                    upstream.cancel()
                 }
                 
-                return try await Task {
+                return try await Task { [weak self] in
+                    guard let self else { throw CancellationError() }
                     do {
-                        let result = try await task.value
+                        let result = try await upstream.execute()
                         timeoutTask.cancel()
                         return result
                     } catch {

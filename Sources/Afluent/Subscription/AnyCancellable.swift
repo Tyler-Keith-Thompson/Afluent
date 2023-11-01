@@ -46,7 +46,7 @@ public final class AnyCancellable: Hashable {
 extension AsynchronousUnitOfWork {
     /// Executes the current asynchronous unit of work and returns an AnyCancellable token to cancel the subscription
     public func subscribe() -> AnyCancellable {
-        defer { try? run() }
+        defer { run() }
         return AnyCancellable(self)
     }
 }

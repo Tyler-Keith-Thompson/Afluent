@@ -89,7 +89,8 @@ do {
     print(posts)
 } catch {
     print("Error fetching posts after multiple retries: \(error)")
-}```
+}
+```
 
 ### With Afluent
 Fetching, decoding JSON data, and implementing retries using Afluent:

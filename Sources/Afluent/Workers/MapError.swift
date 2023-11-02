@@ -23,6 +23,13 @@ extension Workers {
 }
 
 extension AsynchronousUnitOfWork {
+    /// Transforms the error produced by the asynchronous unit of work.
+    ///
+    /// This function allows you to modify or replace the error produced by the current unit of work. It's useful for converting between error types or adding additional context to errors.
+    ///
+    /// - Parameter transform: A closure that takes the original error and returns a transformed error.
+    ///
+    /// - Returns: An asynchronous unit of work that produces the transformed error.
     public func mapError(_ transform: @escaping (Error) -> Error) -> some AsynchronousUnitOfWork<Success> {
         Workers.MapError(upstream: self, transform: transform)
     }

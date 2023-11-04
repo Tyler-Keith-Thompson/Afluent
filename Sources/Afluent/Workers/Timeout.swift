@@ -18,6 +18,7 @@ extension Workers {
             state = TaskState.unsafeCreation()
             state.setOperation { [weak self] in
                 guard let self else { throw CancellationError() }
+                await self.reset()
                 let timeoutTask = Task {
                     try await Task.sleep(nanoseconds: UInt64(nanosecondDelay))
                     await self.timeout()
@@ -39,6 +40,10 @@ extension Workers {
                     }
                 }.value
             }
+        }
+        
+        func reset() {
+            timedOut = false
         }
         
         func timeout() {

@@ -35,4 +35,11 @@ extension AsynchronousUnitOfWork {
     public func mapError(_ transform: @escaping (Error) -> Error) -> some AsynchronousUnitOfWork<Success> {
         Workers.MapError(upstream: self, transform: transform)
     }
+    
+    public func mapError<E: Error & Equatable>(_ error: E, _ transform: @escaping (Error) -> Error) -> some AsynchronousUnitOfWork<Success> {
+        mapError {
+            if let e = $0 as? E, e == error { return transform(e) }
+            return $0
+        }
+    }
 }

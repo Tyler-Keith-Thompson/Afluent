@@ -26,6 +26,22 @@ final class MapErrorTests: XCTestCase {
         }
     }
     
+    func testMapSpecificErrorChangesError() async throws {
+        enum Err: Error {
+            case e1
+        }
+        
+        let result = try await DeferredTask {
+            throw URLError(.badURL)
+        }
+        .mapError(URLError(.badURL)) { _ in Err.e1 }
+        .result
+        
+        XCTAssertThrowsError(try result.get()) { error in
+            XCTAssertEqual(error as? Err, .e1)
+        }
+    }
+    
     func testMapErrorDoesNothingWithoutAnError() async throws {
         enum Err: Error {
             case e1
@@ -38,5 +54,21 @@ final class MapErrorTests: XCTestCase {
         .result
         
         XCTAssertEqual(try result.get(), 1)
+    }
+    
+    func testMapSpecificErrorDoesNothingWithoutThatErrorBeingThrown() async throws {
+        enum Err: Error {
+            case e1
+        }
+        
+        let result = try await DeferredTask {
+            throw URLError(.badServerResponse)
+        }
+        .mapError(URLError(.badURL)) { _ in Err.e1 }
+        .result
+        
+        XCTAssertThrowsError(try result.get()) { error in
+            XCTAssertEqual(error as? URLError, URLError(.badServerResponse))
+        }
     }
 }

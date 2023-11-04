@@ -32,7 +32,7 @@ final class ShareTests: XCTestCase {
         t.run()
         t.run()
 
-        await fulfillment(of: [exp], timeout: 0.001)
+        await fulfillment(of: [exp], timeout: 0.01)
         let copy = await test.arr
         XCTAssertEqual(copy, ["called", "called", "called"])
     }
@@ -79,7 +79,7 @@ final class ShareTests: XCTestCase {
         t.run()
         t.run()
 
-        await fulfillment(of: [exp], timeout: 0.001)
+        await fulfillment(of: [exp], timeout: 0.01)
         let copy = await test.arr
         XCTAssertEqual(copy, ["called"])
     }

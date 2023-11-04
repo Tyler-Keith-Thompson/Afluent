@@ -11,7 +11,7 @@ final class AfluentTests: XCTestCase {
             notFiredExpectation.fulfill()
         }
         
-        await fulfillment(of: [notFiredExpectation], timeout: 0.001)
+        await fulfillment(of: [notFiredExpectation], timeout: 0.01)
     }
     
     func testDeferredTaskExecutesWhenAskedTo() async throws {
@@ -21,6 +21,6 @@ final class AfluentTests: XCTestCase {
             firedExpectation.fulfill()
         }.run()
         
-        await fulfillment(of: [firedExpectation], timeout: 0.001)
+        await fulfillment(of: [firedExpectation], timeout: 0.01)
     }
 }

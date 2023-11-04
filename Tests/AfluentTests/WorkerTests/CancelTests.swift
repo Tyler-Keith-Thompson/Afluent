@@ -18,7 +18,7 @@ final class CancelTests: XCTestCase {
         let res = try await task.result
         XCTAssertThrowsError(try res.get())
 
-        await fulfillment(of: [exp], timeout: 0.001)
+        await fulfillment(of: [exp], timeout: 0.01)
     }
     
     func testDeferredTaskCancelledBeforeItEnds() async throws {

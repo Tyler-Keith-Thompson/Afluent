@@ -16,11 +16,9 @@ extension Workers {
                 do {
                     return try await upstream.operation()
                 } catch {
-                    if error is CancellationError {
-                        throw error
-                    } else {
-                        return try await handler(error).operation()
-                    }
+                    guard !(error is CancellationError) else { throw error }
+                    
+                    return try await handler(error).operation()
                 }
             }
         }

@@ -10,6 +10,7 @@ extension Workers {
     actor Timeout<Success: Sendable>: AsynchronousUnitOfWork {
         let state: TaskState<Success>
         var customError: Error?
+        var timedOut = false
 
         init<U: AsynchronousUnitOfWork>(upstream: U, duration: Measurement<UnitDuration>, error: Error?) where U.Success == Success {
             let nanosecondDelay = duration.converted(to: .nanoseconds).value
@@ -17,23 +18,36 @@ extension Workers {
             state = TaskState.unsafeCreation()
             state.setOperation { [weak self] in
                 guard let self else { throw CancellationError() }
+                await self.reset()
                 let timeoutTask = Task {
                     try await Task.sleep(nanoseconds: UInt64(nanosecondDelay))
+                    await self.timeout()
                     upstream.cancel()
                 }
                 
-                return try await Task { [weak self] in
-                    guard let self else { throw CancellationError() }
+                return try await Task {
                     do {
                         let result = try await upstream.execute()
                         timeoutTask.cancel()
                         return result
                     } catch {
                         timeoutTask.cancel()
-                        throw await customError ?? error
+                        if await self.timedOut {
+                            throw await self.customError ?? CancellationError()
+                        } else {
+                            throw error
+                        }
                     }
                 }.value
             }
+        }
+        
+        func reset() {
+            timedOut = false
+        }
+        
+        func timeout() {
+            timedOut = true
         }
     }
 }

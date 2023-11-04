@@ -25,6 +25,8 @@ extension Workers {
                     do {
                         return try await upstream.operation()
                     } catch {
+                        guard !(error is CancellationError) else { throw error }
+
                         _ = try await transform(error).operation()
                         await decrementRetry()
                         continue
@@ -58,6 +60,8 @@ extension Workers {
                     do {
                         return try await upstream.operation()
                     } catch(let err) {
+                        guard !(error is CancellationError) else { throw error }
+
                         guard let unwrappedError = (err as? E),
                               unwrappedError == error else { throw err }
                         _ = try await transform(unwrappedError).operation()

@@ -15,6 +15,7 @@ extension Workers {
                 do {
                     return try await upstream.operation()
                 } catch {
+                    guard !(error is CancellationError) else { throw error }
                     return newValue
                 }
             }

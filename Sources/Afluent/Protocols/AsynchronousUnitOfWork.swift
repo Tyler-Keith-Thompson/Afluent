@@ -74,16 +74,15 @@ public final class TaskState<Success: Sendable>: @unchecked Sendable {
     }
     
     func setOperation(operation: @Sendable @escaping () async throws -> Success) {
-        lock.lock()
-        self.operation = operation
-        lock.unlock()
+        lock.protect {
+            self.operation = operation
+        }
     }
     
     func createOperation() -> @Sendable () async throws -> Success {
-        lock.lock()
-        let operation = self.operation
-        let lazyTask = self.lazyTask
-        lock.unlock()
+        let (operation, lazyTask) = lock.protect {
+            return (self.operation, self.lazyTask)
+        }
         return {
             try Task.checkCancellation()
             let success = try await {
@@ -100,9 +99,9 @@ public final class TaskState<Success: Sendable>: @unchecked Sendable {
     
     func setLazyTask() -> Task<Success, Error> {
         let task = createTask()
-        lock.lock()
-        lazyTask = task
-        lock.unlock()
+        lock.protect {
+            self.lazyTask = task
+        }
         return task
     }
     
@@ -119,17 +118,17 @@ public final class TaskState<Success: Sendable>: @unchecked Sendable {
             return task
         }
         let task = Task { try await operation() }
-        lock.lock()
-        tasks.append(task)
-        lock.unlock()
+        lock.protect {
+            tasks.append(task)
+        }
         return task
     }
     
     func cancel() {
         guard !isCancelled else { return }
         _isCancelled.store(true, ordering: .sequentiallyConsistent)
-        lock.lock()
-        tasks.forEach { $0.cancel() }
-        lock.unlock()
+        lock.protect {
+            tasks.forEach { $0.cancel() }
+        }
     }
 }

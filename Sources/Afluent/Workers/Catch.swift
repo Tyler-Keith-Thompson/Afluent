@@ -8,11 +8,18 @@
 import Foundation
 
 extension Workers {
-    struct Catch<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
-
-        init<U: AsynchronousUnitOfWork, D: AsynchronousUnitOfWork>(upstream: U, @_inheritActorContext @_implicitSelfCapture _ handler: @escaping @Sendable (Error) async throws -> D) where Success == U.Success, U.Success == D.Success {
-            state = TaskState {
+    struct Catch<Upstream: AsynchronousUnitOfWork, Downstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Success == Upstream.Success, Upstream.Success == Downstream.Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
+        let handler: @Sendable (Error) async throws -> Downstream
+        
+        init(upstream: Upstream, @_inheritActorContext @_implicitSelfCapture _ handler: @escaping @Sendable (Error) async throws -> Downstream) {
+            self.upstream = upstream
+            self.handler = handler
+        }
+        
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
                 do {
                     return try await upstream.operation()
                 } catch {

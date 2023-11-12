@@ -7,32 +7,39 @@
 
 import Foundation
 extension Workers {
-    actor RetryAfterFlatMapping<Success>: AsynchronousUnitOfWork {
+    actor RetryAfterFlatMapping<Upstream: AsynchronousUnitOfWork, Downstream: AsynchronousUnitOfWork, Success>: AsynchronousUnitOfWork where Upstream.Success == Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
         var retryCount: UInt
+        let transform: @Sendable (Error) async throws -> Downstream
 
-        let state: TaskState<Success>
-
-        init<U: AsynchronousUnitOfWork, D: AsynchronousUnitOfWork>(upstream: U, retries: UInt, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (Error) async throws -> D) where U.Success == Success {
+        init(upstream: Upstream, retries: UInt, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (Error) async throws -> Downstream) {
+            self.upstream = upstream
             retryCount = retries
-            guard retries > 0 else {
-                state = upstream.state
-                return
-            }
-            state = TaskState<Success>.unsafeCreation()
-            state.setOperation { [weak self] in
+            self.transform = transform
+        }
+        
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
-                while await retryCount > 0 {
+
+                guard await self.retryCount > 0 else {
+                    return try await self.upstream._operation()()
+                }
+                
+                while await self.retryCount > 0 {
                     do {
-                        return try await upstream.operation()
+                        return try await self.upstream.operation()
                     } catch {
                         guard !(error is CancellationError) else { throw error }
-
-                        _ = try await transform(error).operation()
-                        await decrementRetry()
+                        
+                        _ = try await self.transform(error).operation()
+                        await self.decrementRetry()
                         continue
                     }
                 }
-                return try await upstream.operation()
+                
+                return try await self.upstream.operation()
             }
         }
         
@@ -42,34 +49,42 @@ extension Workers {
         }
     }
     
-    actor RetryOnAfterFlatMapping<Success>: AsynchronousUnitOfWork {
+    actor RetryOnAfterFlatMapping<Upstream: AsynchronousUnitOfWork, Downstream: AsynchronousUnitOfWork, Failure: Error & Equatable, Success>: AsynchronousUnitOfWork where Upstream.Success == Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
         var retryCount: UInt
+        let error: Failure
+        let transform: @Sendable (Failure) async throws -> Downstream
 
-        let state: TaskState<Success>
-
-        init<U: AsynchronousUnitOfWork, D: AsynchronousUnitOfWork, E: Error & Equatable>(upstream: U, retries: UInt, error: E, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (E) async throws -> D) where U.Success == Success {
+        init(upstream: Upstream, retries: UInt, error: Failure, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (Failure) async throws -> Downstream) {
+            self.upstream = upstream
             retryCount = retries
-            guard retries > 0 else {
-                state = upstream.state
-                return
-            }
-            state = TaskState<Success>.unsafeCreation()
-            state.setOperation { [weak self] in
+            self.error = error
+            self.transform = transform
+        }
+        
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
-                while await retryCount > 0 {
+
+                guard await self.retryCount > 0 else {
+                    return try await self.upstream._operation()()
+                }
+                
+                while await self.retryCount > 0 {
                     do {
-                        return try await upstream.operation()
+                        return try await self.upstream.operation()
                     } catch(let err) {
                         guard !(error is CancellationError) else { throw error }
-
-                        guard let unwrappedError = (err as? E),
+                        
+                        guard let unwrappedError = (err as? Failure),
                               unwrappedError == error else { throw err }
-                        _ = try await transform(unwrappedError).operation()
-                        await decrementRetry()
+                        _ = try await self.transform(unwrappedError).operation()
+                        await self.decrementRetry()
                         continue
                     }
                 }
-                return try await upstream.operation()
+                return try await self.upstream.operation()
             }
         }
         

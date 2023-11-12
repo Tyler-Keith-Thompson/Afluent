@@ -8,26 +8,37 @@
 import Foundation
 
 extension Workers {
-    struct HandleEvents<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
+    actor HandleEvents<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Upstream.Success == Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
+        let receiveOutput: ((Success) async throws -> Void)?
+        let receiveError: ((Error) async throws -> Void)?
+        let receiveCancel: (() async throws -> Void)?
 
-        init<U: AsynchronousUnitOfWork>(upstream: U, receiveOutput: ((Success) async throws -> Void)?, receiveError: ((Error) async throws -> Void)?, receiveCancel: (() async throws -> Void)?) where U.Success == Success {
-            state = TaskState {
-                try await withTaskCancellationHandler {
+        init(upstream: Upstream, receiveOutput: ((Success) async throws -> Void)?, receiveError: ((Error) async throws -> Void)?, receiveCancel: (() async throws -> Void)?) {
+            self.upstream = upstream
+            self.receiveOutput = receiveOutput
+            self.receiveError = receiveError
+            self.receiveCancel = receiveCancel
+        }
+        
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
+                guard let self else { throw CancellationError() }
+
+                return try await withTaskCancellationHandler {
                     do {
-                        let val = try await upstream.operation()
-                        try await receiveOutput?(val)
+                        let val = try await self.upstream.operation()
+                        try await self.receiveOutput?(val)
                         return val
                     } catch {
                         if !(error is CancellationError) {
-                            try await receiveError?(error)
+                            try await self.receiveError?(error)
                         }
                         throw error
                     }
                 } onCancel: {
-                    if let receiveCancel {
-                        Task { try await receiveCancel() }
-                    }
+                    Task { try await self.receiveCancel?() }
                 }
             }
         }

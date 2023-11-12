@@ -14,14 +14,22 @@ import Foundation
 /// until explicitly awaited.
 ///
 /// - Note: The `Success` type must conform to the `Sendable` protocol.
-public struct DeferredTask<Success: Sendable>: AsynchronousUnitOfWork {
-    public let state: TaskState<Success>
+public actor DeferredTask<Success: Sendable>: AsynchronousUnitOfWork {
+    public let state = TaskState<Success>()
+    let operation: @Sendable () async throws -> Success
 
     /// Initializes a new instance of `DeferredTask`.
     ///
     /// - Parameters:
     ///   - operation: The asynchronous operation that this task will execute. The operation should be a throwing, async closure that returns a value of type `Success`.
     public init(@_inheritActorContext @_implicitSelfCapture operation: @escaping @Sendable () async throws -> Success) {
-        state = TaskState(operation: operation)
+        self.operation = operation
+    }
+    
+    public func _operation() async throws -> AsynchronousOperation<Success> {
+        AsynchronousOperation { [weak self] in
+            guard let self else { throw CancellationError() }
+            return try await self.operation()
+        }
     }
 }

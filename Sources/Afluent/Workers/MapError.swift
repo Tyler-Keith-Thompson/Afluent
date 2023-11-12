@@ -8,16 +8,26 @@
 import Foundation
 
 extension Workers {
-    struct MapError<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
-        init<U: AsynchronousUnitOfWork>(upstream: U, transform: @escaping (Error) -> Error) where Success == U.Success {
-            state = TaskState {
+    actor MapError<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Success == Upstream.Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
+        let transform: (Error) -> Error
+
+        init(upstream: Upstream, transform: @escaping (Error) -> Error) {
+            self.upstream = upstream
+            self.transform = transform
+        }
+        
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
+                guard let self else { throw CancellationError() }
+
                 do {
-                    return try await upstream.operation()
+                    return try await self.upstream.operation()
                 } catch {
                     guard !(error is CancellationError) else { throw error }
-
-                    throw transform(error)
+                    
+                    throw self.transform(error)
                 }
             }
         }

@@ -8,17 +8,25 @@
 import Foundation
 
 extension Workers {
-    actor Share<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
-        private lazy var task = state.setLazyTask()
+    actor Share<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Upstream.Success == Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
+        private lazy var task = Task { try await upstream.operation() }
         
-        init<U: AsynchronousUnitOfWork>(upstream: U) where U.Success == Success {
-            state = upstream.state
+        init(upstream: Upstream) {
+            self.upstream = upstream
         }
         
         public var result: Result<Success, Error> {
             get async {
                 await task.result
+            }
+        }
+        
+        public func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
+                guard let self else { throw CancellationError() }
+                return try await self.task.value
             }
         }
         

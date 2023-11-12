@@ -8,10 +8,18 @@
 import Foundation
 
 extension Workers {
-    struct Materialize<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
-        init<U: AsynchronousUnitOfWork>(upstream: U) where Success == Result<U.Success, Error> {
-            state = TaskState {
+    struct Materialize<Upstream: AsynchronousUnitOfWork>: AsynchronousUnitOfWork {
+        typealias Success = Result<Upstream.Success, Error>
+        
+        let state = TaskState<Success>()
+        let upstream: Upstream
+
+        init(upstream: Upstream) {
+            self.upstream = upstream
+        }
+        
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
                 do {
                     return .success(try await upstream.operation())
                 } catch {

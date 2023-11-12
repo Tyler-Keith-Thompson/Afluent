@@ -7,27 +7,35 @@
 
 import Foundation
 extension Workers {
-    actor Timeout<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
+    actor Timeout<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Upstream.Success == Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
         var customError: Error?
         var timedOut = false
+        let duration: Measurement<UnitDuration>
 
-        init<U: AsynchronousUnitOfWork>(upstream: U, duration: Measurement<UnitDuration>, error: Error?) where U.Success == Success {
-            let nanosecondDelay = duration.converted(to: .nanoseconds).value
+        init(upstream: Upstream, duration: Measurement<UnitDuration>, error: Error?) {
+            self.upstream = upstream
+            self.duration = duration
             customError = error
-            state = TaskState.unsafeCreation()
-            state.setOperation { [weak self] in
+        }
+        
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
+
                 await self.reset()
-                let timeoutTask = Task {
-                    try await Task.sleep(nanoseconds: UInt64(nanosecondDelay))
+                let timeoutTask = Task { [weak self] in
+                    guard let self else { throw CancellationError() }
+                    try await Task.sleep(nanoseconds: UInt64(self.duration.converted(to: .nanoseconds).value))
                     await self.timeout()
-                    upstream.cancel()
+                    self.upstream.cancel()
                 }
                 
-                return try await Task {
+                return try await Task { [weak self] in
+                    guard let self else { throw CancellationError() }
                     do {
-                        let result = try await upstream.execute()
+                        let result = try await self.upstream.execute()
                         timeoutTask.cancel()
                         return result
                     } catch {

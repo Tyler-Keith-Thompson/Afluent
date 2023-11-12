@@ -8,11 +8,12 @@
 import Foundation
 
 extension Workers {
-    struct AssertNoFailure<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
+    struct AssertNoFailure<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Upstream.Success == Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
         
-        init<U: AsynchronousUnitOfWork>(upstream: U) where U.Success == Success {
-            state = TaskState {
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
                 do {
                     return try await upstream.operation()
                 } catch {

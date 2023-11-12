@@ -9,14 +9,15 @@ import Foundation
 
 extension Workers {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-    struct Delay<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
-
-        init<U: AsynchronousUnitOfWork>(upstream: U, duration: Measurement<UnitDuration>) where U.Success == Success {
-            let delayInNanoseconds = duration.converted(to: .nanoseconds).value
-            state = TaskState {
+    struct Delay<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Upstream.Success == Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
+        let duration: Measurement<UnitDuration>
+        
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
                 let val = try await upstream.operation()
-                try await Task.sleep(nanoseconds: UInt64(delayInNanoseconds))
+                try await Task.sleep(nanoseconds: UInt64(duration.converted(to: .nanoseconds).value))
                 return val
             }
         }

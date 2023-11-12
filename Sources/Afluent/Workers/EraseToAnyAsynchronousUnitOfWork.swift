@@ -9,9 +9,15 @@ import Foundation
 
 /// A unit of work that performs type erasure by wrapping another unit of work.
 public struct AnyAsynchronousUnitOfWork<Success: Sendable>: AsynchronousUnitOfWork {
-    public let state: TaskState<Success>
-    public init<U: AsynchronousUnitOfWork>(_ upstream: U) where Success == U.Success {
-        state = upstream.state
+    public let state = TaskState<Success>()
+    let upstream: any AsynchronousUnitOfWork<Success>
+
+    public init(_ upstream: any AsynchronousUnitOfWork<Success>) {
+        self.upstream = upstream
+    }
+    
+    public func _operation() async throws -> AsynchronousOperation<Success> {
+        try await upstream._operation()
     }
 }
 

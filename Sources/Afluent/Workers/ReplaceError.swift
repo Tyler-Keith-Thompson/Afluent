@@ -7,11 +7,18 @@
 
 import Foundation
 extension Workers {
-    struct ReplaceError<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
+    struct ReplaceError<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Upstream.Success == Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
+        let newValue: Success
 
-        init<U: AsynchronousUnitOfWork>(upstream: U, newValue: Success) where U.Success == Success {
-            state = TaskState {
+        init(upstream: Upstream, newValue: Success) {
+            self.upstream = upstream
+            self.newValue = newValue
+        }
+        
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
                 do {
                     return try await upstream.operation()
                 } catch {

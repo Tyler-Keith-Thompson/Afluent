@@ -15,11 +15,13 @@ public protocol TopLevelDecoder<Input> {
 extension JSONDecoder: TopLevelDecoder { }
 
 extension Workers {
-    struct Decode<Success: Sendable & Decodable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
+    struct Decode<Upstream: AsynchronousUnitOfWork, Decoder: TopLevelDecoder & Sendable, Success: Sendable & Decodable>: AsynchronousUnitOfWork where Upstream.Success == Decoder.Input {
+        let state = TaskState<Success>()
+        let upstream: Upstream
+        let decoder: Decoder
 
-        init<U: AsynchronousUnitOfWork, D: TopLevelDecoder>(upstream: U, decoder: D) where U.Success == D.Input {
-            state = TaskState {
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
                 try decoder.decode(Success.self, from: try await upstream.operation())
             }
         }

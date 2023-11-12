@@ -20,14 +20,16 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     }
     
     private let _lock = NSRecursiveLock()
-    public private(set) var state: TaskState<Success>
+    public let state = TaskState<Success>()
     private var subjectState = State.noValue
     
     /// Creates a new `SingleValueSubject`.
-    public init() {
-        state = TaskState.unsafeCreation()
-        state = TaskState { [weak self] in
+    public init() { }
+    
+    public func _operation() async throws -> AsynchronousOperation<Success> {
+        AsynchronousOperation { [weak self] in
             guard let self else { throw CancellationError() }
+
             self.lock()
             if case .sentValue(let success) = self.subjectState {
                 self.unlock()
@@ -61,6 +63,24 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
             case .hasContinuation(let continuation):
                 self.subjectState = .sentValue(value)
                 continuation.resume(returning: value)
+            default:
+                throw SubjectError.alreadyCompleted
+            }
+        }
+    }
+    
+    /// Sends a value to the subject.
+    ///
+    /// Completes the subject with the provided value. If the subject is already completed, this method throws a `SubjectError.alreadyCompleted`.
+    ///
+    /// - Throws: `SubjectError.alreadyCompleted` if the subject is already completed.
+    public func send() throws where Success == Void {
+        try _lock.protect {
+            switch self.subjectState {
+            case .noValue: self.subjectState = .sentValue(())
+            case .hasContinuation(let continuation):
+                self.subjectState = .sentValue(())
+                continuation.resume(returning: ())
             default:
                 throw SubjectError.alreadyCompleted
             }

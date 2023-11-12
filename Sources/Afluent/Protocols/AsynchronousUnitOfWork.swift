@@ -21,6 +21,8 @@ public protocol AsynchronousUnitOfWork<Success>: Sendable where Success: Sendabl
     /// - Returns: The result of the task.
     @discardableResult func execute() async throws -> Success
     
+    @Sendable func _operation() async throws -> Success
+    
     /// Cancel the task, even if it hasn't begun yet.
     func cancel()
 }
@@ -28,12 +30,12 @@ public protocol AsynchronousUnitOfWork<Success>: Sendable where Success: Sendabl
 extension AsynchronousUnitOfWork {
     public var result: Result<Success, Error> {
         get async throws {
-            return await state.createTask().result
+            return await state.createTask(operation: operation).result
         }
     }
     
     public func run() {
-        state.createTask()
+        state.createTask(operation: operation)
     }
     
     @discardableResult public func execute() async throws -> Success {
@@ -44,16 +46,17 @@ extension AsynchronousUnitOfWork {
         state.cancel()
     }
     
-    var operation: @Sendable () async throws -> Success {
-        state.createOperation()
+    @Sendable func operation() async throws -> Success {
+        try Task.checkCancellation()
+        let success = try await _operation()
+        try Task.checkCancellation()
+        return success
     }
 }
 
 public final class TaskState<Success: Sendable>: @unchecked Sendable {
     private let lock = NSRecursiveLock()
     private var tasks = [Task<Success, Error>]()
-    private var lazyTask: Task<Success, Error>?
-    private var operation: @Sendable () async throws -> Success
     
     private let _isCancelled = ManagedAtomic<Bool>(false)
     
@@ -61,57 +64,9 @@ public final class TaskState<Success: Sendable>: @unchecked Sendable {
         _isCancelled.load(ordering: .sequentiallyConsistent)
     }
     
-    init(operation: @Sendable @escaping () async throws -> Success) {
-        self.operation = operation
-    }
+    init() { }
     
-    static func unsafeCreation() -> TaskState<Success> {
-        TaskState<Success>()
-    }
-    
-    private init() {
-        operation = { fatalError("Runtime contract violated, task state never set up") }
-    }
-    
-    func setOperation(operation: @Sendable @escaping () async throws -> Success) {
-        lock.protect {
-            self.operation = operation
-        }
-    }
-    
-    func createOperation() -> @Sendable () async throws -> Success {
-        let (operation, lazyTask) = lock.protect {
-            return (self.operation, self.lazyTask)
-        }
-        return {
-            try Task.checkCancellation()
-            let success = try await {
-                if let lazyTask {
-                    return try await lazyTask.value
-                } else {
-                    return try await operation()
-                }
-            }()
-            try Task.checkCancellation()
-            return success
-        }
-    }
-    
-    func setLazyTask() -> Task<Success, Error> {
-        let task = createTask()
-        lock.protect {
-            self.lazyTask = task
-        }
-        return task
-    }
-    
-    @discardableResult func createTask() -> Task<Success, Error> {
-        lock.lock()
-        if let lazyTask {
-            lock.unlock()
-            return lazyTask
-        }
-        lock.unlock()
+    @discardableResult func createTask(operation: @escaping @Sendable () async throws -> Success) -> Task<Success, Error> {
         guard !isCancelled else {
             let task = Task<Success, Error> { throw CancellationError() }
             task.cancel()

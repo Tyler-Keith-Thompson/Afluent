@@ -8,23 +8,33 @@
 import Foundation
 
 extension Workers {
-    struct Map<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
+    struct Map<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork {
+        let state = TaskState<Success>()
+        let upstream: Upstream
+        let transform: @Sendable (Upstream.Success) async -> Success
 
-        init<U: AsynchronousUnitOfWork>(upstream: U, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (U.Success) async -> Success) {
-            state = TaskState {
-                await transform(try await upstream.operation())
-            }
+        init(upstream: Upstream, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (Upstream.Success) async -> Success) {
+            self.upstream = upstream
+            self.transform = transform
+        }
+        
+        func _operation() async throws -> Success {
+            await transform(try await upstream.operation())
         }
     }
     
-    struct TryMap<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
+    struct TryMap<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork {
+        let state = TaskState<Success>()
+        let upstream: Upstream
+        let transform: @Sendable (Upstream.Success) async throws -> Success
 
-        init<U: AsynchronousUnitOfWork>(upstream: U, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (U.Success) async throws -> Success) {
-            state = TaskState {
-                try await transform(try await upstream.operation())
-            }
+        init(upstream: Upstream, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (Upstream.Success) async throws -> Success) {
+            self.upstream = upstream
+            self.transform = transform
+        }
+        
+        func _operation() async throws -> Success {
+            try await transform(try await upstream.operation())
         }
     }
 }

@@ -20,28 +20,31 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     }
     
     private let _lock = NSRecursiveLock()
-    public private(set) var state: TaskState<Success>
+    public let state = TaskState<Success>()
     private var subjectState = State.noValue
     
     /// Creates a new `SingleValueSubject`.
-    public init() {
-        state = TaskState.unsafeCreation()
-        state = TaskState { [weak self] in
-            guard let self else { throw CancellationError() }
+    public init() { }
+    
+    public func _operation() async throws -> Success {
+        lock()
+        if case .sentValue(let success) = self.subjectState {
+            unlock()
+            return success
+        } else if case .sentError(let error) = self.subjectState {
+            unlock()
+            throw error
+        }
+        unlock()
+        return try await withUnsafeThrowingContinuation { [weak self] continuation in
+            guard let self else {
+                continuation.resume(throwing: CancellationError())
+                return
+            }
+            
             self.lock()
-            if case .sentValue(let success) = self.subjectState {
-                self.unlock()
-                return success
-            } else if case .sentError(let error) = self.subjectState {
-                self.unlock()
-                throw error
-            }
+            self.subjectState = .hasContinuation(continuation)
             self.unlock()
-            return try await withUnsafeThrowingContinuation { continuation in
-                self.lock()
-                self.subjectState = .hasContinuation(continuation)
-                self.unlock()
-            }
         }
     }
     

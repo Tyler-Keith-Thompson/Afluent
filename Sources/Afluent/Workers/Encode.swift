@@ -15,13 +15,13 @@ public protocol TopLevelEncoder<Output> {
 extension JSONEncoder: TopLevelEncoder { }
 
 extension Workers {
-    struct Encode<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
-
-        init<U: AsynchronousUnitOfWork, E: TopLevelEncoder>(upstream: U, encoder: E) where Success == E.Output, U.Success: Encodable {
-            state = TaskState {
-                try encoder.encode(try await upstream.operation())
-            }
+    struct Encode<Upstream: AsynchronousUnitOfWork, Encoder: TopLevelEncoder & Sendable, Success: Sendable>: AsynchronousUnitOfWork where Success == Encoder.Output, Upstream.Success: Encodable {
+        let state = TaskState<Success>()
+        let upstream: Upstream
+        let encoder: Encoder
+        
+        func _operation() async throws -> Success {
+            try encoder.encode(try await upstream.operation())
         }
     }
 }

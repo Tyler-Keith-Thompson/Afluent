@@ -8,19 +8,18 @@
 import Foundation
 
 extension Workers {
-    struct AssertNoFailure<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
+    struct AssertNoFailure<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Upstream.Success == Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
         
-        init<U: AsynchronousUnitOfWork>(upstream: U) where U.Success == Success {
-            state = TaskState {
-                do {
-                    return try await upstream.operation()
-                } catch {
-                    if !(error is CancellationError) {
-                        assertionFailure("Expected no error in asynchronous unit of work, but got: \(error)")
-                    }
-                    throw error
+        func _operation() async throws -> Success {
+            do {
+                return try await upstream.operation()
+            } catch {
+                if !(error is CancellationError) {
+                    assertionFailure("Expected no error in asynchronous unit of work, but got: \(error)")
                 }
+                throw error
             }
         }
     }

@@ -8,19 +8,21 @@
 import Foundation
 
 extension Workers {
-    actor Retain<Success>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
+    actor Retain<Upstream: AsynchronousUnitOfWork, Success>: AsynchronousUnitOfWork where Success == Upstream.Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
         var cachedSuccess: Success?
-        init<U: AsynchronousUnitOfWork>(upstream: U) where Success == U.Success {
-            state = TaskState.unsafeCreation()
-            state.setOperation { [weak self] in
-                guard let self else { throw CancellationError() }
-                if let success = await cachedSuccess {
-                    return success
-                } else {
-                    let result = try await upstream.operation()
-                    return await cache(result)
-                }
+        
+        init(upstream: Upstream) {
+            self.upstream = upstream
+        }
+        
+        func _operation() async throws -> Success {
+            if let success = cachedSuccess {
+                return success
+            } else {
+                let result = try await upstream.operation()
+                return cache(result)
             }
         }
         

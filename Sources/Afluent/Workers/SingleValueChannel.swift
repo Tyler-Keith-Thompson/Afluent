@@ -20,24 +20,23 @@ public actor SingleValueChannel<Success: Sendable>: AsynchronousUnitOfWork {
         case alreadyCompleted
     }
     
-    public let state: TaskState<Success>
+    public let state = TaskState<Success>()
     private var channelState = State.noValue
     
     /// Creates a new `SingleValueChannel`.
-    public init() {
-        state = TaskState.unsafeCreation()
-        state.setOperation { [weak self] in
-            guard let self else { throw CancellationError() }
-            if case .sentValue(let success) = await self.channelState {
-                return success
-            } else if case .sentError(let error) = await self.channelState {
-                throw error
-            }
+    public init() { }
+    
+    public func _operation() async throws -> Success {
+        if case .sentValue(let success) = channelState {
+            return success
+        } else if case .sentError(let error) = channelState {
+            throw error
+        }
 
-            return try await withUnsafeThrowingContinuation { continuation in
-                Task {
-                    await self.setchannelState(.hasContinuation(continuation))
-                }
+        return try await withUnsafeThrowingContinuation { continuation in
+            Task { [weak self] in
+                guard let self else { throw CancellationError() }
+                await self.setchannelState(.hasContinuation(continuation))
             }
         }
     }

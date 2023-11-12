@@ -8,13 +8,18 @@
 import Foundation
 
 extension Workers {
-    struct FlatMap<Success: Sendable>: AsynchronousUnitOfWork {
-        let state: TaskState<Success>
+    struct FlatMap<Upstream: AsynchronousUnitOfWork, Downstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Success == Downstream.Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
+        let transform: @Sendable (Upstream.Success) async throws -> Downstream
 
-        init<U: AsynchronousUnitOfWork, D: AsynchronousUnitOfWork>(upstream: U, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (U.Success) async throws -> D) where Success == D.Success {
-            state = TaskState {
-                try await transform(try await upstream.operation()).operation()
-            }
+        init(upstream: Upstream, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (Upstream.Success) async throws -> Downstream) {
+            self.upstream = upstream
+            self.transform = transform
+        }
+        
+        func _operation() async throws -> Success {
+            try await transform(try await upstream.operation()).operation()
         }
     }
 }

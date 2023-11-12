@@ -1,25 +1,25 @@
 //
-//  SingleValueSubjectTests.swift
+//  SingleValueChannelTests.swift
 //
 //
-//  Created by Tyler Thompson on 11/10/23.
+//  Created by Tyler Thompson on 11/11/23.
 //
 
 import Foundation
 import Afluent
 import XCTest
 
-final class SingleValueSubjectTests: XCTestCase {
+final class SingleValueChannelTests: XCTestCase {
     func testSingleValueSubjectEmittingValueBeforeTaskRuns() async throws {
         let expected = Int.random(in: 1...1000)
         let exp = expectation(description: "task executed")
-        let subject = SingleValueSubject<Int>()
+        let subject = SingleValueChannel<Int>()
         let unitOfWork = subject.map {
             exp.fulfill()
             return $0
         }
         
-        try subject.send(expected)
+        try await subject.send(expected)
         
         let actual = try await unitOfWork.execute()
         await fulfillment(of: [exp], timeout: 0)
@@ -29,23 +29,23 @@ final class SingleValueSubjectTests: XCTestCase {
     func testSingleValueSubjectEmittingValueAfterTaskRuns() async throws {
         let expected = Int.random(in: 1...1000)
         let exp = expectation(description: "task executed")
-        let subject = SingleValueSubject<Int>()
+        let subject = SingleValueChannel<Int>()
         subject.map {
             exp.fulfill()
             XCTAssertEqual($0, expected)
             return $0
         }.run() // task started
         
-        try subject.send(expected)
+        try await subject.send(expected)
         
         await fulfillment(of: [exp], timeout: 0.01)
     }
     
     func testSingleValueSubjectEmittingErrorBeforeTaskRuns() async throws {
         enum Err: Error { case e1 }
-        let subject = SingleValueSubject<Int>()
+        let subject = SingleValueChannel<Int>()
         
-        try subject.send(error: Err.e1)
+        try await subject.send(error: Err.e1)
         
         let actualResult = try await subject.result
         XCTAssertThrowsError(try actualResult.get()) { error in
@@ -58,7 +58,7 @@ final class SingleValueSubjectTests: XCTestCase {
 
         enum Err: Error { case e1 }
         let exp = expectation(description: "task executed")
-        let subject = SingleValueSubject<Int>()
+        let subject = SingleValueChannel<Int>()
         let unitOfWork = subject
             .materialize()
             .map {
@@ -68,7 +68,7 @@ final class SingleValueSubjectTests: XCTestCase {
 
         Task {
             try await Task.sleep(nanoseconds: UInt64(Measurement<UnitDuration>.milliseconds(10).converted(to: .nanoseconds).value))
-            try subject.send(error: Err.e1)
+            try await subject.send(error: Err.e1)
         }
 
         let actualResult = try await unitOfWork.execute()
@@ -82,15 +82,16 @@ final class SingleValueSubjectTests: XCTestCase {
     func testSingleValueSubjectOnlyEmitsValueOnce() async throws {
         let expected = Int.random(in: 1...1000)
         let exp = expectation(description: "task executed")
-        let subject = SingleValueSubject<Int>()
+        let subject = SingleValueChannel<Int>()
         subject.map {
             exp.fulfill()
             XCTAssertEqual($0, expected)
             return $0
         }.run() // task started
         
-        try subject.send(expected)
-        XCTAssertThrowsError(try subject.send(expected))
+        try await subject.send(expected)
+        let result = await Task { try await subject.send(expected) }.result
+        XCTAssertThrowsError(try result.get())
         
         await fulfillment(of: [exp], timeout: 0.01)
     }
@@ -101,7 +102,7 @@ final class SingleValueSubjectTests: XCTestCase {
         enum Err: Error { case e1 }
         let exp = expectation(description: "task executed")
         let exp1 = expectation(description: "Subject error sent")
-        let subject = SingleValueSubject<Int>()
+        let subject = SingleValueChannel<Int>()
         let unitOfWork = subject
             .materialize()
             .map {
@@ -111,8 +112,10 @@ final class SingleValueSubjectTests: XCTestCase {
 
         Task {
             try await Task.sleep(nanoseconds: UInt64(Measurement<UnitDuration>.milliseconds(10).converted(to: .nanoseconds).value))
-            try subject.send(error: Err.e1)
-            XCTAssertThrowsError(try subject.send(error: Err.e1))
+            try await subject.send(error: Err.e1)
+            
+            let result = await Task { try await subject.send(error: Err.e1) }.result
+            XCTAssertThrowsError(try result.get())
             exp1.fulfill()
         }
 
@@ -126,12 +129,12 @@ final class SingleValueSubjectTests: XCTestCase {
     
     func testVoidSingleValueSubjectEmittingValueBeforeTaskRuns() async throws {
         let exp = expectation(description: "task executed")
-        let subject = SingleValueSubject<Void>()
+        let subject = SingleValueChannel<Void>()
         let unitOfWork = subject.map {
             exp.fulfill()
         }
         
-        try subject.send()
+        try await subject.send()
         
         try await unitOfWork.execute()
         
@@ -140,12 +143,12 @@ final class SingleValueSubjectTests: XCTestCase {
     
     func testVoidSingleValueSubjectEmittingValueAfterTaskRuns() async throws {
         let exp = expectation(description: "task executed")
-        let subject = SingleValueSubject<Void>()
+        let subject = SingleValueChannel<Void>()
         subject.map {
             exp.fulfill()
         }.run() // task started
         
-        try subject.send()
+        try await subject.send()
         
         await fulfillment(of: [exp], timeout: 0.01)
     }

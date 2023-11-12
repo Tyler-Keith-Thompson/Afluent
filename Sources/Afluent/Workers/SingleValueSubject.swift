@@ -67,6 +67,24 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
         }
     }
     
+    /// Sends a value to the subject.
+    ///
+    /// Completes the subject with the provided value. If the subject is already completed, this method throws a `SubjectError.alreadyCompleted`.
+    ///
+    /// - Throws: `SubjectError.alreadyCompleted` if the subject is already completed.
+    public func send() throws where Success == Void {
+        try _lock.protect {
+            switch self.subjectState {
+            case .noValue: self.subjectState = .sentValue(())
+            case .hasContinuation(let continuation):
+                self.subjectState = .sentValue(())
+                continuation.resume(returning: ())
+            default:
+                throw SubjectError.alreadyCompleted
+            }
+        }
+    }
+    
     /// Sends an error to the subject.
     ///
     /// Completes the subject with the provided error. If the subject is already completed, this method throws a `SubjectError.alreadyCompleted`.

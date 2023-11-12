@@ -17,12 +17,14 @@ extension Workers {
             self.newValue = newValue
         }
         
-        func _operation() async throws -> Success {
-            do {
-                return try await upstream.operation()
-            } catch {
-                guard !(error is CancellationError) else { throw error }
-                return newValue
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
+                do {
+                    return try await upstream.operation()
+                } catch {
+                    guard !(error is CancellationError) else { throw error }
+                    return newValue
+                }
             }
         }
     }

@@ -12,11 +12,11 @@ public struct AnyAsynchronousUnitOfWork<Success: Sendable>: AsynchronousUnitOfWo
     public let state = TaskState<Success>()
     let upstream: any AsynchronousUnitOfWork<Success>
 
-    public init<U: AsynchronousUnitOfWork>(_ upstream: U) where Success == U.Success {
+    public init(_ upstream: any AsynchronousUnitOfWork<Success>) {
         self.upstream = upstream
     }
     
-    public func _operation() async throws -> Success {
+    public func _operation() async throws -> AsynchronousOperation<Success> {
         try await upstream._operation()
     }
 }

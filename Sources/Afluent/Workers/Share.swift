@@ -23,8 +23,11 @@ extension Workers {
             }
         }
         
-        public func _operation() async throws -> Success {
-            try await task.value
+        public func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
+                guard let self else { throw CancellationError() }
+                return try await self.task.value
+            }
         }
         
         @discardableResult public func execute() async throws -> Success {

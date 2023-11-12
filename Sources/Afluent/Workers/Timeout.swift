@@ -20,30 +20,34 @@ extension Workers {
             customError = error
         }
         
-        func _operation() async throws -> Success {
-            reset()
-            let timeoutTask = Task { [weak self] in
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
-                try await Task.sleep(nanoseconds: UInt64(self.duration.converted(to: .nanoseconds).value))
-                await self.timeout()
-                upstream.cancel()
-            }
-            
-            return try await Task { [weak self] in
-                guard let self else { throw CancellationError() }
-                do {
-                    let result = try await upstream.execute()
-                    timeoutTask.cancel()
-                    return result
-                } catch {
-                    timeoutTask.cancel()
-                    if await self.timedOut {
-                        throw await self.customError ?? CancellationError()
-                    } else {
-                        throw error
-                    }
+
+                await self.reset()
+                let timeoutTask = Task { [weak self] in
+                    guard let self else { throw CancellationError() }
+                    try await Task.sleep(nanoseconds: UInt64(self.duration.converted(to: .nanoseconds).value))
+                    await self.timeout()
+                    self.upstream.cancel()
                 }
-            }.value
+                
+                return try await Task { [weak self] in
+                    guard let self else { throw CancellationError() }
+                    do {
+                        let result = try await self.upstream.execute()
+                        timeoutTask.cancel()
+                        return result
+                    } catch {
+                        timeoutTask.cancel()
+                        if await self.timedOut {
+                            throw await self.customError ?? CancellationError()
+                        } else {
+                            throw error
+                        }
+                    }
+                }.value
+            }
         }
         
         func reset() {

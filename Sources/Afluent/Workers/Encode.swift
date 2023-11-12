@@ -20,8 +20,10 @@ extension Workers {
         let upstream: Upstream
         let encoder: Encoder
         
-        func _operation() async throws -> Success {
-            try encoder.encode(try await upstream.operation())
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
+                try encoder.encode(try await upstream.operation())
+            }
         }
     }
 }

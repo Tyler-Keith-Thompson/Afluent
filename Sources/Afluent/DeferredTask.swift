@@ -26,7 +26,10 @@ public actor DeferredTask<Success: Sendable>: AsynchronousUnitOfWork {
         self.operation = operation
     }
     
-    public func _operation() async throws -> Success {
-        try await operation()
+    public func _operation() async throws -> AsynchronousOperation<Success> {
+        AsynchronousOperation { [weak self] in
+            guard let self else { throw CancellationError() }
+            return try await self.operation()
+        }
     }
 }

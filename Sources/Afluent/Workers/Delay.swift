@@ -14,10 +14,12 @@ extension Workers {
         let upstream: Upstream
         let duration: Measurement<UnitDuration>
         
-        func _operation() async throws -> Success {
-            let val = try await upstream.operation()
-            try await Task.sleep(nanoseconds: UInt64(duration.converted(to: .nanoseconds).value))
-            return val
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
+                let val = try await upstream.operation()
+                try await Task.sleep(nanoseconds: UInt64(duration.converted(to: .nanoseconds).value))
+                return val
+            }
         }
     }
 }

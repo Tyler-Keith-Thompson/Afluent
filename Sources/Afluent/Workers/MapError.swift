@@ -18,13 +18,17 @@ extension Workers {
             self.transform = transform
         }
         
-        func _operation() async throws -> Success {
-            do {
-                return try await upstream.operation()
-            } catch {
-                guard !(error is CancellationError) else { throw error }
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
+                guard let self else { throw CancellationError() }
 
-                throw transform(error)
+                do {
+                    return try await self.upstream.operation()
+                } catch {
+                    guard !(error is CancellationError) else { throw error }
+                    
+                    throw self.transform(error)
+                }
             }
         }
     }

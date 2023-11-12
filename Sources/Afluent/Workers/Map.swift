@@ -18,8 +18,10 @@ extension Workers {
             self.transform = transform
         }
         
-        func _operation() async throws -> Success {
-            await transform(try await upstream.operation())
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
+                await transform(try await upstream.operation())
+            }
         }
     }
     
@@ -33,8 +35,10 @@ extension Workers {
             self.transform = transform
         }
         
-        func _operation() async throws -> Success {
-            try await transform(try await upstream.operation())
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
+                try await transform(try await upstream.operation())
+            }
         }
     }
 }

@@ -20,24 +20,28 @@ extension Workers {
             self.transform = transform
         }
         
-        func _operation() async throws -> Success {
-            guard retryCount > 0 else {
-                return try await upstream._operation()
-            }
-            
-            while retryCount > 0 {
-                do {
-                    return try await upstream.operation()
-                } catch {
-                    guard !(error is CancellationError) else { throw error }
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
+                guard let self else { throw CancellationError() }
 
-                    _ = try await transform(error).operation()
-                    decrementRetry()
-                    continue
+                guard await self.retryCount > 0 else {
+                    return try await self.upstream._operation()()
                 }
+                
+                while await self.retryCount > 0 {
+                    do {
+                        return try await self.upstream.operation()
+                    } catch {
+                        guard !(error is CancellationError) else { throw error }
+                        
+                        _ = try await self.transform(error).operation()
+                        await self.decrementRetry()
+                        continue
+                    }
+                }
+                
+                return try await self.upstream.operation()
             }
-            
-            return try await upstream.operation()
         }
         
         func decrementRetry() {
@@ -61,25 +65,29 @@ extension Workers {
             self.transform = transform
         }
         
-        func _operation() async throws -> Success {
-            guard retryCount > 0 else {
-                return try await upstream._operation()
-            }
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
+                guard let self else { throw CancellationError() }
 
-            while retryCount > 0 {
-                do {
-                    return try await upstream.operation()
-                } catch(let err) {
-                    guard !(error is CancellationError) else { throw error }
-
-                    guard let unwrappedError = (err as? Failure),
-                          unwrappedError == error else { throw err }
-                    _ = try await transform(unwrappedError).operation()
-                    decrementRetry()
-                    continue
+                guard await self.retryCount > 0 else {
+                    return try await self.upstream._operation()()
                 }
+                
+                while await self.retryCount > 0 {
+                    do {
+                        return try await self.upstream.operation()
+                    } catch(let err) {
+                        guard !(error is CancellationError) else { throw error }
+                        
+                        guard let unwrappedError = (err as? Failure),
+                              unwrappedError == error else { throw err }
+                        _ = try await self.transform(unwrappedError).operation()
+                        await self.decrementRetry()
+                        continue
+                    }
+                }
+                return try await self.upstream.operation()
             }
-            return try await upstream.operation()
         }
         
         func decrementRetry() {

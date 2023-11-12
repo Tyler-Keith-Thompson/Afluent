@@ -17,11 +17,13 @@ extension Workers {
             self.newValue = newValue
         }
         
-        func _operation() async throws -> Success {
-            if let val = try await upstream.operation() {
-                return val
-            } else {
-                return newValue
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
+                if let val = try await upstream.operation() {
+                    return val
+                } else {
+                    return newValue
+                }
             }
         }
     }

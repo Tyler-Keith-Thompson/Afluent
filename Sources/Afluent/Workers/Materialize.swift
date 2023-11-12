@@ -18,12 +18,14 @@ extension Workers {
             self.upstream = upstream
         }
         
-        func _operation() async throws -> Success {
-            do {
-                return .success(try await upstream.operation())
-            } catch {
-                guard !(error is CancellationError) else { throw error }
-                return .failure(error)
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
+                do {
+                    return .success(try await upstream.operation())
+                } catch {
+                    guard !(error is CancellationError) else { throw error }
+                    return .failure(error)
+                }
             }
         }
     }

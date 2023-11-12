@@ -19,22 +19,26 @@ extension Workers {
             retryCount = retries
         }
         
-        func _operation() async throws -> Success {
-            guard retryCount > 0 else {
-                return try await upstream._operation()
-            }
-            
-            while retryCount > 0 {
-                do {
-                    return try await upstream.operation()
-                } catch {
-                    guard !(error is CancellationError) else { throw error }
-                    
-                    decrementRetry()
-                    continue
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
+                guard let self else { throw CancellationError() }
+
+                guard await self.retryCount > 0 else {
+                    return try await self.upstream._operation()()
                 }
+                
+                while await self.retryCount > 0 {
+                    do {
+                        return try await self.upstream.operation()
+                    } catch {
+                        guard !(error is CancellationError) else { throw error }
+                        
+                        await self.decrementRetry()
+                        continue
+                    }
+                }
+                return try await self.upstream.operation()
             }
-            return try await upstream.operation()
         }
         
         func decrementRetry() {
@@ -56,24 +60,28 @@ extension Workers {
             self.error = error
         }
         
-        func _operation() async throws -> Success {
-            guard retryCount > 0 else {
-                return try await upstream._operation()
-            }
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
+                guard let self else { throw CancellationError() }
 
-            while retryCount > 0 {
-                do {
-                    return try await upstream.operation()
-                } catch(let err) {
-                    guard !(error is CancellationError) else { throw error }
-
-                    guard let unwrappedError = (err as? Failure),
-                          unwrappedError == error else { throw err }
-                    decrementRetry()
-                    continue
+                guard await self.retryCount > 0 else {
+                    return try await self.upstream._operation()()
                 }
+                
+                while await self.retryCount > 0 {
+                    do {
+                        return try await self.upstream.operation()
+                    } catch(let err) {
+                        guard !(error is CancellationError) else { throw error }
+                        
+                        guard let unwrappedError = (err as? Failure),
+                              unwrappedError == error else { throw err }
+                        await self.decrementRetry()
+                        continue
+                    }
+                }
+                return try await self.upstream.operation()
             }
-            return try await upstream.operation()
         }
         
         func decrementRetry() {

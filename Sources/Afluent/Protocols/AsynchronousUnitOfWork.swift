@@ -21,7 +21,8 @@ public protocol AsynchronousUnitOfWork<Success>: Sendable where Success: Sendabl
     /// - Returns: The result of the task.
     @discardableResult func execute() async throws -> Success
     
-    @Sendable func _operation() async throws -> Success
+    /// Only useful when creating operators, defines the async function that should execute when the operator executes
+    @Sendable func _operation() async throws -> AsynchronousOperation<Success>
     
     /// Cancel the task, even if it hasn't begun yet.
     func cancel()
@@ -48,9 +49,21 @@ extension AsynchronousUnitOfWork {
     
     @Sendable func operation() async throws -> Success {
         try Task.checkCancellation()
-        let success = try await _operation()
+        let success = try await _operation()()
         try Task.checkCancellation()
         return success
+    }
+}
+
+/// Reference to an operation that an operator would execute
+public actor AsynchronousOperation<Success: Sendable> {
+    private let operation: @Sendable () async throws -> Success
+    public init(operation: @escaping @Sendable () async throws -> Success) {
+        self.operation = operation
+    }
+    
+    func callAsFunction() async throws -> Success {
+        try await operation()
     }
 }
 
@@ -64,7 +77,7 @@ public final class TaskState<Success: Sendable>: @unchecked Sendable {
         _isCancelled.load(ordering: .sequentiallyConsistent)
     }
     
-    init() { }
+    public init() { }
     
     @discardableResult func createTask(operation: @escaping @Sendable () async throws -> Success) -> Task<Success, Error> {
         guard !isCancelled else {

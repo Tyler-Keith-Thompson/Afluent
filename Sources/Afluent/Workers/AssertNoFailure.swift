@@ -12,14 +12,16 @@ extension Workers {
         let state = TaskState<Success>()
         let upstream: Upstream
         
-        func _operation() async throws -> Success {
-            do {
-                return try await upstream.operation()
-            } catch {
-                if !(error is CancellationError) {
-                    assertionFailure("Expected no error in asynchronous unit of work, but got: \(error)")
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
+                do {
+                    return try await upstream.operation()
+                } catch {
+                    if !(error is CancellationError) {
+                        assertionFailure("Expected no error in asynchronous unit of work, but got: \(error)")
+                    }
+                    throw error
                 }
-                throw error
             }
         }
     }

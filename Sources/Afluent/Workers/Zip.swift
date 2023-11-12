@@ -20,10 +20,12 @@ extension Workers {
             self.downstream = downstream
         }
         
-        func _operation() async throws -> Success {
-            async let u = try await upstream.operation()
-            async let d = try await downstream.operation()
-            return (try await u, try await d)
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
+                async let u = try await upstream.operation()
+                async let d = try await downstream.operation()
+                return (try await u, try await d)
+            }
         }
     }
     
@@ -41,12 +43,14 @@ extension Workers {
             self.d1 = d1
         }
         
-        func _operation() async throws -> Success {
-            async let u = try await upstream.operation()
-            async let d_0 = try await d0.operation()
-            async let d_1 = try await d1.operation()
-            
-            return (try await u, try await d_0, try await d_1)
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
+                async let u = try await upstream.operation()
+                async let d_0 = try await d0.operation()
+                async let d_1 = try await d1.operation()
+                
+                return (try await u, try await d_0, try await d_1)
+            }
         }
     }
     
@@ -66,13 +70,15 @@ extension Workers {
             self.d2 = d2
         }
         
-        func _operation() async throws -> Success {
-            async let u = try await upstream.operation()
-            async let d_0 = try await d0.operation()
-            async let d_1 = try await d1.operation()
-            async let d_2 = try await d2.operation()
-            
-            return (try await u, try await d_0, try await d_1, try await d_2)
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation {
+                async let u = try await upstream.operation()
+                async let d_0 = try await d0.operation()
+                async let d_1 = try await d1.operation()
+                async let d_2 = try await d2.operation()
+                
+                return (try await u, try await d_0, try await d_1, try await d_2)
+            }
         }
     }
 }

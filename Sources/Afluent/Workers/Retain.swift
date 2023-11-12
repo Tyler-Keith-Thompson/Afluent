@@ -17,12 +17,16 @@ extension Workers {
             self.upstream = upstream
         }
         
-        func _operation() async throws -> Success {
-            if let success = cachedSuccess {
-                return success
-            } else {
-                let result = try await upstream.operation()
-                return cache(result)
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
+                guard let self else { throw CancellationError() }
+
+                if let success = await self.cachedSuccess {
+                    return success
+                } else {
+                    let result = try await self.upstream.operation()
+                    return await self.cache(result)
+                }
             }
         }
         

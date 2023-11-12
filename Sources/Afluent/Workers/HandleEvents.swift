@@ -22,21 +22,23 @@ extension Workers {
             self.receiveCancel = receiveCancel
         }
         
-        func _operation() async throws -> Success {
-            try await withTaskCancellationHandler {
-                do {
-                    let val = try await upstream.operation()
-                    try await receiveOutput?(val)
-                    return val
-                } catch {
-                    if !(error is CancellationError) {
-                        try await receiveError?(error)
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
+                guard let self else { throw CancellationError() }
+
+                return try await withTaskCancellationHandler {
+                    do {
+                        let val = try await self.upstream.operation()
+                        try await self.receiveOutput?(val)
+                        return val
+                    } catch {
+                        if !(error is CancellationError) {
+                            try await self.receiveError?(error)
+                        }
+                        throw error
                     }
-                    throw error
-                }
-            } onCancel: {
-                if let receiveCancel {
-                    Task { try await receiveCancel() }
+                } onCancel: {
+                    Task { try await self.receiveCancel?() }
                 }
             }
         }

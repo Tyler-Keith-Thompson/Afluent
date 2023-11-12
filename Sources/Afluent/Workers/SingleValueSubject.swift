@@ -26,25 +26,24 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     /// Creates a new `SingleValueSubject`.
     public init() { }
     
-    public func _operation() async throws -> Success {
-        lock()
-        if case .sentValue(let success) = self.subjectState {
-            unlock()
-            return success
-        } else if case .sentError(let error) = self.subjectState {
-            unlock()
-            throw error
-        }
-        unlock()
-        return try await withUnsafeThrowingContinuation { [weak self] continuation in
-            guard let self else {
-                continuation.resume(throwing: CancellationError())
-                return
-            }
-            
+    public func _operation() async throws -> AsynchronousOperation<Success> {
+        AsynchronousOperation { [weak self] in
+            guard let self else { throw CancellationError() }
+
             self.lock()
-            self.subjectState = .hasContinuation(continuation)
+            if case .sentValue(let success) = self.subjectState {
+                self.unlock()
+                return success
+            } else if case .sentError(let error) = self.subjectState {
+                self.unlock()
+                throw error
+            }
             self.unlock()
+            return try await withUnsafeThrowingContinuation { continuation in
+                self.lock()
+                self.subjectState = .hasContinuation(continuation)
+                self.unlock()
+            }
         }
     }
     

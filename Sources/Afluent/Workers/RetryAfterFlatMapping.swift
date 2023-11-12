@@ -8,10 +8,9 @@
 import Foundation
 extension Workers {
     actor RetryAfterFlatMapping<Upstream: AsynchronousUnitOfWork, Downstream: AsynchronousUnitOfWork, Success>: AsynchronousUnitOfWork where Upstream.Success == Success {
-        var retryCount: UInt
-
         let state = TaskState<Success>()
         let upstream: Upstream
+        var retryCount: UInt
         let transform: @Sendable (Error) async throws -> Downstream
 
         init(upstream: Upstream, retries: UInt, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (Error) async throws -> Downstream) {
@@ -51,16 +50,15 @@ extension Workers {
     }
     
     actor RetryOnAfterFlatMapping<Upstream: AsynchronousUnitOfWork, Downstream: AsynchronousUnitOfWork, Failure: Error & Equatable, Success>: AsynchronousUnitOfWork where Upstream.Success == Success {
-        var retryCount: UInt
-
         let state = TaskState<Success>()
         let upstream: Upstream
-        let transform: @Sendable (Failure) async throws -> Downstream
+        var retryCount: UInt
         let error: Failure
+        let transform: @Sendable (Failure) async throws -> Downstream
 
         init(upstream: Upstream, retries: UInt, error: Failure, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (Failure) async throws -> Downstream) {
-            retryCount = retries
             self.upstream = upstream
+            retryCount = retries
             self.error = error
             self.transform = transform
         }

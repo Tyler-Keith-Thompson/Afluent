@@ -9,10 +9,9 @@ import Foundation
 
 extension Workers {
     actor Retry<Upstream: AsynchronousUnitOfWork, Success>: AsynchronousUnitOfWork where Upstream.Success == Success {
-        var retryCount: UInt
-
         let state = TaskState<Success>()
         let upstream: Upstream
+        var retryCount: UInt
 
         init(upstream: Upstream, retries: UInt) {
             self.upstream = upstream
@@ -48,10 +47,9 @@ extension Workers {
     }
     
     actor RetryOn<Upstream: AsynchronousUnitOfWork, Failure: Error & Equatable, Success>: AsynchronousUnitOfWork where Upstream.Success == Success {
-        var retryCount: UInt
-
         let state = TaskState<Success>()
         let upstream: Upstream
+        var retryCount: UInt
         let error: Failure
 
         init(upstream: Upstream, retries: UInt, error: Failure) {

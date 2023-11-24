@@ -15,7 +15,7 @@ extension Workers {
         let receiveError: ((Error) async throws -> Void)?
         let receiveCancel: (() async throws -> Void)?
 
-        init(upstream: Upstream, receiveOutput: ((Success) async throws -> Void)?, receiveError: ((Error) async throws -> Void)?, receiveCancel: (() async throws -> Void)?) {
+        init(upstream: Upstream, @_inheritActorContext @_implicitSelfCapture receiveOutput: ((Success) async throws -> Void)?, @_inheritActorContext @_implicitSelfCapture receiveError: ((Error) async throws -> Void)?, @_inheritActorContext @_implicitSelfCapture receiveCancel: (() async throws -> Void)?) {
             self.upstream = upstream
             self.receiveOutput = receiveOutput
             self.receiveError = receiveError
@@ -25,20 +25,19 @@ extension Workers {
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
-
-                return try await withTaskCancellationHandler {
-                    do {
-                        let val = try await self.upstream.operation()
-                        try await self.receiveOutput?(val)
-                        return val
-                    } catch {
-                        if !(error is CancellationError) {
-                            try await self.receiveError?(error)
-                        }
-                        throw error
+                
+                do {
+                    try Task.checkCancellation()
+                    let val = try await self.upstream.operation()
+                    try await self.receiveOutput?(val)
+                    return val
+                } catch {
+                    if !(error is CancellationError) {
+                        try await self.receiveError?(error)
+                    } else {
+                        try await self.receiveCancel?()
                     }
-                } onCancel: {
-                    Task { try await self.receiveCancel?() }
+                    throw error
                 }
             }
         }

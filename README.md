@@ -40,7 +40,7 @@ struct Post: Codable {
 let posts = try await DeferredTask {
     try await URLSession.shared.data(from: URL(string: "https://jsonplaceholder.typicode.com/posts")!)
 }
-.map(\.data) // Extract the data from the URLSession response
+.map(\.0) // Extract the data from the URLSession response
 .decode(type: [Post].self, decoder: JSONDecoder()) // Decode the JSON into an array of `Post` objects
 .retry() // Automatically retry the request if it fails
 .execute() // Execute the deferred task
@@ -99,7 +99,7 @@ Fetching, decoding JSON data, and implementing retries using Afluent:
 let posts = try await DeferredTask {
     try await URLSession.shared.data(from: URL(string: "https://jsonplaceholder.typicode.com/posts")!)
 }
-.map(\.data) // Extract the data from the URLSession response
+.map(\.0) // Extract the data from the URLSession response
 .decode(type: [Post].self, decoder: JSONDecoder()) // Decode the JSON into an array of `Post` objects
 .retry(3) // Automatically retry the request up to 3 times if it fails
 .execute() // Execute the deferred task
@@ -111,7 +111,7 @@ let posts = try await DeferredTask {
   
 - **Built-in Error Handling**: Afluent's `retry` method elegantly handles retries, eliminating the need for manual loops and error checks.
   
-- **Rich Set of Operations**: Beyond retries, Afluent offers operations like `map`, `flatMap`, `filter`, and more, enriching the `async/await` experience.
+- **Rich Set of Operations**: Beyond retries, Afluent offers operations like `map`, `flatMap`, and over 20 more, enriching the `async/await` experience.
 
 - **Readability**: Afluent's fluent design makes the code's intent clearer, enhancing maintainability.
 

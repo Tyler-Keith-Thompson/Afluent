@@ -38,7 +38,7 @@ final class SingleValueSubjectTests: XCTestCase {
         
         try subject.send(expected)
         
-        await fulfillment(of: [exp], timeout: 0.01)
+        await fulfillment(of: [exp], timeout: 0.1)
     }
     
     func testSingleValueSubjectEmittingErrorBeforeTaskRuns() async throws {

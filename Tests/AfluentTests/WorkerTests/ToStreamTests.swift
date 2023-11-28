@@ -13,9 +13,9 @@ import Atomics
 
 final class ToStreamTests: XCTestCase {
     func convertingUnitOfWorkToAsyncSequence() async throws {
-        var counter = ManagedAtomic(0)
+        let counter = ManagedAtomic(0)
         
-        for try await val in DeferredTask(operation: { 1 }).toStream() {
+        for try await val in DeferredTask(operation: { 1 }).toAsyncSequence() {
             counter.wrappingIncrement(ordering: .relaxed)
             XCTAssertEqual(val, 1)
         }

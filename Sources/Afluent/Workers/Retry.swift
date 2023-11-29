@@ -70,7 +70,7 @@ extension Workers {
                     do {
                         return try await self.upstream.operation()
                     } catch(let err) {
-                        guard !(error is CancellationError) else { throw error }
+                        guard !(err is CancellationError) else { throw err }
                         
                         guard let unwrappedError = (err as? Failure),
                               unwrappedError == error else { throw err }

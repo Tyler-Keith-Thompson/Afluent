@@ -29,8 +29,10 @@ extension AsyncSequences {
                 }
                 
                 do {
+                    try Task.checkCancellation()
                     return try await upstreamIterator.next()
                 } catch {
+                    guard !(error is CancellationError) else { throw error }
                     caughtIterator = try await handler(error).makeAsyncIterator()
                     return try await next()
                 }

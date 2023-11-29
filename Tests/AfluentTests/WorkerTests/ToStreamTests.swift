@@ -12,7 +12,7 @@ import XCTest
 import Atomics
 
 final class ToStreamTests: XCTestCase {
-    func convertingUnitOfWorkToAsyncSequence() async throws {
+    func testConvertingUnitOfWorkToAsyncSequence() async throws {
         let counter = ManagedAtomic(0)
         
         for try await val in DeferredTask(operation: { 1 }).toAsyncSequence() {

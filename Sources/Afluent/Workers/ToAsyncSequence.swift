@@ -22,9 +22,9 @@ public struct AsynchronousUnitOfWorkSequence<UnitOfWork: AsynchronousUnitOfWork>
         
         public mutating func next() async throws -> UnitOfWork.Success? {
             if !executed {
-                return try await unitOfWork.execute()
-            } else {
                 executed = true
+                return try await unitOfWork.operation()
+            } else {
                 return nil
             }
         }

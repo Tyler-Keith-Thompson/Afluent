@@ -7,9 +7,8 @@
 
 import Foundation
 extension AsyncSequences {
-    public final class RetryAfterFlatMapping<Upstream: AsyncSequence, Downstream: AsyncSequence>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element {
+    public final actor RetryAfterFlatMapping<Upstream: AsyncSequence, Downstream: AsyncSequence>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element {
         public typealias Element = Upstream.Element
-        private let lock = NSRecursiveLock()
         let upstream: Upstream
         var retries: UInt
         
@@ -22,39 +21,32 @@ extension AsyncSequences {
             self.transform = transform
         }
         
-        private func _lock() { lock.lock() }
-        private func _unlock() { lock.unlock() }
-
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                _lock()
-                var i = iterator
-                _unlock()
-                return try await i.next()
+                var copy = iterator
+                let next = try await copy.next()
+                iterator = copy
+                return next
             } catch {
                 guard !(error is CancellationError) else { throw error }
 
-                _lock()
                 if retries > 0 {
                     retries -= 1
                     iterator = upstream.makeAsyncIterator()
                     for try await _ in try await transform(error) { }
-                    _unlock()
                     return try await next()
                 } else {
-                    _unlock()
                     throw error
                 }
             }
         }
         
-        public func makeAsyncIterator() -> RetryAfterFlatMapping<Upstream, Downstream> { self }
+        nonisolated public func makeAsyncIterator() -> RetryAfterFlatMapping<Upstream, Downstream> { self }
     }
     
-    public final class RetryOnAfterFlatMapping<Upstream: AsyncSequence, Failure: Error & Equatable, Downstream: AsyncSequence>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element {
+    public final actor RetryOnAfterFlatMapping<Upstream: AsyncSequence, Failure: Error & Equatable, Downstream: AsyncSequence>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element {
         public typealias Element = Upstream.Element
-        private let lock = NSRecursiveLock()
         let upstream: Upstream
         var retries: UInt
         let error: Failure
@@ -68,39 +60,32 @@ extension AsyncSequences {
             self.transform = transform
         }
         
-        private func _lock() { lock.lock() }
-        private func _unlock() { lock.unlock() }
-
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                _lock()
-                var i = iterator
-                _unlock()
-                return try await i.next()
+                var copy = iterator
+                let next = try await copy.next()
+                iterator = copy
+                return next
             } catch(let err) {
                 guard !(err is CancellationError) else { throw err }
                 
-                _lock()
                 guard let unwrappedError = (err as? Failure),
                       unwrappedError == error else {
-                    _unlock()
                     throw err
                 }
                 if retries > 0 {
                     retries -= 1
                     iterator = upstream.makeAsyncIterator()
-                    _unlock()
                     for try await _ in try await transform(unwrappedError) { }
                     return try await next()
                 } else {
-                    _unlock()
                     throw error
                 }
             }
         }
         
-        public func makeAsyncIterator() -> RetryOnAfterFlatMapping<Upstream, Failure, Downstream> { self }
+        nonisolated public func makeAsyncIterator() -> RetryOnAfterFlatMapping<Upstream, Failure, Downstream> { self }
     }
 }
 

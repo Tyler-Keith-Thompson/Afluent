@@ -55,7 +55,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` that performs the side-effects for the specified receiving events.
     ///
     /// - Note: The returned `AsynchronousUnitOfWork` forwards all receiving events from the upstream unit of work.
-    public func handleEvents(receiveOutput: ((Success) async throws -> Void)? = nil, receiveError: ((Error) async throws -> Void)? = nil, receiveCancel: (() async throws -> Void)? = nil) -> some AsynchronousUnitOfWork<Success> {
+    public func handleEvents(@_inheritActorContext @_implicitSelfCapture receiveOutput: ((Success) async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveError: ((Error) async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveCancel: (() async throws -> Void)? = nil) -> some AsynchronousUnitOfWork<Success> {
         Workers.HandleEvents(upstream: self, receiveOutput: receiveOutput, receiveError: receiveError, receiveCancel: receiveCancel)
     }
 }

@@ -13,7 +13,7 @@ final class CatchSequenceTests: XCTestCase {
     func testCatchDoesNotInterfereWithNoFailure() async throws {
         let val = try await DeferredTask { 1 }.toAsyncSequence()
             .catch { _ in DeferredTask { 2 }.toAsyncSequence() }
-            .first { _ in true }
+            .first()
         
         XCTAssertEqual(val, 1)
     }
@@ -26,7 +26,7 @@ final class CatchSequenceTests: XCTestCase {
                     XCTAssertEqual(error as? URLError, URLError(.badURL))
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
-                .first { _ in true }
+                .first()
         }.result
         
         XCTAssertEqual(try val.get(), 2)
@@ -45,7 +45,7 @@ final class CatchSequenceTests: XCTestCase {
                     XCTAssertEqual(error, .e1)
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
-                .first { _ in true }
+                .first()
         }.result
         
         XCTAssertEqual(try val.get(), 2)
@@ -64,7 +64,7 @@ final class CatchSequenceTests: XCTestCase {
                     XCTAssertEqual(error, .e1)
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
-                .first { _ in true }
+                .first()
         }
         .result
         
@@ -76,7 +76,7 @@ final class CatchSequenceTests: XCTestCase {
     func testTryCatchDoesNotInterfereWithNoFailure() async throws {
         let val = try await DeferredTask { 1 }.toAsyncSequence()
             .tryCatch { _ in DeferredTask { 2 }.toAsyncSequence() }
-            .first { _ in true }
+            .first()
         
         XCTAssertEqual(val, 1)
     }
@@ -89,7 +89,7 @@ final class CatchSequenceTests: XCTestCase {
                     XCTAssertEqual(error as? URLError, URLError(.badURL))
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
-                .first { _ in true }
+                .first()
         }
         .result
         
@@ -109,7 +109,7 @@ final class CatchSequenceTests: XCTestCase {
                     XCTAssertEqual(error, .e1)
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
-                .first { _ in true }
+                .first()
         }
         .result
         
@@ -129,7 +129,7 @@ final class CatchSequenceTests: XCTestCase {
                     XCTAssertEqual(error, .e1)
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
-                .first { _ in true }
+                .first()
         }
         .result
         

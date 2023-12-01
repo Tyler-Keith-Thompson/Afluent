@@ -27,7 +27,7 @@ final class RetrySequenceTests: XCTestCase {
             }.toAsyncSequence()
                 .map { _ in throw URLError(.badURL) }
                 .retry(retryCount)
-                .first { _ in true }
+                .first()
         }
         
         _ = await t.result
@@ -53,7 +53,7 @@ final class RetrySequenceTests: XCTestCase {
             .toAsyncSequence()
             .map { _ in throw URLError(.badURL) }
             .retry(0)
-            .first { _ in true }
+            .first()
         }
         
         _ = await t.result
@@ -79,7 +79,7 @@ final class RetrySequenceTests: XCTestCase {
             .toAsyncSequence()
             .map { _ in throw URLError(.badURL) }
             .retry()
-            .first { _ in true }
+            .first()
         }
         
         _ = await t.result
@@ -106,7 +106,7 @@ final class RetrySequenceTests: XCTestCase {
             .map { _ in throw URLError(.badURL) }
             .retry()
             .retry()
-            .first { _ in true }
+            .first()
         }
 
         _ = await t.result

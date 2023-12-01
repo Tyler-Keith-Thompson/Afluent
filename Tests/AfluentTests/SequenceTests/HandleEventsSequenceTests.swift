@@ -28,7 +28,7 @@ final class HandleEventsSequenceTests: XCTestCase {
                 await test.output($0)
                 exp.fulfill()
             })
-            .first { _ in true }
+            .first()
         }
         
         try await Task.sleep(for: .milliseconds(2))
@@ -60,7 +60,7 @@ final class HandleEventsSequenceTests: XCTestCase {
                 await test.error($0)
                 exp.fulfill()
             })
-            .first { _ in true }
+            .first()
         }
         
         try await Task.sleep(for: .milliseconds(2))
@@ -93,7 +93,7 @@ final class HandleEventsSequenceTests: XCTestCase {
                 await test.cancel()
                 exp.fulfill()
             })
-            .first { _ in true }
+            .first()
         }
         
         try await Task.sleep(for: .milliseconds(2))

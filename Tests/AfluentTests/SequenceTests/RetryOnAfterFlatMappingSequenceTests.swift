@@ -36,7 +36,7 @@ final class RetryOnAfterFlatMappingSequenceTests: XCTestCase {
                 }
                 .toAsyncSequence()
             }
-            .first { _ in true }
+            .first()
         }
         
         _ = await t.result
@@ -70,7 +70,7 @@ final class RetryOnAfterFlatMappingSequenceTests: XCTestCase {
                 }
                 .toAsyncSequence()
             }
-            .first { _ in true }
+            .first()
         }
         
         _ = await t.result
@@ -104,7 +104,7 @@ final class RetryOnAfterFlatMappingSequenceTests: XCTestCase {
                 }
                 .toAsyncSequence()
             }
-            .first { _ in true }
+            .first()
         }
         
         _ = await t.result
@@ -137,7 +137,7 @@ final class RetryOnAfterFlatMappingSequenceTests: XCTestCase {
                 }
                 .toAsyncSequence()
             }
-            .first { _ in true }
+            .first()
         }
         
         _ = await t.result

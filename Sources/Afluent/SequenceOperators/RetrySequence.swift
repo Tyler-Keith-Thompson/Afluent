@@ -8,9 +8,8 @@
 import Foundation
 
 extension AsyncSequences {
-    public final class Retry<Upstream: AsyncSequence>: AsyncSequence, AsyncIteratorProtocol {
+    public final actor Retry<Upstream: AsyncSequence>: AsyncSequence, AsyncIteratorProtocol {
         public typealias Element = Upstream.Element
-        private let lock = NSRecursiveLock()
         let upstream: Upstream
         var retries: UInt
         lazy var iterator = upstream.makeAsyncIterator()
@@ -20,38 +19,31 @@ extension AsyncSequences {
             self.retries = retries
         }
         
-        private func _lock() { lock.lock() }
-        private func _unlock() { lock.unlock() }
-
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                _lock()
-                var i = iterator
-                _unlock()
-                return try await i.next()
+                var copy = iterator
+                let next = try await copy.next()
+                iterator = copy
+                return next
             } catch {
                 guard !(error is CancellationError) else { throw error }
 
-                _lock()
                 if retries > 0 {
                     retries -= 1
                     iterator = upstream.makeAsyncIterator()
-                    _unlock()
                     return try await next()
                 } else {
-                    _unlock()
                     throw error
                 }
             }
         }
         
-        public func makeAsyncIterator() -> Retry<Upstream> { self }
+        nonisolated public func makeAsyncIterator() -> Retry<Upstream> { self }
     }
     
-    public final class RetryOn<Upstream: AsyncSequence, Failure: Error & Equatable>: AsyncSequence, AsyncIteratorProtocol {
+    public final actor RetryOn<Upstream: AsyncSequence, Failure: Error & Equatable>: AsyncSequence, AsyncIteratorProtocol {
         public typealias Element = Upstream.Element
-        private let lock = NSRecursiveLock()
         let upstream: Upstream
         var retries: UInt
         let error: Failure
@@ -63,38 +55,31 @@ extension AsyncSequences {
             self.error = error
         }
         
-        private func _lock() { lock.lock() }
-        private func _unlock() { lock.unlock() }
-
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                _lock()
-                var i = iterator
-                _unlock()
-                return try await i.next()
+                var copy = iterator
+                let next = try await copy.next()
+                iterator = copy
+                return next
             } catch(let err) {
                 guard !(err is CancellationError) else { throw err }
                 
-                _lock()
                 guard let unwrappedError = (err as? Failure),
                       unwrappedError == error else {
-                    _unlock()
                     throw err
                 }
                 if retries > 0 {
                     retries -= 1
                     iterator = upstream.makeAsyncIterator()
-                    _unlock()
                     return try await next()
                 } else {
-                    _unlock()
                     throw error
                 }
             }
         }
         
-        public func makeAsyncIterator() -> RetryOn<Upstream, Failure> { self }
+        nonisolated public func makeAsyncIterator() -> RetryOn<Upstream, Failure> { self }
     }
 }
 

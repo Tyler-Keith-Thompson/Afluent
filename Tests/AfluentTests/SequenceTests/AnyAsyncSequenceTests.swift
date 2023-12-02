@@ -18,7 +18,7 @@ final class AnyAsyncSequenceTests: XCTestCase {
                 } else {
                     return DeferredTask { 0 }.toAsyncSequence().eraseToAnyAsyncSequence()
                 }
-            }.first { _ in true }
+            }.first()
         
         XCTAssertEqual(val, 1)
     }
@@ -31,7 +31,7 @@ final class AnyAsyncSequenceTests: XCTestCase {
                 } else {
                     return DeferredTask { 0 }.toAsyncSequence().eraseToAnyAsyncSequence()
                 }
-            }.first { _ in true }
+            }.first()
         
         XCTAssertEqual(val, 0)
     }

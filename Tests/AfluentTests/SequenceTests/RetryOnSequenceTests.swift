@@ -31,7 +31,7 @@ class RetryOnSequenceTests: XCTestCase {
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
             .retry(retryCount, on: Err.e1)
-            .first { _ in true }
+            .first()
         }
         
         _ = await t.result
@@ -60,7 +60,7 @@ class RetryOnSequenceTests: XCTestCase {
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
             .retry(0, on: Err.e1)
-            .first { _ in true }
+            .first()
         }
         
         _ = await t.result
@@ -89,7 +89,7 @@ class RetryOnSequenceTests: XCTestCase {
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
             .retry(on: Err.e1)
-            .first { _ in true }
+            .first()
         }
         
         _ = await t.result
@@ -117,7 +117,7 @@ class RetryOnSequenceTests: XCTestCase {
             }
             .toAsyncSequence()
             .retry(10, on: Err.e1)
-            .first { _ in true }
+            .first()
         }
         
         _ = await t.result

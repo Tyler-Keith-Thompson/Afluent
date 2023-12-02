@@ -49,6 +49,30 @@ final class MaterializeSequenceTests: XCTestCase {
         }
     }
     
+    func testDematerializeWithError() async throws {
+        let result = await Task {
+            try await DeferredTask { throw URLError(.badURL) }
+                .toAsyncSequence()
+                .materialize()
+                .dematerialize()
+                .first()
+        }.result
+
+        XCTAssertThrowsError(try result.get()) { error in
+            XCTAssertEqual(error as? URLError, URLError(.badURL))
+        }
+    }
+    
+    func testDematerializeWithoutError() async throws {
+        let result = try await DeferredTask { 1 }
+                .toAsyncSequence()
+                .materialize()
+                .dematerialize()
+                .first()
+        
+        XCTAssertEqual(result, 1)
+    }
+    
     func testMaterializeDoesNotInterfereWithCancellation() async throws {
         try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
         actor Test {

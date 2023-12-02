@@ -8,20 +8,20 @@
 import Foundation
 
 extension AsyncSequences {
+    /// Represents the different kinds of events that can be emitted by `Materialize`.
+    public enum Event<Element> {
+        /// An element from the upstream sequence.
+        case element(Element)
+        /// An error encountered in the upstream sequence.
+        case failure(Error)
+        /// The completion of the upstream sequence.
+        case complete
+    }
+    
     public struct Materialize<Upstream: AsyncSequence>: AsyncSequence {
-        public typealias Element = Event
+        public typealias Element = Event<Upstream.Element>
         
         let upstream: Upstream
-        
-        /// Represents the different kinds of events that can be emitted by `Materialize`.
-        public enum Event {
-            /// An element from the upstream sequence.
-            case element(Upstream.Element)
-            /// An error encountered in the upstream sequence.
-            case failure(Error)
-            /// The completion of the upstream sequence.
-            case complete
-        }
         
         public struct AsyncIterator: AsyncIteratorProtocol {
             let upstream: Upstream

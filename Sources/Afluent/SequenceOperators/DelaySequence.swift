@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct DelaySequence<Upstream: AsyncSequence>: AsyncSequence {
+    public struct Delay<Upstream: AsyncSequence>: AsyncSequence {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         let interval: Measurement<UnitDuration>
@@ -20,6 +20,7 @@ extension AsyncSequences {
             lazy var iterator = upstream.makeAsyncIterator()
             
             public mutating func next() async throws -> Element? {
+                try Task.checkCancellation()
                 if !delayed {
                     delayed = true
                     try await Task.sleep(nanoseconds: UInt64(interval.converted(to: .nanoseconds).value))
@@ -38,7 +39,7 @@ extension AsyncSequences {
 extension AsyncSequence {
     /// Delays delivery of all output to the downstream receiver by a specified amount of time
     /// - Parameter interval: The amount of time to delay.
-    public func delay(for interval: Measurement<UnitDuration>) -> AsyncSequences.DelaySequence<Self> {
-        AsyncSequences.DelaySequence(upstream: self, interval: interval)
+    public func delay(for interval: Measurement<UnitDuration>) -> AsyncSequences.Delay<Self> {
+        AsyncSequences.Delay(upstream: self, interval: interval)
     }
 }

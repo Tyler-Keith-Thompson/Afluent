@@ -8,25 +8,28 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct Delay<Upstream: AsyncSequence>: AsyncSequence {
+    public struct Delay<Upstream: AsyncSequence, C: Clock>: AsyncSequence {
         public typealias Element = Upstream.Element
         let upstream: Upstream
-        let interval: Measurement<UnitDuration>
-        
-        public struct AsyncIterator: AsyncIteratorProtocol {
-            typealias Instant = SuspendingClock.Instant
-            let upstream: Upstream
-            let interval: Measurement<UnitDuration>
-            var iterator: AsyncThrowingStream<(Instant, Element), Error>.Iterator
-            let clock: SuspendingClock
+        let interval: C.Duration
+        let clock: C
+        let tolerance: C.Duration?
 
-            init(upstream: Upstream, interval: Measurement<UnitDuration>) {
+        public struct AsyncIterator: AsyncIteratorProtocol {
+            typealias Instant = C.Instant
+            let upstream: Upstream
+            let interval: C.Duration
+            var iterator: AsyncThrowingStream<(Instant, Element), Error>.Iterator
+            let clock: C
+            let tolerance: C.Duration?
+
+            init(upstream: Upstream, interval: C.Duration, clock: C, tolerance: C.Duration?) {
                 self.upstream = upstream
                 self.interval = interval
                 let (stream, continuation) = AsyncThrowingStream<(Instant, Element), Error>.makeStream()
                 self.iterator = stream.makeAsyncIterator()
-                let clock = SuspendingClock()
                 self.clock = clock
+                self.tolerance = tolerance
                 Task {
                     do {
                         for try await el in upstream {
@@ -42,8 +45,8 @@ extension AsyncSequences {
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
                 if let (instant, element) = try await iterator.next() {
-                    let suspensionPoint = instant.advanced(by: .nanoseconds(UInt(interval.converted(to: .nanoseconds).value)))
-                    try await clock.sleep(until: suspensionPoint)
+                    let suspensionPoint = instant.advanced(by: interval)
+                    try await clock.sleep(until: suspensionPoint, tolerance: tolerance)
                     return element
                 }
                 return nil
@@ -52,7 +55,7 @@ extension AsyncSequences {
         
         
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstream: upstream, interval: interval)
+            AsyncIterator(upstream: upstream, interval: interval, clock: clock, tolerance: tolerance)
         }
     }
 }
@@ -60,7 +63,13 @@ extension AsyncSequences {
 extension AsyncSequence {
     /// Delays delivery of all output to the downstream receiver by a specified amount of time
     /// - Parameter interval: The amount of time to delay.
-    public func delay(for interval: Measurement<UnitDuration>) -> AsyncSequences.Delay<Self> {
-        AsyncSequences.Delay(upstream: self, interval: interval)
+    public func delay(for interval: Measurement<UnitDuration>, tolerance: Measurement<UnitDuration>? = nil) -> AsyncSequences.Delay<Self, SuspendingClock> {
+        delay(for: .nanoseconds(UInt(interval.converted(to: .nanoseconds).value)), tolerance: tolerance.flatMap { .nanoseconds(UInt($0.converted(to: .nanoseconds).value)) }, clock: SuspendingClock())
+    }
+    
+    /// Delays delivery of all output to the downstream receiver by a specified amount of time
+    /// - Parameter interval: The amount of time to delay.
+    public func delay<C: Clock>(for interval: C.Duration, tolerance: C.Duration? = nil, clock: C) -> AsyncSequences.Delay<Self, C> {
+        AsyncSequences.Delay(upstream: self, interval: interval, clock: clock, tolerance: tolerance)
     }
 }

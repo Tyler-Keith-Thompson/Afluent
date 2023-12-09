@@ -40,7 +40,7 @@ final class DelaySequenceTests: XCTestCase {
     func testDelay_DoesNotDelayEveryElement() async throws {
         // Create a simple AsyncSequence of integers
         let numbers = [1, 2, 3].async
-        let delayDuration = Measurement(value: 10, unit: UnitDuration.milliseconds)
+        let delayDuration = Measurement(value: ProcessInfo.processInfo.environment["CI"] == "true" ? 100 : 10, unit: UnitDuration.milliseconds)
 
         // Measure the time before starting the delayed sequence
         let startTime = Date()

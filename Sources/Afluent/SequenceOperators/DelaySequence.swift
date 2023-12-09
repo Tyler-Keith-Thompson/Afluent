@@ -26,20 +26,21 @@ extension AsyncSequences {
             init(upstream: Upstream, interval: C.Duration, clock: C, tolerance: C.Duration?) {
                 self.upstream = upstream
                 self.interval = interval
-                let (stream, continuation) = AsyncThrowingStream<(Instant, Element), Error>.makeStream()
-                self.iterator = stream.makeAsyncIterator()
                 self.clock = clock
                 self.tolerance = tolerance
-                Task {
-                    do {
-                        for try await el in upstream {
-                            continuation.yield((clock.now, el))
+                let stream = AsyncThrowingStream<(Instant, Element), Error> { continuation in
+                    Task {
+                        do {
+                            for try await el in upstream {
+                                continuation.yield((clock.now, el))
+                            }
+                            continuation.finish()
+                        } catch {
+                            continuation.finish(throwing: error)
                         }
-                        continuation.finish()
-                    } catch {
-                        continuation.finish(throwing: error)
                     }
                 }
+                self.iterator = stream.makeAsyncIterator()
             }
             
             public mutating func next() async throws -> Element? {

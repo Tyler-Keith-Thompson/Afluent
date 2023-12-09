@@ -67,6 +67,35 @@ final class DelaySequenceTests: XCTestCase {
         // Ensure all elements were received
         XCTAssertEqual(count, 3, "Not all elements were received.")
     }
+    
+    func testDelay_DelaysCorrectlyEvenAfterIntervalHasPassed() async throws {
+        let (stream, continuation) = AsyncStream<Int>.makeStream()
+
+        let delayedNumbers = stream.delay(for: .milliseconds(10))
+
+        DeferredTask { continuation.yield(1) }
+            .delay(for: .milliseconds(15))
+            .map { continuation.yield(2); continuation.finish() }
+            .run()
+        
+        let startTime = Date()
+
+        // Iterate over the delayed sequence
+        var count = 0
+        for try await _ in delayedNumbers {
+            count += 1
+            let currentTime = Date()
+            let elapsedTime = currentTime.timeIntervalSince(startTime)
+
+            if count == 1 {
+                let expectedDelay = Measurement<UnitDuration>.milliseconds(10).converted(to: .seconds).value
+                XCTAssertGreaterThan(elapsedTime, expectedDelay, "Element \(count) was not delayed correctly.")
+            } else {
+                let expectedDelay = Measurement<UnitDuration>.milliseconds(15 + 10).converted(to: .seconds).value
+                XCTAssertGreaterThan(elapsedTime, expectedDelay, "Element \(count) was not delayed correctly.")
+            }
+        }
+    }
 }
 
 extension Array {

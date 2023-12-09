@@ -16,15 +16,38 @@ extension AsyncSequences {
         public struct AsyncIterator: AsyncIteratorProtocol {
             let upstream: Upstream
             let interval: Measurement<UnitDuration>
-            var delayed = false
-            lazy var iterator = upstream.makeAsyncIterator()
+            let stream: AsyncThrowingStream<Element, Error>
+            let continuation: AsyncThrowingStream<Element, Error>.Continuation
+            lazy var iterator = stream.makeAsyncIterator()
+
+            init(upstream: Upstream, interval: Measurement<UnitDuration>) {
+                self.upstream = upstream
+                self.interval = interval
+                let (stream, continuation) = AsyncThrowingStream<Element, Error>.makeStream()
+                self.stream = stream
+                self.continuation = continuation
+                Task {
+                    do {
+                        var task: (any AsynchronousUnitOfWork<Void>)?
+                        for try await el in upstream {
+                            let t = DeferredTask { el }
+                                .delay(for: interval)
+                                .map { continuation.yield($0) }
+                                .share()
+                            t.run()
+                            task = t.discardOutput()
+                        }
+                        DeferredTask { [task] in try await task?.result.get() }
+                            .map { continuation.finish() }
+                            .run()
+                    } catch {
+                        continuation.finish(throwing: error)
+                    }
+                }
+            }
             
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
-                if !delayed {
-                    delayed = true
-                    try await Task.sleep(nanoseconds: UInt64(interval.converted(to: .nanoseconds).value))
-                }
                 return try await iterator.next()
             }
         }

@@ -8,16 +8,8 @@
 import Foundation
 import Afluent
 import XCTest
-import ConcurrencyExtras
 
 final class DelaySequenceTests: XCTestCase {
-    
-    override func invokeTest() {
-        withMainSerialExecutor {
-            super.invokeTest()
-        }
-    }
-    
     func testDelay_DelaysAllOutputByExpectedTime() async throws {
         // Create a simple AsyncSequence of integers
         let numbers = [1, 2, 3].async

@@ -14,32 +14,25 @@ extension AsyncSequences {
         let interval: Measurement<UnitDuration>
         
         public struct AsyncIterator: AsyncIteratorProtocol {
+            typealias Instant = SuspendingClock.Instant
             let upstream: Upstream
             let interval: Measurement<UnitDuration>
-            let stream: AsyncThrowingStream<Element, Error>
-            let continuation: AsyncThrowingStream<Element, Error>.Continuation
-            lazy var iterator = stream.makeAsyncIterator()
+            var iterator: AsyncThrowingStream<(Instant, Element), Error>.Iterator
+            let clock: SuspendingClock
 
             init(upstream: Upstream, interval: Measurement<UnitDuration>) {
                 self.upstream = upstream
                 self.interval = interval
-                let (stream, continuation) = AsyncThrowingStream<Element, Error>.makeStream()
-                self.stream = stream
-                self.continuation = continuation
+                let (stream, continuation) = AsyncThrowingStream<(Instant, Element), Error>.makeStream()
+                self.iterator = stream.makeAsyncIterator()
+                let clock = SuspendingClock()
+                self.clock = clock
                 Task {
                     do {
-                        var task: (any AsynchronousUnitOfWork<Void>)?
                         for try await el in upstream {
-                            let t = DeferredTask { el }
-                                .delay(for: interval)
-                                .map { continuation.yield($0) }
-                                .share()
-                            t.run()
-                            task = t.discardOutput()
+                            continuation.yield((clock.now, el))
                         }
-                        DeferredTask { [task] in try await task?.result.get() }
-                            .map { continuation.finish() }
-                            .run()
+                        continuation.finish()
                     } catch {
                         continuation.finish(throwing: error)
                     }
@@ -48,7 +41,12 @@ extension AsyncSequences {
             
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
-                return try await iterator.next()
+                if let (instant, element) = try await iterator.next() {
+                    let suspensionPoint = instant.advanced(by: .nanoseconds(UInt(interval.converted(to: .nanoseconds).value)))
+                    try await clock.sleep(until: suspensionPoint)
+                    return element
+                }
+                return nil
             }
         }
         

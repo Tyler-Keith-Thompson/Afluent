@@ -31,6 +31,7 @@ extension AsyncSequences {
                         try await receiveOutput?(val)
                         return val
                     } else {
+                        try await receiveComplete?()
                         return nil
                     }
                 } catch {

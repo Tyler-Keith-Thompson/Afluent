@@ -42,6 +42,20 @@ final class HandleEventsSequenceTests: XCTestCase {
         XCTAssertEqual(output as? Int, 1)
     }
 
+    func testHandleComplete() async throws {
+        let exp = expectation(description: "thing happened")
+        let task = Task {
+            let sequence = DeferredTask { 1 }
+                .toAsyncSequence()
+                .handleEvents(receiveComplete: {
+                    exp.fulfill()
+                })
+            for try await _ in sequence { }
+        }
+
+        await fulfillment(of: [exp], timeout: 1)
+    }
+
     func testHandleError() async throws {
         actor Test {
             var error: Error?

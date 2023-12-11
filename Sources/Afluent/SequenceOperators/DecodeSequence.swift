@@ -1,11 +1,12 @@
 //
 //  DecodeSequence.swift
-//  
+//
 //
 //  Created by Tyler Thompson on 12/10/23.
 //
 
 import Foundation
+
 extension AsyncSequences {
     public struct Decode<Upstream: AsyncSequence, Decoder: TopLevelDecoder, DecodedType: Decodable>: AsyncSequence where Upstream.Element == Decoder.Input {
         public typealias Element = DecodedType
@@ -23,7 +24,7 @@ extension AsyncSequences {
                 }
             }
         }
-        
+
         public func makeAsyncIterator() -> AsyncIterator {
             AsyncIterator(upstreamIterator: upstream.makeAsyncIterator(), decoder: decoder)
         }
@@ -32,7 +33,7 @@ extension AsyncSequences {
 
 extension AsyncSequence {
     /// Decodes the output from the upstream using a specified decoder.
-    public func decode<T: Decodable, D: TopLevelDecoder>(type: T.Type, decoder: D) -> AsyncSequences.Decode<Self, D, T> where Element == D.Input {
+    public func decode<T: Decodable, D: TopLevelDecoder>(type _: T.Type, decoder: D) -> AsyncSequences.Decode<Self, D, T> where Element == D.Input {
         AsyncSequences.Decode(upstream: self, decoder: decoder)
     }
 }

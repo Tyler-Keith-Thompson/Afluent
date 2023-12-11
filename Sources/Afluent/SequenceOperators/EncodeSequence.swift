@@ -6,6 +6,7 @@
 //
 
 import Foundation
+
 extension AsyncSequences {
     public struct Encode<Upstream: AsyncSequence, Encoder: TopLevelEncoder>: AsyncSequence where Upstream.Element: Encodable {
         public typealias Element = Encoder.Output
@@ -15,7 +16,7 @@ extension AsyncSequences {
         public struct AsyncIterator: AsyncIteratorProtocol {
             var upstreamIterator: Upstream.AsyncIterator
             let encoder: Encoder
-            
+
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
                 return try await upstreamIterator.next().flatMap {
@@ -23,7 +24,7 @@ extension AsyncSequences {
                 }
             }
         }
-        
+
         public func makeAsyncIterator() -> AsyncIterator {
             AsyncIterator(upstreamIterator: upstream.makeAsyncIterator(), encoder: encoder)
         }

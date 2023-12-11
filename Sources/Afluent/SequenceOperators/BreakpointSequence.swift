@@ -6,6 +6,7 @@
 //
 
 import Foundation
+
 extension AsyncSequence {
     /// Introduces a breakpoint into the async sequence.
     ///
@@ -28,7 +29,7 @@ extension AsyncSequence {
             }
         }
     }
-    
+
     /// Introduces a breakpoint into the async sequence when an error occurs.
     ///
     /// This function triggers a `SIGTRAP` signal, pausing execution in a debugger, whenever the async sequence produces an error.

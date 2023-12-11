@@ -9,7 +9,7 @@ import Foundation
 
 public protocol TopLevelDecoder<Input> {
     associatedtype Input
-    func decode<T: Decodable>(_ type: T.Type, from: Self.Input ) throws -> T
+    func decode<T: Decodable>(_ type: T.Type, from: Self.Input) throws -> T
 }
 
 extension JSONDecoder: TopLevelDecoder { }
@@ -22,7 +22,7 @@ extension Workers {
 
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
-                try decoder.decode(Success.self, from: try await upstream.operation())
+                try decoder.decode(Success.self, from: await upstream.operation())
             }
         }
     }
@@ -38,7 +38,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` whose output is the decoded `T` type object.
     ///
     /// - Note: The generic constraint `Success == D.Input` ensures that the upstream unit of work emits a compatible type for the decoder.
-    public func decode<T: Decodable, D: TopLevelDecoder>(type: T.Type, decoder: D) -> some AsynchronousUnitOfWork<T> where Success == D.Input {
+    public func decode<T: Decodable, D: TopLevelDecoder>(type _: T.Type, decoder: D) -> some AsynchronousUnitOfWork<T> where Success == D.Input {
         Workers.Decode(upstream: self, decoder: decoder)
     }
 }

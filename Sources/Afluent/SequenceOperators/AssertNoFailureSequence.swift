@@ -1,11 +1,12 @@
 //
 //  AssertNoFailureSequence.swift
-//  
+//
 //
 //  Created by Tyler Thompson on 12/10/23.
 //
 
 import Foundation
+
 extension AsyncSequences {
     public struct AssertNoFailure<Upstream: AsyncSequence>: AsyncSequence {
         public typealias Element = Upstream.Element
@@ -13,7 +14,7 @@ extension AsyncSequences {
 
         public struct AsyncIterator: AsyncIteratorProtocol {
             var upstreamIterator: Upstream.AsyncIterator
-            
+
             public mutating func next() async throws -> Element? {
                 do {
                     try Task.checkCancellation()
@@ -25,7 +26,7 @@ extension AsyncSequences {
                 }
             }
         }
-        
+
         public func makeAsyncIterator() -> AsyncIterator {
             AsyncIterator(upstreamIterator: upstream.makeAsyncIterator())
         }

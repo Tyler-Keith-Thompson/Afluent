@@ -1,11 +1,12 @@
 //
 //  Timeout.swift
-//  
+//
 //
 //  Created by Tyler Thompson on 10/27/23.
 //
 
 import Foundation
+
 extension Workers {
     actor Timeout<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Upstream.Success == Success {
         let state = TaskState<Success>()
@@ -19,7 +20,7 @@ extension Workers {
             self.duration = duration
             customError = error
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
@@ -31,7 +32,7 @@ extension Workers {
                     await self.timeout()
                     self.upstream.cancel()
                 }
-                
+
                 return try await Task { [weak self] in
                     guard let self else { throw CancellationError() }
                     do {
@@ -49,11 +50,11 @@ extension Workers {
                 }.value
             }
         }
-        
+
         func reset() {
             timedOut = false
         }
-        
+
         func timeout() {
             timedOut = true
         }

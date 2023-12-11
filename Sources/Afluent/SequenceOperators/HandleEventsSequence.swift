@@ -23,27 +23,27 @@ extension AsyncSequences {
             let receiveComplete: (() async throws -> Void)?
             let receiveCancel: (() async throws -> Void)?
             lazy var iterator = upstream.makeAsyncIterator()
-            
+
             public mutating func next() async throws -> Element? {
                 do {
                     try Task.checkCancellation()
                     if let val = try await iterator.next() {
-                        try await self.receiveOutput?(val)
+                        try await receiveOutput?(val)
                         return val
                     } else {
                         return nil
                     }
                 } catch {
                     if !(error is CancellationError) {
-                        try await self.receiveError?(error)
+                        try await receiveError?(error)
                     } else {
-                        try await self.receiveCancel?()
+                        try await receiveCancel?()
                     }
                     throw error
                 }
             }
         }
-        
+
         public func makeAsyncIterator() -> AsyncIterator {
             AsyncIterator(upstream: upstream,
                           receiveOutput: receiveOutput,

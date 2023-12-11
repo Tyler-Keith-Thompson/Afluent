@@ -5,10 +5,10 @@
 //  Created by Tyler Thompson on 12/10/23.
 //
 
-import Foundation
 import Afluent
-import XCTest
 import CwlPreconditionTesting
+import Foundation
+import XCTest
 
 final class AssertNoFailureSequenceTests: XCTestCase {
     func testAssertNoFailureThrowsFatalErrorWhenThereIsAFailure() throws {
@@ -28,9 +28,9 @@ final class AssertNoFailureSequenceTests: XCTestCase {
             self.wait(for: [exp], timeout: 0.01)
         }
     }
-    
+
     func testAssertNoFailureDoesNotThrowIfThereIsNoFailure() async throws {
-        let exp = self.expectation(description: "thing happened")
+        let exp = expectation(description: "thing happened")
         try await DeferredTask {
             1
         }
@@ -38,7 +38,7 @@ final class AssertNoFailureSequenceTests: XCTestCase {
         .assertNoFailure()
         .map { _ in exp.fulfill() }
         .first()
-        
+
         await fulfillment(of: [exp], timeout: 0.01)
     }
 }

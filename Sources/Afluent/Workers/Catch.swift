@@ -12,19 +12,19 @@ extension Workers {
         let state = TaskState<Success>()
         let upstream: Upstream
         let handler: @Sendable (Error) async throws -> Downstream
-        
+
         init(upstream: Upstream, @_inheritActorContext @_implicitSelfCapture _ handler: @escaping @Sendable (Error) async throws -> Downstream) {
             self.upstream = upstream
             self.handler = handler
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
                 do {
                     return try await upstream.operation()
                 } catch {
                     guard !(error is CancellationError) else { throw error }
-                    
+
                     return try await handler(error).operation()
                 }
             }
@@ -42,7 +42,7 @@ extension AsynchronousUnitOfWork {
     public func `catch`<D: AsynchronousUnitOfWork>(@_inheritActorContext @_implicitSelfCapture _ handler: @escaping @Sendable (Error) async -> D) -> some AsynchronousUnitOfWork<D.Success> where Success == D.Success {
         Workers.Catch(upstream: self, handler)
     }
-    
+
     /// Catches a specific type of error emitted by the upstream `AsynchronousUnitOfWork` and handles them using the provided closure.
     ///
     /// - Parameters:
@@ -57,7 +57,7 @@ extension AsynchronousUnitOfWork {
             return await handler(unwrappedError)
         }
     }
-    
+
     /// Tries to catch any errors emitted by the upstream `AsynchronousUnitOfWork` and handles them using the provided throwing closure.
     ///
     /// - Parameters:
@@ -67,7 +67,7 @@ extension AsynchronousUnitOfWork {
     public func tryCatch<D: AsynchronousUnitOfWork>(@_inheritActorContext @_implicitSelfCapture _ handler: @escaping @Sendable (Error) async throws -> D) -> some AsynchronousUnitOfWork<D.Success> where Success == D.Success {
         Workers.Catch(upstream: self, handler)
     }
-    
+
     /// Tries to catch a specific type of error emitted by the upstream `AsynchronousUnitOfWork` and handles them using the provided throwing closure.
     ///
     /// - Parameters:

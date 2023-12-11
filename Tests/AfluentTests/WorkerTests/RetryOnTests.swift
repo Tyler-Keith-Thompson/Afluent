@@ -5,8 +5,8 @@
 //  Created by Tyler Thompson on 10/28/23.
 //
 
-import Foundation
 import Afluent
+import Foundation
 import XCTest
 
 class RetryOnTests: XCTestCase {
@@ -20,22 +20,22 @@ class RetryOnTests: XCTestCase {
                 arr.append(str)
             }
         }
-        
+
         let test = Test()
-        let retryCount = UInt.random(in: 2...10)
-        
+        let retryCount = UInt.random(in: 2 ... 10)
+
         let t = DeferredTask {
             await test.append("called")
         }
         .tryMap { _ in throw Err.e1 }
         .retry(retryCount, on: Err.e1)
-        
+
         _ = try await t.result
-        
+
         let copy = await test.arr
         XCTAssertEqual(UInt(copy.count), retryCount + 1)
     }
-    
+
     func testTaskCanRetryZero_DoesNothing() async throws {
         enum Err: Error, Equatable {
             case e1
@@ -46,21 +46,21 @@ class RetryOnTests: XCTestCase {
                 arr.append(str)
             }
         }
-        
+
         let test = Test()
-        
+
         let t = DeferredTask {
             await test.append("called")
         }
         .tryMap { _ in throw Err.e1 }
         .retry(0, on: Err.e1)
-        
+
         _ = try await t.result
-        
+
         let copy = await test.arr
         XCTAssertEqual(UInt(copy.count), 1)
     }
-    
+
     func testTaskCanRetryDefaultsToOnce() async throws {
         enum Err: Error, Equatable {
             case e1
@@ -71,21 +71,21 @@ class RetryOnTests: XCTestCase {
                 arr.append(str)
             }
         }
-        
+
         let test = Test()
-        
+
         let t = DeferredTask {
             await test.append("called")
         }
         .tryMap { _ in throw Err.e1 }
         .retry(on: Err.e1)
-        
+
         _ = try await t.result
-        
+
         let copy = await test.arr
         XCTAssertEqual(UInt(copy.count), 2)
     }
-    
+
     func testTaskCanRetryWithoutError_DoesNothing() async throws {
         enum Err: Error, Equatable {
             case e1
@@ -96,16 +96,16 @@ class RetryOnTests: XCTestCase {
                 arr.append(str)
             }
         }
-        
+
         let test = Test()
-        
+
         let t = DeferredTask {
             await test.append("called")
         }
         .retry(10, on: Err.e1)
-        
+
         _ = try await t.result
-        
+
         let copy = await test.arr
         XCTAssertEqual(UInt(copy.count), 1)
     }

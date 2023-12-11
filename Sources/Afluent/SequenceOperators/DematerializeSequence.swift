@@ -10,25 +10,25 @@ import Foundation
 extension AsyncSequences {
     public struct Dematerialize<Upstream: AsyncSequence, Element>: AsyncSequence where Upstream.Element == AsyncSequences.Event<Element> {
         let upstream: Upstream
-        
+
         public struct AsyncIterator: AsyncIteratorProtocol {
             let upstream: Upstream
             lazy var iterator = upstream.makeAsyncIterator()
-            
+
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
                 if let val = try await iterator.next() {
                     switch val {
-                    case .element(let element): return element
-                    case .failure(let error): throw error
-                    case .complete: return nil
+                        case .element(let element): return element
+                        case .failure(let error): throw error
+                        case .complete: return nil
                     }
                 } else {
                     return nil
                 }
             }
         }
-        
+
         public func makeAsyncIterator() -> AsyncIterator {
             AsyncIterator(upstream: upstream)
         }

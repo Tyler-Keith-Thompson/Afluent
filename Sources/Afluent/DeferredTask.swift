@@ -25,7 +25,7 @@ public actor DeferredTask<Success: Sendable>: AsynchronousUnitOfWork {
     public init(@_inheritActorContext @_implicitSelfCapture operation: @escaping @Sendable () async throws -> Success) {
         self.operation = operation
     }
-    
+
     public func _operation() async throws -> AsynchronousOperation<Success> {
         AsynchronousOperation { [weak self] in
             guard let self else { throw CancellationError() }

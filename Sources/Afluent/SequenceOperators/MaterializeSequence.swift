@@ -17,17 +17,17 @@ extension AsyncSequences {
         /// The completion of the upstream sequence.
         case complete
     }
-    
+
     public struct Materialize<Upstream: AsyncSequence>: AsyncSequence {
         public typealias Element = Event<Upstream.Element>
-        
+
         let upstream: Upstream
-        
+
         public struct AsyncIterator: AsyncIteratorProtocol {
             let upstream: Upstream
             var completed = false
             lazy var iterator = upstream.makeAsyncIterator()
-            
+
             public mutating func next() async throws -> Element? {
                 guard !completed else { return nil }
                 do {
@@ -44,7 +44,7 @@ extension AsyncSequences {
                 }
             }
         }
-        
+
         public func makeAsyncIterator() -> AsyncIterator {
             AsyncIterator(upstream: upstream)
         }

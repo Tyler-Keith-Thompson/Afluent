@@ -5,8 +5,8 @@
 //  Created by Tyler Thompson on 10/28/23.
 //
 
-import Foundation
 import Afluent
+import Foundation
 import XCTest
 
 final class EncodeTests: XCTestCase {
@@ -14,14 +14,14 @@ final class EncodeTests: XCTestCase {
         struct MyType: Codable {
             let val: String
         }
-        
+
         let random = UUID().uuidString
         let res = try await DeferredTask {
             MyType(val: random)
         }
-            .encode(encoder: JSONEncoder())
-            .execute()
-        
+        .encode(encoder: JSONEncoder())
+        .execute()
+
         XCTAssertEqual(try JSONDecoder().decode(MyType.self, from: res).val, random)
     }
 }

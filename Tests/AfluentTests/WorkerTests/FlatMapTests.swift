@@ -1,12 +1,12 @@
 //
 //  FlatMapTests.swift
-//  
+//
 //
 //  Created by Tyler Thompson on 10/27/23.
 //
 
-import Foundation
 import Afluent
+import Foundation
 import XCTest
 
 final class FlatMapTests: XCTestCase {
@@ -17,10 +17,10 @@ final class FlatMapTests: XCTestCase {
                     .map { String(describing: $0) }
             }
             .execute()
-        
+
         XCTAssertEqual(val, "1")
     }
-    
+
     func testFlatMapOrdersCorrectly() async throws {
         actor Test {
             var arr = [String]()
@@ -28,9 +28,9 @@ final class FlatMapTests: XCTestCase {
                 arr.append(str)
             }
         }
-        
+
         let test = Test()
-        
+
         try await DeferredTask {
             try await Task.sleep(nanoseconds: 10000)
             await test.append("1")
@@ -40,11 +40,11 @@ final class FlatMapTests: XCTestCase {
             }
         }
         .execute()
-        
+
         let copy = await test.arr
         XCTAssertEqual(copy, ["1", "2"])
     }
-    
+
     func testFlatMapOrdersCorrectly_No_Throwing() async throws {
         actor Test {
             var arr = [String]()
@@ -52,9 +52,9 @@ final class FlatMapTests: XCTestCase {
                 arr.append(str)
             }
         }
-        
+
         let test = Test()
-        
+
         try await DeferredTask {
             try! await Task.sleep(nanoseconds: 10000)
             await test.append("1")
@@ -64,11 +64,11 @@ final class FlatMapTests: XCTestCase {
             }
         }
         .execute()
-        
+
         let copy = await test.arr
         XCTAssertEqual(copy, ["1", "2"])
     }
-    
+
     func testFlatMapThrowsError() async throws {
         let val = try await DeferredTask { 1 }
             .flatMap { _ in
@@ -77,10 +77,9 @@ final class FlatMapTests: XCTestCase {
                 }
             }
             .result
-        
+
         XCTAssertThrowsError(try val.get()) { error in
             XCTAssertEqual(error as? URLError, URLError(.badURL))
         }
     }
-
 }

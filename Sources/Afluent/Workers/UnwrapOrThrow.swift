@@ -12,10 +12,10 @@ extension AsynchronousUnitOfWork {
     public func unwrap<T>(orThrow error: @escaping @autoclosure () -> Error) -> some AsynchronousUnitOfWork<T> where Success == T? {
         tryMap { output in
             switch output {
-            case .some(let value):
-                return value
-            case nil:
-                throw error()
+                case .some(let value):
+                    return value
+                case nil:
+                    throw error()
             }
         }
     }

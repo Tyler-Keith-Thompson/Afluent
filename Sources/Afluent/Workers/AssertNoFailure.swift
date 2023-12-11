@@ -11,7 +11,7 @@ extension Workers {
     struct AssertNoFailure<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Upstream.Success == Success {
         let state = TaskState<Success>()
         let upstream: Upstream
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
                 do {

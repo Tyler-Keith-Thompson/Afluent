@@ -1,6 +1,6 @@
 //
 //  Retry.swift
-//  
+//
 //
 //  Created by Tyler Thompson on 10/27/23.
 //
@@ -17,7 +17,7 @@ extension Workers {
             self.upstream = upstream
             retryCount = retries
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
@@ -25,13 +25,13 @@ extension Workers {
                 guard await self.retryCount > 0 else {
                     return try await self.upstream._operation()()
                 }
-                
+
                 while await self.retryCount > 0 {
                     do {
                         return try await self.upstream.operation()
                     } catch {
                         guard !(error is CancellationError) else { throw error }
-                        
+
                         await self.decrementRetry()
                         continue
                     }
@@ -39,13 +39,13 @@ extension Workers {
                 return try await self.upstream.operation()
             }
         }
-        
+
         func decrementRetry() {
             guard retryCount > 0 else { return }
             retryCount -= 1
         }
     }
-    
+
     actor RetryOn<Upstream: AsynchronousUnitOfWork, Failure: Error & Equatable, Success>: AsynchronousUnitOfWork where Upstream.Success == Success {
         let state = TaskState<Success>()
         let upstream: Upstream
@@ -57,7 +57,7 @@ extension Workers {
             retryCount = retries
             self.error = error
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
@@ -65,13 +65,13 @@ extension Workers {
                 guard await self.retryCount > 0 else {
                     return try await self.upstream._operation()()
                 }
-                
+
                 while await self.retryCount > 0 {
                     do {
                         return try await self.upstream.operation()
-                    } catch(let err) {
+                    } catch (let err) {
                         guard !(err is CancellationError) else { throw err }
-                        
+
                         guard let unwrappedError = (err as? Failure),
                               unwrappedError == error else { throw err }
                         await self.decrementRetry()
@@ -81,7 +81,7 @@ extension Workers {
                 return try await self.upstream.operation()
             }
         }
-        
+
         func decrementRetry() {
             guard retryCount > 0 else { return }
             retryCount -= 1
@@ -98,7 +98,7 @@ extension AsynchronousUnitOfWork {
     public func retry(_ retries: UInt = 1) -> some AsynchronousUnitOfWork<Success> {
         Workers.Retry(upstream: self, retries: retries)
     }
-    
+
     /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times only when a specific error occurs.
     ///
     /// - Parameters:

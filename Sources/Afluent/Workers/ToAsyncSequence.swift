@@ -15,11 +15,11 @@ import Foundation
 public struct AsynchronousUnitOfWorkSequence<UnitOfWork: AsynchronousUnitOfWork>: AsyncSequence {
     public typealias Element = UnitOfWork.Success
     let unitOfWork: UnitOfWork
-    
+
     public struct AsyncIterator: AsyncIteratorProtocol {
         let unitOfWork: UnitOfWork
         var executed = false
-        
+
         public mutating func next() async throws -> UnitOfWork.Success? {
             if !executed {
                 executed = true
@@ -29,13 +29,11 @@ public struct AsynchronousUnitOfWorkSequence<UnitOfWork: AsynchronousUnitOfWork>
             }
         }
     }
-    
-    
+
     public func makeAsyncIterator() -> AsyncIterator {
         AsyncIterator(unitOfWork: unitOfWork)
     }
 }
-
 
 extension AsynchronousUnitOfWork {
     /// Converts the asynchronous unit of work into an `AsyncThrowingStream`.
@@ -55,7 +53,7 @@ extension AsynchronousUnitOfWork {
             }
         }
     }
-    
+
     /// Converts the asynchronous unit of work into an `AsyncSequence`.
     ///
     /// This method transforms the result of an `AsynchronousUnitOfWork` into an `AsyncSequence`. It's useful for integrating the single-value asynchronous operation into APIs that work with sequences, or for using async/await in a more sequential, iterative manner.

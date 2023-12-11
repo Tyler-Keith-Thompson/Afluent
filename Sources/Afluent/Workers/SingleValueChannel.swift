@@ -19,13 +19,13 @@ public actor SingleValueChannel<Success: Sendable>: AsynchronousUnitOfWork {
         /// Indicates that the channel has already been completed and cannot accept further values or errors.
         case alreadyCompleted
     }
-    
+
     public let state = TaskState<Success>()
     private var channelState = State.noValue
-    
+
     /// Creates a new `SingleValueChannel`.
     public init() { }
-    
+
     public func _operation() async throws -> AsynchronousOperation<Success> {
         AsynchronousOperation { [weak self] in
             guard let self else { throw CancellationError() }
@@ -34,7 +34,7 @@ public actor SingleValueChannel<Success: Sendable>: AsynchronousUnitOfWork {
             } else if case .sentError(let error) = await self.channelState {
                 throw error
             }
-            
+
             return try await withUnsafeThrowingContinuation { continuation in
                 Task { [weak self] in
                     guard let self else { throw CancellationError() }
@@ -43,11 +43,11 @@ public actor SingleValueChannel<Success: Sendable>: AsynchronousUnitOfWork {
             }
         }
     }
-    
+
     private func setchannelState(_ state: State) {
         channelState = state
     }
-    
+
     /// Sends a value to the channel.
     ///
     /// Completes the channel with the provided value. If the channel is already completed, this method throws a `ChannelError.alreadyCompleted`.
@@ -55,32 +55,32 @@ public actor SingleValueChannel<Success: Sendable>: AsynchronousUnitOfWork {
     /// - Parameter value: The success value to send.
     /// - Throws: `ChannelError.alreadyCompleted` if the channel is already completed.
     public func send(_ value: Success) throws {
-        switch self.channelState {
-        case .noValue: self.channelState = .sentValue(value)
-        case .hasContinuation(let continuation):
-            self.channelState = .sentValue(value)
-            continuation.resume(returning: value)
-        default:
-            throw ChannelError.alreadyCompleted
+        switch channelState {
+            case .noValue: channelState = .sentValue(value)
+            case .hasContinuation(let continuation):
+                channelState = .sentValue(value)
+                continuation.resume(returning: value)
+            default:
+                throw ChannelError.alreadyCompleted
         }
     }
-    
+
     /// Sends a value to the channel.
     ///
     /// Completes the channel with the provided value. If the channel is already completed, this method throws a `ChannelError.alreadyCompleted`.
     ///
     /// - Throws: `ChannelError.alreadyCompleted` if the channel is already completed.
     public func send() throws where Success == Void {
-        switch self.channelState {
-        case .noValue: self.channelState = .sentValue(())
-        case .hasContinuation(let continuation):
-            self.channelState = .sentValue(())
-            continuation.resume(returning: ())
-        default:
-            throw ChannelError.alreadyCompleted
+        switch channelState {
+            case .noValue: channelState = .sentValue(())
+            case .hasContinuation(let continuation):
+                channelState = .sentValue(())
+                continuation.resume(returning: ())
+            default:
+                throw ChannelError.alreadyCompleted
         }
     }
-    
+
     /// Sends an error to the channel.
     ///
     /// Completes the channel with the provided error. If the channel is already completed, this method throws a `ChannelError.alreadyCompleted`.
@@ -88,13 +88,13 @@ public actor SingleValueChannel<Success: Sendable>: AsynchronousUnitOfWork {
     /// - Parameter error: The error to send.
     /// - Throws: `ChannelError.alreadyCompleted` if the channel is already completed.
     public func send(error: Error) throws {
-        switch self.channelState {
-        case .noValue: self.channelState = .sentError(error)
-        case .hasContinuation(let continuation):
-            self.channelState = .sentError(error)
-            continuation.resume(throwing: error)
-        default:
-            throw ChannelError.alreadyCompleted
+        switch channelState {
+            case .noValue: channelState = .sentError(error)
+            case .hasContinuation(let continuation):
+                channelState = .sentError(error)
+                continuation.resume(throwing: error)
+            default:
+                throw ChannelError.alreadyCompleted
         }
     }
 }

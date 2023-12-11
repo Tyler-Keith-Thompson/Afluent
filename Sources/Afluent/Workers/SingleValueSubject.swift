@@ -18,14 +18,14 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
         /// Indicates that the subject has already been completed and cannot accept further values or errors.
         case alreadyCompleted
     }
-    
+
     private let _lock = NSRecursiveLock()
     public let state = TaskState<Success>()
     private var subjectState = State.noValue
-    
+
     /// Creates a new `SingleValueSubject`.
     public init() { }
-    
+
     public func _operation() async throws -> AsynchronousOperation<Success> {
         AsynchronousOperation { [weak self] in
             guard let self else { throw CancellationError() }
@@ -46,10 +46,10 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
             }
         }
     }
-    
-    private func lock() { self._lock.lock() }
-    private func unlock() { self._lock.unlock() }
-    
+
+    private func lock() { _lock.lock() }
+    private func unlock() { _lock.unlock() }
+
     /// Sends a value to the subject.
     ///
     /// Completes the subject with the provided value. If the subject is already completed, this method throws a `SubjectError.alreadyCompleted`.
@@ -59,16 +59,16 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     public func send(_ value: Success) throws {
         try _lock.protect {
             switch self.subjectState {
-            case .noValue: self.subjectState = .sentValue(value)
-            case .hasContinuation(let continuation):
-                self.subjectState = .sentValue(value)
-                continuation.resume(returning: value)
-            default:
-                throw SubjectError.alreadyCompleted
+                case .noValue: self.subjectState = .sentValue(value)
+                case .hasContinuation(let continuation):
+                    self.subjectState = .sentValue(value)
+                    continuation.resume(returning: value)
+                default:
+                    throw SubjectError.alreadyCompleted
             }
         }
     }
-    
+
     /// Sends a value to the subject.
     ///
     /// Completes the subject with the provided value. If the subject is already completed, this method throws a `SubjectError.alreadyCompleted`.
@@ -77,16 +77,16 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     public func send() throws where Success == Void {
         try _lock.protect {
             switch self.subjectState {
-            case .noValue: self.subjectState = .sentValue(())
-            case .hasContinuation(let continuation):
-                self.subjectState = .sentValue(())
-                continuation.resume(returning: ())
-            default:
-                throw SubjectError.alreadyCompleted
+                case .noValue: self.subjectState = .sentValue(())
+                case .hasContinuation(let continuation):
+                    self.subjectState = .sentValue(())
+                    continuation.resume(returning: ())
+                default:
+                    throw SubjectError.alreadyCompleted
             }
         }
     }
-    
+
     /// Sends an error to the subject.
     ///
     /// Completes the subject with the provided error. If the subject is already completed, this method throws a `SubjectError.alreadyCompleted`.
@@ -96,12 +96,12 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     public func send(error: Error) throws {
         try _lock.protect {
             switch self.subjectState {
-            case .noValue: self.subjectState = .sentError(error)
-            case .hasContinuation(let continuation):
-                self.subjectState = .sentError(error)
-                continuation.resume(throwing: error)
-            default:
-                throw SubjectError.alreadyCompleted
+                case .noValue: self.subjectState = .sentError(error)
+                case .hasContinuation(let continuation):
+                    self.subjectState = .sentError(error)
+                    continuation.resume(throwing: error)
+                default:
+                    throw SubjectError.alreadyCompleted
             }
         }
     }

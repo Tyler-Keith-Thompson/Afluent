@@ -17,7 +17,7 @@ extension Workers {
             self.upstream = upstream
             self.transform = transform
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
@@ -26,7 +26,7 @@ extension Workers {
                     return try await self.upstream.operation()
                 } catch {
                     guard !(error is CancellationError) else { throw error }
-                    
+
                     throw self.transform(error)
                 }
             }
@@ -45,7 +45,7 @@ extension AsynchronousUnitOfWork {
     public func mapError(_ transform: @escaping (Error) -> Error) -> some AsynchronousUnitOfWork<Success> {
         Workers.MapError(upstream: self, transform: transform)
     }
-    
+
     /// Transforms a specific error produced by the asynchronous unit of work.
     ///
     /// This function allows you to modify or replace a specific error produced by the current unit of work. If the error produced matches the provided error, the transform closure is applied; otherwise, the original error is propagated unchanged.

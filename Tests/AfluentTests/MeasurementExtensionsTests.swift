@@ -5,8 +5,8 @@
 //  Created by Tyler Thompson on 10/27/23.
 //
 
-import Foundation
 import Afluent
+import Foundation
 import XCTest
 
 final class MeasurementExtensionsTests: XCTestCase {
@@ -21,11 +21,11 @@ final class MeasurementExtensionsTests: XCTestCase {
     func testSecondsMeasurement() {
         XCTAssertEqual(Measurement<UnitDuration>(value: 10, unit: .seconds), .seconds(10))
     }
-    
+
     func testMillisecondsMeasurement() {
         XCTAssertEqual(Measurement<UnitDuration>(value: 10, unit: .milliseconds), .milliseconds(10))
     }
-    
+
     func testMicrosecondsMeasurement() {
         XCTAssertEqual(Measurement<UnitDuration>(value: 10, unit: .microseconds), .microseconds(10))
     }
@@ -37,5 +37,4 @@ final class MeasurementExtensionsTests: XCTestCase {
     func testPicosecondsMeasurement() {
         XCTAssertEqual(Measurement<UnitDuration>(value: 10, unit: .picoseconds), .picoseconds(10))
     }
-
 }

@@ -5,8 +5,8 @@
 //  Created by Tyler Thompson on 11/28/23.
 //
 
-import Foundation
 import Afluent
+import Foundation
 import XCTest
 
 final class AnyAsyncSequenceTests: XCTestCase {
@@ -19,10 +19,10 @@ final class AnyAsyncSequenceTests: XCTestCase {
                     return DeferredTask { 0 }.toAsyncSequence().eraseToAnyAsyncSequence()
                 }
             }.first()
-        
+
         XCTAssertEqual(val, 1)
     }
-    
+
     func testErasureOfAsyncSequence_OtherBranch() async throws {
         let val = try await DeferredTask { false }.toAsyncSequence()
             .flatMap { branch -> AnyAsyncSequence<Int> in
@@ -32,7 +32,7 @@ final class AnyAsyncSequenceTests: XCTestCase {
                     return DeferredTask { 0 }.toAsyncSequence().eraseToAnyAsyncSequence()
                 }
             }.first()
-        
+
         XCTAssertEqual(val, 0)
     }
 }

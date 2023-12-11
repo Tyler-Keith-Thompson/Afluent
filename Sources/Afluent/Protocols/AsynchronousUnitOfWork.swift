@@ -1,5 +1,5 @@
-import Foundation
 import Atomics
+import Foundation
 
 /// Represents an asynchronous unit of work.
 ///
@@ -9,21 +9,21 @@ import Atomics
 public protocol AsynchronousUnitOfWork<Success>: Sendable where Success: Sendable {
     /// The type of data the unit of work will produce if it succeeds.
     associatedtype Success
-    
+
     var state: TaskState<Success> { get }
     /// The result of the operation (will execute the task)
     var result: Result<Success, Error> { get async throws }
 
     /// Executes the task
     func run()
-    
+
     /// Executes the task and waits for the result.
     /// - Returns: The result of the task.
     @discardableResult func execute() async throws -> Success
-    
+
     /// Only useful when creating operators, defines the async function that should execute when the operator executes
     @Sendable func _operation() async throws -> AsynchronousOperation<Success>
-    
+
     /// Cancel the task, even if it hasn't begun yet.
     func cancel()
 }
@@ -34,19 +34,19 @@ extension AsynchronousUnitOfWork {
             return await state.createTask(operation: operation).result
         }
     }
-    
+
     public func run() {
         state.createTask(operation: operation)
     }
-    
+
     @discardableResult public func execute() async throws -> Success {
         try await result.get()
     }
-    
+
     public func cancel() {
         state.cancel()
     }
-    
+
     @Sendable func operation() async throws -> Success {
         try Task.checkCancellation()
         let success = try await _operation()()
@@ -61,7 +61,7 @@ public actor AsynchronousOperation<Success: Sendable> {
     public init(operation: @escaping @Sendable () async throws -> Success) {
         self.operation = operation
     }
-    
+
     func callAsFunction() async throws -> Success {
         try await operation()
     }
@@ -70,15 +70,15 @@ public actor AsynchronousOperation<Success: Sendable> {
 public final class TaskState<Success: Sendable>: @unchecked Sendable {
     private let lock = NSRecursiveLock()
     private var tasks = [Task<Success, Error>]()
-    
+
     private let _isCancelled = ManagedAtomic<Bool>(false)
-    
+
     var isCancelled: Bool {
         _isCancelled.load(ordering: .sequentiallyConsistent)
     }
-    
+
     public init() { }
-    
+
     @discardableResult func createTask(operation: @escaping @Sendable () async throws -> Success) -> Task<Success, Error> {
         guard !isCancelled else {
             let task = Task<Success, Error> { throw CancellationError() }
@@ -91,7 +91,7 @@ public final class TaskState<Success: Sendable>: @unchecked Sendable {
         }
         return task
     }
-    
+
     func cancel() {
         guard !isCancelled else { return }
         _isCancelled.store(true, ordering: .sequentiallyConsistent)

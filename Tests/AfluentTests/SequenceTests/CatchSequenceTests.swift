@@ -5,8 +5,8 @@
 //  Created by Tyler Thompson on 11/28/23.
 //
 
-import Foundation
 import Afluent
+import Foundation
 import XCTest
 
 final class CatchSequenceTests: XCTestCase {
@@ -14,10 +14,10 @@ final class CatchSequenceTests: XCTestCase {
         let val = try await DeferredTask { 1 }.toAsyncSequence()
             .catch { _ in DeferredTask { 2 }.toAsyncSequence() }
             .first()
-        
+
         XCTAssertEqual(val, 1)
     }
-    
+
     func testCatchDoesNotThrowError() async throws {
         let val = await Task {
             try await DeferredTask { 1 }.toAsyncSequence()
@@ -28,16 +28,16 @@ final class CatchSequenceTests: XCTestCase {
                 }
                 .first()
         }.result
-        
+
         XCTAssertEqual(try val.get(), 2)
     }
-    
+
     func testCatchSpecificError() async throws {
         enum Err: Error, Equatable {
             case e1
             case e2
         }
-        
+
         let val = await Task {
             try await DeferredTask { 1 }.toAsyncSequence()
                 .map { _ -> Int in throw Err.e1 }
@@ -47,16 +47,16 @@ final class CatchSequenceTests: XCTestCase {
                 }
                 .first()
         }.result
-        
+
         XCTAssertEqual(try val.get(), 2)
     }
-    
+
     func testCatchSpecificError_DoesNotCatchWrongError() async throws {
         enum Err: Error, Equatable {
             case e1
             case e2
         }
-        
+
         let val = await Task {
             try await DeferredTask { 1 }.toAsyncSequence()
                 .map { _ -> Int in throw Err.e2 }
@@ -67,7 +67,7 @@ final class CatchSequenceTests: XCTestCase {
                 .first()
         }
         .result
-        
+
         XCTAssertThrowsError(try val.get()) { error in
             XCTAssertEqual(error as? Err, .e2)
         }
@@ -77,10 +77,10 @@ final class CatchSequenceTests: XCTestCase {
         let val = try await DeferredTask { 1 }.toAsyncSequence()
             .tryCatch { _ in DeferredTask { 2 }.toAsyncSequence() }
             .first()
-        
+
         XCTAssertEqual(val, 1)
     }
-    
+
     func testTryCatchDoesNotThrowError() async throws {
         let val = await Task {
             try await DeferredTask { 1 }.toAsyncSequence()
@@ -92,16 +92,16 @@ final class CatchSequenceTests: XCTestCase {
                 .first()
         }
         .result
-        
+
         XCTAssertEqual(try val.get(), 2)
     }
-    
+
     func testTryCatchSpecificError() async throws {
         enum Err: Error, Equatable {
             case e1
             case e2
         }
-        
+
         let val = await Task {
             try await DeferredTask { 1 }.toAsyncSequence()
                 .map { _ -> Int in throw Err.e1 }
@@ -112,16 +112,16 @@ final class CatchSequenceTests: XCTestCase {
                 .first()
         }
         .result
-        
+
         XCTAssertEqual(try val.get(), 2)
     }
-    
+
     func testTryCatchSpecificError_DoesNotCatchWrongError() async throws {
         enum Err: Error, Equatable {
             case e1
             case e2
         }
-        
+
         let val = await Task {
             try await DeferredTask { 1 }.toAsyncSequence()
                 .map { _ -> Int in throw Err.e2 }
@@ -132,7 +132,7 @@ final class CatchSequenceTests: XCTestCase {
                 .first()
         }
         .result
-        
+
         XCTAssertThrowsError(try val.get()) { error in
             XCTAssertEqual(error as? Err, .e2)
         }

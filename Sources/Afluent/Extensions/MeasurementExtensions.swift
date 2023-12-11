@@ -15,11 +15,11 @@ extension Measurement<UnitDuration> {
     public static func minutes(_ value: Double) -> Measurement<UnitDuration> {
         .init(value: value, unit: .minutes)
     }
-    
+
     public static func seconds(_ value: Double) -> Measurement<UnitDuration> {
         .init(value: value, unit: .seconds)
     }
-    
+
     public static func milliseconds(_ value: Double) -> Measurement<UnitDuration> {
         .init(value: value, unit: .milliseconds)
     }

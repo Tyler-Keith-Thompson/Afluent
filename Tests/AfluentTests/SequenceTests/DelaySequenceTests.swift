@@ -5,8 +5,8 @@
 //  Created by Tyler Thompson on 12/8/23.
 //
 
-import Foundation
 import Afluent
+import Foundation
 import XCTest
 
 final class DelaySequenceTests: XCTestCase {
@@ -36,7 +36,7 @@ final class DelaySequenceTests: XCTestCase {
         // Ensure all elements were received
         XCTAssertEqual(count, 3, "Not all elements were received.")
     }
-    
+
     func testDelay_DoesNotDelayEveryElement() async throws {
         // Create a simple AsyncSequence of integers
         let numbers = [1, 2, 3].async
@@ -67,17 +67,19 @@ final class DelaySequenceTests: XCTestCase {
         // Ensure all elements were received
         XCTAssertEqual(count, 3, "Not all elements were received.")
     }
-    
+
     func testDelay_DelaysCorrectlyEvenAfterIntervalHasPassed() async throws {
         let stream = AsyncStream<Int> { continuation in
             DeferredTask { continuation.yield(1) }
                 .delay(for: .milliseconds(15))
-                .map { continuation.yield(2); continuation.finish() }
+                .map { continuation.yield(2)
+                    continuation.finish()
+                }
                 .run()
         }
 
         let delayedNumbers = stream.delay(for: .milliseconds(10))
-        
+
         let startTime = Date()
 
         // Iterate over the delayed sequence

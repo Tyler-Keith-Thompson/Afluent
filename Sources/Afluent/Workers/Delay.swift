@@ -13,7 +13,7 @@ extension Workers {
         let state = TaskState<Success>()
         let upstream: Upstream
         let duration: Measurement<UnitDuration>
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
                 let val = try await upstream.operation()

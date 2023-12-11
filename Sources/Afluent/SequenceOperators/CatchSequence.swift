@@ -1,6 +1,6 @@
 //
 //  CatchSequence.swift
-//  
+//
 //
 //  Created by Tyler Thompson on 11/28/23.
 //
@@ -17,17 +17,17 @@ extension AsyncSequences {
             self.upstream = upstream
             self.handler = handler
         }
-        
+
         public struct AsyncIterator: AsyncIteratorProtocol {
             var upstreamIterator: Upstream.AsyncIterator
             let handler: @Sendable (Error) async throws -> Downstream
             var caughtIterator: Downstream.AsyncIterator?
-            
+
             public mutating func next() async throws -> Element? {
                 if var caughtIterator {
                     return try await caughtIterator.next()
                 }
-                
+
                 do {
                     try Task.checkCancellation()
                     return try await upstreamIterator.next()
@@ -38,7 +38,7 @@ extension AsyncSequences {
                 }
             }
         }
-        
+
         public func makeAsyncIterator() -> AsyncIterator {
             AsyncIterator(upstreamIterator: upstream.makeAsyncIterator(),
                           handler: handler)
@@ -56,7 +56,7 @@ extension AsyncSequence {
     public func `catch`<D: AsyncSequence>(@_inheritActorContext @_implicitSelfCapture _ handler: @escaping @Sendable (Error) async -> D) -> AsyncSequences.Catch<Self, D> {
         AsyncSequences.Catch(upstream: self, handler)
     }
-    
+
     /// Catches a specific type of error emitted by the upstream `AsyncSequence` and handles them using the provided closure.
     ///
     /// - Parameters:
@@ -71,7 +71,7 @@ extension AsyncSequence {
             return await handler(unwrappedError)
         }
     }
-    
+
     /// Tries to catch any errors emitted by the upstream `AsyncSequence` and handles them using the provided throwing closure.
     ///
     /// - Parameters:
@@ -81,7 +81,7 @@ extension AsyncSequence {
     public func tryCatch<D: AsyncSequence>(@_inheritActorContext @_implicitSelfCapture _ handler: @escaping @Sendable (Error) async throws -> D) -> AsyncSequences.Catch<Self, D> {
         AsyncSequences.Catch(upstream: self, handler)
     }
-    
+
     /// Tries to catch a specific type of error emitted by the upstream `AsyncSequence` and handles them using the provided throwing closure.
     ///
     /// - Parameters:

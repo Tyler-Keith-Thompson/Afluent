@@ -40,9 +40,9 @@ extension AsyncSequences {
                         }
                     }
                 }
-                self.iterator = stream.makeAsyncIterator()
+                iterator = stream.makeAsyncIterator()
             }
-            
+
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
                 if let (instant, element) = try await iterator.next() {
@@ -53,8 +53,7 @@ extension AsyncSequences {
                 return nil
             }
         }
-        
-        
+
         public func makeAsyncIterator() -> AsyncIterator {
             AsyncIterator(upstream: upstream, interval: interval, clock: clock, tolerance: tolerance)
         }
@@ -67,7 +66,7 @@ extension AsyncSequence {
     public func delay(for interval: Measurement<UnitDuration>, tolerance: Measurement<UnitDuration>? = nil) -> AsyncSequences.Delay<Self, SuspendingClock> {
         delay(for: .nanoseconds(UInt(interval.converted(to: .nanoseconds).value)), tolerance: tolerance.flatMap { .nanoseconds(UInt($0.converted(to: .nanoseconds).value)) }, clock: SuspendingClock())
     }
-    
+
     /// Delays delivery of all output to the downstream receiver by a specified amount of time
     /// - Parameter interval: The amount of time to delay.
     public func delay<C: Clock>(for interval: C.Duration, tolerance: C.Duration? = nil, clock: C) -> AsyncSequences.Delay<Self, C> {

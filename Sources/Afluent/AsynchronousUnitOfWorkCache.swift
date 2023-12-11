@@ -21,7 +21,7 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
             lock.unlock()
             return fromCache
         }
-        
+
         cache[key] = unitOfWork
         lock.unlock()
         return unitOfWork

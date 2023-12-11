@@ -15,7 +15,7 @@ public struct AnyAsynchronousUnitOfWork<Success: Sendable>: AsynchronousUnitOfWo
     public init(_ upstream: any AsynchronousUnitOfWork<Success>) {
         self.upstream = upstream
     }
-    
+
     public func _operation() async throws -> AsynchronousOperation<Success> {
         try await upstream._operation()
     }

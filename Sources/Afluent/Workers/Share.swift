@@ -12,29 +12,29 @@ extension Workers {
         let state = TaskState<Success>()
         let upstream: Upstream
         private lazy var task = Task { try await upstream.operation() }
-        
+
         init(upstream: Upstream) {
             self.upstream = upstream
         }
-        
+
         public var result: Result<Success, Error> {
             get async {
                 await task.result
             }
         }
-        
+
         public func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
                 return try await self.task.value
             }
         }
-        
+
         @discardableResult public func execute() async throws -> Success {
             try await result.get()
         }
-        
-        nonisolated public func run() {
+
+        public nonisolated func run() {
             Task { try await task.value }
         }
     }

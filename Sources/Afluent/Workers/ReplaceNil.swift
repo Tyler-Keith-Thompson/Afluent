@@ -6,6 +6,7 @@
 //
 
 import Foundation
+
 extension Workers {
     struct ReplaceNil<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Upstream.Success == Success? {
         let state = TaskState<Success>()
@@ -16,7 +17,7 @@ extension Workers {
             self.upstream = upstream
             self.newValue = newValue
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
                 if let val = try await upstream.operation() {

@@ -15,9 +15,8 @@ extension AsynchronousUnitOfWork {
         hasher.combine(column)
         let key = hasher.finalize()
         switch strategy {
-        case .cacheUntilCompletionOrCancellation:
-            return cache.retrieveOrCreate(
-                unitOfWork: handleEvents(receiveOutput: { [weak cache] _ in
+            case .cacheUntilCompletionOrCancellation:
+                return cache.retrieveOrCreate(unitOfWork: handleEvents(receiveOutput: { [weak cache] _ in
                     cache?.clearAsynchronousUnitOfWork(withKey: key)
                 }, receiveCancel: { [weak cache] in
                     cache?.clearAsynchronousUnitOfWork(withKey: key)
@@ -25,7 +24,7 @@ extension AsynchronousUnitOfWork {
                 keyedBy: key)
         }
     }
-    
+
     /// Shares data from the given cache based on a specified caching strategy and additional context information.
     ///
     /// - Parameters:

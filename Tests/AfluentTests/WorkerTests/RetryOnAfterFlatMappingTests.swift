@@ -5,8 +5,8 @@
 //  Created by Tyler Thompson on 10/28/23.
 //
 
-import Foundation
 import Afluent
+import Foundation
 import XCTest
 
 final class RetryOnAfterFlatMappingTests: XCTestCase {
@@ -20,10 +20,10 @@ final class RetryOnAfterFlatMappingTests: XCTestCase {
                 arr.append(str)
             }
         }
-        
+
         let test = Test()
-        let retryCount = UInt.random(in: 2...10)
-        
+        let retryCount = UInt.random(in: 2 ... 10)
+
         let t = DeferredTask {
             await test.append("called")
         }
@@ -33,13 +33,13 @@ final class RetryOnAfterFlatMappingTests: XCTestCase {
                 await test.append("flatMap")
             }
         }
-        
+
         _ = try await t.result
-        
+
         let copy = await test.arr
         XCTAssertEqual(UInt(copy.count), (retryCount * 2) + 1)
     }
-    
+
     func testTaskCanRetryZero_DoesNothing() async throws {
         enum Err: Error, Equatable {
             case e1
@@ -50,9 +50,9 @@ final class RetryOnAfterFlatMappingTests: XCTestCase {
                 arr.append(str)
             }
         }
-        
+
         let test = Test()
-        
+
         let t = DeferredTask {
             await test.append("called")
         }
@@ -62,13 +62,13 @@ final class RetryOnAfterFlatMappingTests: XCTestCase {
                 await test.append("flatMap")
             }
         }
-        
+
         _ = try await t.result
-        
+
         let copy = await test.arr
         XCTAssertEqual(UInt(copy.count), 1)
     }
-    
+
     func testTaskCanRetryDefaultsToOnce() async throws {
         enum Err: Error, Equatable {
             case e1
@@ -79,9 +79,9 @@ final class RetryOnAfterFlatMappingTests: XCTestCase {
                 arr.append(str)
             }
         }
-        
+
         let test = Test()
-        
+
         let t = DeferredTask {
             await test.append("called")
         }
@@ -91,13 +91,13 @@ final class RetryOnAfterFlatMappingTests: XCTestCase {
                 await test.append("flatMap")
             }
         }
-        
+
         _ = try await t.result
-        
+
         let copy = await test.arr
         XCTAssertEqual(UInt(copy.count), 3)
     }
-    
+
     func testTaskCanRetryWithoutError_DoesNothing() async throws {
         enum Err: Error, Equatable {
             case e1
@@ -108,9 +108,9 @@ final class RetryOnAfterFlatMappingTests: XCTestCase {
                 arr.append(str)
             }
         }
-        
+
         let test = Test()
-        
+
         let t = DeferredTask {
             await test.append("called")
         }
@@ -119,9 +119,9 @@ final class RetryOnAfterFlatMappingTests: XCTestCase {
                 await test.append("flatMap")
             }
         }
-        
+
         _ = try await t.result
-        
+
         let copy = await test.arr
         XCTAssertEqual(UInt(copy.count), 1)
     }

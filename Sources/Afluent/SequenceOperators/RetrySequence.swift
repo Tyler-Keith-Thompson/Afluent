@@ -13,12 +13,12 @@ extension AsyncSequences {
         let upstream: Upstream
         var retries: UInt
         lazy var iterator = upstream.makeAsyncIterator()
-        
+
         init(upstream: Upstream, retries: UInt) {
             self.upstream = upstream
             self.retries = retries
         }
-        
+
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
@@ -38,23 +38,23 @@ extension AsyncSequences {
                 }
             }
         }
-        
-        nonisolated public func makeAsyncIterator() -> Retry<Upstream> { self }
+
+        public nonisolated func makeAsyncIterator() -> Retry<Upstream> { self }
     }
-    
+
     public final actor RetryOn<Upstream: AsyncSequence, Failure: Error & Equatable>: AsyncSequence, AsyncIteratorProtocol {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         var retries: UInt
         let error: Failure
         lazy var iterator = upstream.makeAsyncIterator()
-        
+
         init(upstream: Upstream, retries: UInt, error: Failure) {
             self.upstream = upstream
             self.retries = retries
             self.error = error
         }
-        
+
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
@@ -62,9 +62,9 @@ extension AsyncSequences {
                 let next = try await copy.next()
                 iterator = copy
                 return next
-            } catch(let err) {
+            } catch (let err) {
                 guard !(err is CancellationError) else { throw err }
-                
+
                 guard let unwrappedError = (err as? Failure),
                       unwrappedError == error else {
                     throw err
@@ -78,8 +78,8 @@ extension AsyncSequences {
                 }
             }
         }
-        
-        nonisolated public func makeAsyncIterator() -> RetryOn<Upstream, Failure> { self }
+
+        public nonisolated func makeAsyncIterator() -> RetryOn<Upstream, Failure> { self }
     }
 }
 
@@ -94,7 +94,7 @@ extension AsyncSequence {
     public func retry(_ retries: UInt = 1) -> AsyncSequences.Retry<Self> {
         AsyncSequences.Retry(upstream: self, retries: retries)
     }
-    
+
     /// Retries the upstream `AsyncSequence` up to a specified number of times only when a specific error occurs.
     ///
     /// - Parameters:

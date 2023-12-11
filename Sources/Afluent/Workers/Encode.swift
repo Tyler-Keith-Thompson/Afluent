@@ -19,10 +19,10 @@ extension Workers {
         let state = TaskState<Success>()
         let upstream: Upstream
         let encoder: Encoder
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
-                try encoder.encode(try await upstream.operation())
+                try encoder.encode(await upstream.operation())
             }
         }
     }

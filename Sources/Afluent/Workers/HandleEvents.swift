@@ -21,11 +21,11 @@ extension Workers {
             self.receiveError = receiveError
             self.receiveCancel = receiveCancel
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
-                
+
                 do {
                     try Task.checkCancellation()
                     let val = try await self.upstream.operation()

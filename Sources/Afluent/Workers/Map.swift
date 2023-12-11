@@ -17,14 +17,14 @@ extension Workers {
             self.upstream = upstream
             self.transform = transform
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
-                await transform(try await upstream.operation())
+                try await transform(await upstream.operation())
             }
         }
     }
-    
+
     struct TryMap<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork {
         let state = TaskState<Success>()
         let upstream: Upstream
@@ -34,10 +34,10 @@ extension Workers {
             self.upstream = upstream
             self.transform = transform
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
-                try await transform(try await upstream.operation())
+                try await transform(await upstream.operation())
             }
         }
     }
@@ -53,7 +53,7 @@ extension AsynchronousUnitOfWork {
     public func map<S: Sendable>(@_inheritActorContext @_implicitSelfCapture _ transform: @escaping @Sendable (Success) async -> S) -> some AsynchronousUnitOfWork<S> {
         Workers.Map(upstream: self, transform: transform)
     }
-    
+
     /// Transforms the successful output of the upstream `AsynchronousUnitOfWork` using a provided key path.
     ///
     /// - Parameters:
@@ -65,7 +65,7 @@ extension AsynchronousUnitOfWork {
             $0[keyPath: keyPath]
         }
     }
-    
+
     /// Transforms the successful output of the upstream `AsynchronousUnitOfWork` using a provided closure that can throw errors.
     ///
     /// - Parameters:

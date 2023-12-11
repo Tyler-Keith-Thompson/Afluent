@@ -13,30 +13,30 @@ public final class AnyCancellable: Hashable {
     public static func == (lhs: AnyCancellable, rhs: AnyCancellable) -> Bool {
         lhs === rhs
     }
-    
+
     let unitOfWork: any AsynchronousUnitOfWork
     init<U: AsynchronousUnitOfWork>(_ upstream: U) {
         unitOfWork = upstream
     }
-    
+
     deinit {
         cancel()
     }
-    
+
     public func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(self))
     }
-    
+
     /// Cancels the asynchronous unit of work
     public func cancel() {
         unitOfWork.cancel()
     }
-    
+
     /// Stores this type-erasing cancellable instance in the specified collection.
     public func store(in collection: inout some RangeReplaceableCollection<AnyCancellable>) {
         collection.append(self)
     }
-    
+
     /// Stores this type-erasing cancellable instance in the specified set.
     public func store(in set: inout Set<AnyCancellable>) {
         set.insert(self)

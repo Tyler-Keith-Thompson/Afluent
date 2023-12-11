@@ -5,8 +5,8 @@
 //  Created by Tyler Thompson on 10/30/23.
 //
 
-import Foundation
 import Afluent
+import Foundation
 import XCTest
 
 final class EraseToAnyAsynchronousUnitOfWorkTests: XCTestCase {
@@ -19,10 +19,10 @@ final class EraseToAnyAsynchronousUnitOfWorkTests: XCTestCase {
                     return DeferredTask { 0 }.eraseToAnyUnitOfWork()
                 }
             }.execute()
-        
+
         XCTAssertEqual(val, 1)
     }
-    
+
     func testErasureOfUnitOfWork_OtherBranch() async throws {
         let val = try await DeferredTask { false }
             .flatMap { branch -> AnyAsynchronousUnitOfWork<Int> in
@@ -32,7 +32,7 @@ final class EraseToAnyAsynchronousUnitOfWorkTests: XCTestCase {
                     return DeferredTask { 0 }.eraseToAnyUnitOfWork()
                 }
             }.execute()
-        
+
         XCTAssertEqual(val, 0)
     }
 }

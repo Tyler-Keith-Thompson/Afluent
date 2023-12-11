@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Combine
 
 extension AsynchronousUnitOfWork {
     /// Introduces a breakpoint into the asynchronous unit of work.
@@ -30,7 +29,7 @@ extension AsynchronousUnitOfWork {
             }
         }
     }
-    
+
     /// Introduces a breakpoint into the asynchronous unit of work when an error occurs.
     ///
     /// This function triggers a `SIGTRAP` signal, pausing execution in a debugger, whenever the asynchronous operation produces an error.

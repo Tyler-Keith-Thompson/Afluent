@@ -6,21 +6,22 @@
 //
 
 import Foundation
+
 extension AsyncSequences {
     public final actor RetryAfterFlatMapping<Upstream: AsyncSequence, Downstream: AsyncSequence>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         var retries: UInt
-        
+
         let transform: @Sendable (Error) async throws -> Downstream
         lazy var iterator = upstream.makeAsyncIterator()
-        
+
         init(upstream: Upstream, retries: UInt, transform: @escaping @Sendable (Error) async throws -> Downstream) {
             self.upstream = upstream
             self.retries = retries
             self.transform = transform
         }
-        
+
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
@@ -41,10 +42,10 @@ extension AsyncSequences {
                 }
             }
         }
-        
-        nonisolated public func makeAsyncIterator() -> RetryAfterFlatMapping<Upstream, Downstream> { self }
+
+        public nonisolated func makeAsyncIterator() -> RetryAfterFlatMapping<Upstream, Downstream> { self }
     }
-    
+
     public final actor RetryOnAfterFlatMapping<Upstream: AsyncSequence, Failure: Error & Equatable, Downstream: AsyncSequence>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element {
         public typealias Element = Upstream.Element
         let upstream: Upstream
@@ -52,14 +53,14 @@ extension AsyncSequences {
         let error: Failure
         let transform: @Sendable (Failure) async throws -> Downstream
         lazy var iterator = upstream.makeAsyncIterator()
-        
+
         init(upstream: Upstream, retries: UInt, error: Failure, transform: @escaping @Sendable (Failure) async throws -> Downstream) {
             self.upstream = upstream
             self.retries = retries
             self.error = error
             self.transform = transform
         }
-        
+
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
@@ -67,9 +68,9 @@ extension AsyncSequences {
                 let next = try await copy.next()
                 iterator = copy
                 return next
-            } catch(let err) {
+            } catch (let err) {
                 guard !(err is CancellationError) else { throw err }
-                
+
                 guard let unwrappedError = (err as? Failure),
                       unwrappedError == error else {
                     throw err
@@ -84,8 +85,8 @@ extension AsyncSequences {
                 }
             }
         }
-        
-        nonisolated public func makeAsyncIterator() -> RetryOnAfterFlatMapping<Upstream, Failure, Downstream> { self }
+
+        public nonisolated func makeAsyncIterator() -> RetryOnAfterFlatMapping<Upstream, Failure, Downstream> { self }
     }
 }
 
@@ -100,7 +101,7 @@ extension AsyncSequence {
     public func retry<D: AsyncSequence>(_ retries: UInt = 1, _ transform: @escaping @Sendable (Error) async throws -> D) -> AsyncSequences.RetryAfterFlatMapping<Self, D> {
         AsyncSequences.RetryAfterFlatMapping(upstream: self, retries: retries, transform: transform)
     }
-    
+
     /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
     ///
     /// - Parameters:

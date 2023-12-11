@@ -16,6 +16,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/AliSoftware/OHHTTPStubs.git", from: "9.1.0"),
+        .package(url: "https://github.com/nicklockwood/SwiftFormat", from: "0.52.11"),
     ],
     targets: [
         .target(name: "Afluent",

@@ -12,11 +12,11 @@ extension Workers {
         let state = TaskState<Success>()
         let upstream: Upstream
         var cachedSuccess: Success?
-        
+
         init(upstream: Upstream) {
             self.upstream = upstream
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
@@ -29,7 +29,7 @@ extension Workers {
                 }
             }
         }
-        
+
         func cache(_ result: Success) -> Success {
             cachedSuccess = result
             return result

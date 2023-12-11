@@ -10,7 +10,7 @@ import Foundation
 extension Workers {
     struct Zip<Upstream: AsynchronousUnitOfWork, Downstream: AsynchronousUnitOfWork>: AsynchronousUnitOfWork {
         typealias Success = (Upstream.Success, Downstream.Success)
-        
+
         let state = TaskState<Success>()
         let upstream: Upstream
         let downstream: Downstream
@@ -19,16 +19,16 @@ extension Workers {
             self.upstream = upstream
             self.downstream = downstream
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
                 async let u = try await upstream.operation()
                 async let d = try await downstream.operation()
-                return (try await u, try await d)
+                return try (await u, await d)
             }
         }
     }
-    
+
     struct Zip3<Upstream: AsynchronousUnitOfWork, Downstream0: AsynchronousUnitOfWork, Downstream1: AsynchronousUnitOfWork>: AsynchronousUnitOfWork {
         typealias Success = (Upstream.Success, Downstream0.Success, Downstream1.Success)
 
@@ -42,18 +42,18 @@ extension Workers {
             self.d0 = d0
             self.d1 = d1
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
                 async let u = try await upstream.operation()
                 async let d_0 = try await d0.operation()
                 async let d_1 = try await d1.operation()
-                
-                return (try await u, try await d_0, try await d_1)
+
+                return try (await u, await d_0, await d_1)
             }
         }
     }
-    
+
     struct Zip4<Upstream: AsynchronousUnitOfWork, Downstream0: AsynchronousUnitOfWork, Downstream1: AsynchronousUnitOfWork, Downstream2: AsynchronousUnitOfWork>: AsynchronousUnitOfWork {
         typealias Success = (Upstream.Success, Downstream0.Success, Downstream1.Success, Downstream2.Success)
 
@@ -69,15 +69,15 @@ extension Workers {
             self.d1 = d1
             self.d2 = d2
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
                 async let u = try await upstream.operation()
                 async let d_0 = try await d0.operation()
                 async let d_1 = try await d1.operation()
                 async let d_2 = try await d2.operation()
-                
-                return (try await u, try await d_0, try await d_1, try await d_2)
+
+                return try (await u, await d_0, await d_1, await d_2)
             }
         }
     }
@@ -92,7 +92,7 @@ extension AsynchronousUnitOfWork {
     public func zip<D: AsynchronousUnitOfWork>(_ downstream: D) -> some AsynchronousUnitOfWork<(Success, D.Success)> {
         Workers.Zip(upstream: self, downstream: downstream)
     }
-    
+
     /// Zips the result of the current unit of work with another and applies a transform function.
     ///
     /// - Parameters:
@@ -102,7 +102,7 @@ extension AsynchronousUnitOfWork {
     public func zip<D: AsynchronousUnitOfWork, T: Sendable>(_ downstream: D, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable ((Success, D.Success)) async throws -> T) -> some AsynchronousUnitOfWork<T> {
         Workers.TryMap<Workers.Zip<Self, D>, T>(upstream: Workers.Zip<Self, D>(upstream: self, downstream: downstream), transform: transform)
     }
-    
+
     // zip3
     /// Zips the result of the current unit of work with two other asynchronous units of work.
     ///
@@ -113,7 +113,7 @@ extension AsynchronousUnitOfWork {
     public func zip<D0: AsynchronousUnitOfWork, D1: AsynchronousUnitOfWork>(_ d0: D0, _ d1: D1) -> some AsynchronousUnitOfWork<(Success, D0.Success, D1.Success)> {
         Workers.Zip3(upstream: self, d0: d0, d1: d1)
     }
-    
+
     /// Zips the result of the current unit of work with two other units of work and applies a transform function.
     ///
     /// - Parameters:
@@ -124,7 +124,7 @@ extension AsynchronousUnitOfWork {
     public func zip<D0: AsynchronousUnitOfWork, D1: AsynchronousUnitOfWork, T: Sendable>(_ d0: D0, _ d1: D1, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable ((Success, D0.Success, D1.Success)) async throws -> T) -> some AsynchronousUnitOfWork<T> {
         Workers.TryMap<Workers.Zip3<Self, D0, D1>, T>(upstream: Workers.Zip3<Self, D0, D1>(upstream: self, d0: d0, d1: d1), transform: transform)
     }
-    
+
     // zip4
     /// Zips the result of the current unit of work with three other asynchronous units of work.
     ///
@@ -136,7 +136,7 @@ extension AsynchronousUnitOfWork {
     public func zip<D0: AsynchronousUnitOfWork, D1: AsynchronousUnitOfWork, D2: AsynchronousUnitOfWork>(_ d0: D0, _ d1: D1, _ d2: D2) -> some AsynchronousUnitOfWork<(Success, D0.Success, D1.Success, D2.Success)> {
         Workers.Zip4(upstream: self, d0: d0, d1: d1, d2: d2)
     }
-    
+
     /// Zips the result of the current unit of work with three other units of work and applies a transform function.
     ///
     /// - Parameters:

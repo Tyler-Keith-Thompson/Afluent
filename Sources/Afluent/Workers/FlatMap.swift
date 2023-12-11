@@ -17,10 +17,10 @@ extension Workers {
             self.upstream = upstream
             self.transform = transform
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
-                try await transform(try await upstream.operation()).operation()
+                try await transform(await upstream.operation()).operation()
             }
         }
     }
@@ -37,7 +37,7 @@ extension AsynchronousUnitOfWork {
     public func flatMap<D: AsynchronousUnitOfWork>(@_inheritActorContext @_implicitSelfCapture _ transform: @escaping @Sendable (Success) async throws -> D) -> some AsynchronousUnitOfWork<D.Success> {
         Workers.FlatMap(upstream: self, transform: transform)
     }
-    
+
     /// Transforms the successful output values from the upstream `AsynchronousUnitOfWork` using the provided asynchronous transformation closure.
     /// This overload is specialized for `AsynchronousUnitOfWork` types that have `Void` as their `Success` type.
     ///

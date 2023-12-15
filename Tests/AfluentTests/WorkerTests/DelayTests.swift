@@ -9,6 +9,7 @@ import Afluent
 import Foundation
 import XCTest
 
+@available(iOS 16, *)
 final class DelayTests: XCTestCase {
     func testAssertNoFailureDoesNotThrowIfThereIsNoFailure() throws {
         let exp = expectation(description: "thing happened")

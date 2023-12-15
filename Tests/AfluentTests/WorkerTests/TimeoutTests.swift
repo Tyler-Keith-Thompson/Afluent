@@ -9,6 +9,7 @@ import Afluent
 import Foundation
 import XCTest
 
+@available(iOS 16, *)
 final class TimeoutTests: XCTestCase {
     func testTaskDoesNotTimeOutIfItCompletesInTime() async throws {
         try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")

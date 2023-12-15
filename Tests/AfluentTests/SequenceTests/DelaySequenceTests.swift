@@ -9,6 +9,7 @@ import Afluent
 import Foundation
 import XCTest
 
+@available(iOS 16, *)
 final class DelaySequenceTests: XCTestCase {
     func testDelay_DelaysAllOutputByExpectedTime() async throws {
         // Create a simple AsyncSequence of integers

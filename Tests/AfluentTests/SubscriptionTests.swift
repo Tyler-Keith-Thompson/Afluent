@@ -9,6 +9,7 @@ import Afluent
 import Foundation
 import XCTest
 
+@available(iOS 16, *)
 final class SubscriptionTests: XCTestCase {
     var set = Set<AnyCancellable>()
     var collection = [AnyCancellable]()

@@ -9,6 +9,7 @@ import Foundation
 import XCTest
 @testable import Afluent
 
+@available(iOS 16, *)
 final class ShareFromCacheTests: XCTestCase {
     func testSharingFromCacheWithNoKey() async throws {
         try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")

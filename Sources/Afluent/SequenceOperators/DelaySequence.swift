@@ -8,6 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     public struct Delay<Upstream: AsyncSequence, C: Clock>: AsyncSequence {
         public typealias Element = Upstream.Element
         let upstream: Upstream
@@ -63,12 +64,14 @@ extension AsyncSequences {
 extension AsyncSequence {
     /// Delays delivery of all output to the downstream receiver by a specified amount of time
     /// - Parameter interval: The amount of time to delay.
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     public func delay(for interval: Measurement<UnitDuration>, tolerance: Measurement<UnitDuration>? = nil) -> AsyncSequences.Delay<Self, SuspendingClock> {
         delay(for: .nanoseconds(UInt(interval.converted(to: .nanoseconds).value)), tolerance: tolerance.flatMap { .nanoseconds(UInt($0.converted(to: .nanoseconds).value)) }, clock: SuspendingClock())
     }
 
     /// Delays delivery of all output to the downstream receiver by a specified amount of time
     /// - Parameter interval: The amount of time to delay.
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     public func delay<C: Clock>(for interval: C.Duration, tolerance: C.Duration? = nil, clock: C) -> AsyncSequences.Delay<Self, C> {
         AsyncSequences.Delay(upstream: self, interval: interval, clock: clock, tolerance: tolerance)
     }

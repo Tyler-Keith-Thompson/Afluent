@@ -9,7 +9,7 @@ import Afluent
 import Foundation
 import XCTest
 
-@available(iOS 16, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 final class MaterializeSequenceTests: XCTestCase {
     func testMaterializeCapturesSuccesses() async throws {
         let result = try await DeferredTask { 1 }

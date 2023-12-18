@@ -31,7 +31,7 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
             guard let self else { throw CancellationError() }
 
             func getSentValue() throws -> Success? {
-                try _lock.protect {
+                try self._lock.protect {
                     if case .sentValue(let success) = self.subjectState {
                         return success
                     } else if case .sentError(let error) = self.subjectState {

@@ -31,27 +31,27 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
             guard let self else { throw CancellationError() }
 
             func getSentValue() throws -> Success? {
-                defer { self.unlock() }
-                self.lock()
-                if case .sentValue(let success) = self.subjectState {
-                    return success
-                } else if case .sentError(let error) = self.subjectState {
-                    throw error
+                try _lock.protect {
+                    if case .sentValue(let success) = self.subjectState {
+                        return success
+                    } else if case .sentError(let error) = self.subjectState {
+                        throw error
+                    }
+                    return nil
                 }
-                return nil
             }
 
             if let success = try getSentValue() { return success }
 
             return try await withUnsafeThrowingContinuation { continuation in
-                self.lock()
-                do {
-                    if let success = try getSentValue() { continuation.resume(returning: success) }
-                } catch {
-                    continuation.resume(throwing: error)
+                self._lock.protect {
+                    do {
+                        if let success = try getSentValue() { continuation.resume(returning: success) }
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                    self.subjectState = .hasContinuation(continuation)
                 }
-                self.subjectState = .hasContinuation(continuation)
-                self.unlock()
             }
         }
     }

@@ -30,17 +30,36 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
         AsynchronousOperation { [weak self] in
             guard let self else { throw CancellationError() }
 
-            self.lock()
-            if case .sentValue(let success) = self.subjectState {
-                self.unlock()
-                return success
-            } else if case .sentError(let error) = self.subjectState {
-                self.unlock()
-                throw error
+            func getSentValue() throws -> Success? {
+                try self._lock.protect {
+                    if case .sentValue(let success) = self.subjectState {
+                        return success
+                    } else if case .sentError(let error) = self.subjectState {
+                        throw error
+                    }
+                    return nil
+                }
             }
-            self.unlock()
-            return try await withUnsafeThrowingContinuation { continuation in
+
+            if let success = try getSentValue() { return success }
+
+            return try await withUnsafeThrowingContinuation { [weak self] continuation in
+                guard let self else {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
                 self.lock()
+                do {
+                    if let success = try getSentValue() {
+                        self.unlock()
+                        continuation.resume(returning: success)
+                        return
+                    }
+                } catch {
+                    self.unlock()
+                    continuation.resume(throwing: error)
+                    return
+                }
                 self.subjectState = .hasContinuation(continuation)
                 self.unlock()
             }

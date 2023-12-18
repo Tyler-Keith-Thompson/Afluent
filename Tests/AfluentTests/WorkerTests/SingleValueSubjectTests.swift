@@ -149,4 +149,51 @@ final class SingleValueSubjectTests: XCTestCase {
 
         await fulfillment(of: [exp], timeout: 0.01)
     }
+
+    func testSingleValueSubjectEmittingValueConcurrentlyWithExecute() async throws {
+        let expected = Int.random(in: 1 ... 1000)
+        let exp = expectation(description: "task executed")
+        let subject = SingleValueSubject<Int>()
+        let unitOfWork = subject.map {
+            exp.fulfill()
+            return $0
+        }
+
+        let sendUnitOfWork = DeferredTask {
+            try subject.send(expected)
+        }
+
+        async let _actual = unitOfWork.execute()
+        sendUnitOfWork.run()
+
+        let actual = try await _actual
+        await fulfillment(of: [exp], timeout: 0.01)
+        XCTAssertEqual(actual, expected)
+    }
+
+    func testSingleValueSubjectEmittingErrorConcurrentlyWithExecute() async throws {
+        enum Err: Error { case e1 }
+        let exp = expectation(description: "task executed")
+        let subject = SingleValueSubject<Int>()
+        let unitOfWork = subject
+            .materialize()
+            .map {
+                exp.fulfill()
+                return $0
+            }
+
+        let sendUnitOfWork = DeferredTask {
+            try subject.send(error: Err.e1)
+        }
+
+        async let _actual = unitOfWork.execute()
+        sendUnitOfWork.run()
+
+        let actual = try await _actual
+        XCTAssertThrowsError(try actual.get()) { error in
+            XCTAssertEqual(error as? Err, .e1)
+        }
+
+        await fulfillment(of: [exp], timeout: 0.01)
+    }
 }

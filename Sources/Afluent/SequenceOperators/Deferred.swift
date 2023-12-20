@@ -34,7 +34,7 @@ extension AsyncSequences {
     /// ```
     public struct Deferred<Upstream: AsyncSequence>: AsyncSequence {
         public typealias Element = Upstream.Element
-        private let upstream: (() -> Upstream)
+        private let upstream: (() async throws -> Upstream)
 
         /// Constructs an asynchronous sequence defining an closure that returns an asynchronous sequence
         /// that will later be called at the time of iteration.
@@ -45,16 +45,22 @@ extension AsyncSequences {
         }
 
         public struct AsyncIterator: AsyncIteratorProtocol {
-            var upstreamIterator: Upstream.AsyncIterator
+            var upstream: () async throws -> Upstream
+            var upstreamIterator: Upstream.AsyncIterator?
 
             public mutating func next() async throws -> Upstream.AsyncIterator.Element? {
                 try Task.checkCancellation()
+                guard var upstreamIterator = upstreamIterator else {
+                    var upstreamIterator = try await upstream().makeAsyncIterator()
+                    self.upstreamIterator = upstreamIterator
+                    return try await upstreamIterator.next()
+                }
                 return try await upstreamIterator.next()
             }
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstreamIterator: upstream().makeAsyncIterator())
+            AsyncIterator(upstream: upstream)
         }
     }
 }

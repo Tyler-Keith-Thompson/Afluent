@@ -28,13 +28,14 @@ class DeferredTests: XCTestCase {
             })
         }
 
+        var iterator = sequence.makeAsyncIterator()
+
         await fulfillment(of: [shouldNotStartExpectation], timeout: 0.01)
 
-        var iterator = sequence.makeAsyncIterator()
+        var received = [try await iterator.next()]
 
         await fulfillment(of: [shouldStartExpectation], timeout: 0)
 
-        var received: [Int] = []
         while let i = try await iterator.next() {
             received.append(i)
         }

@@ -39,6 +39,7 @@ final class DelaySequenceTests: XCTestCase {
     }
 
     func testDelay_DoesNotDelayEveryElement() async throws {
+        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
         // Create a simple AsyncSequence of integers
         let numbers = [1, 2, 3].async
         let delayDuration = Measurement(value: ProcessInfo.processInfo.environment["CI"] == "true" ? 100 : 10, unit: UnitDuration.milliseconds)

@@ -1,5 +1,5 @@
 //
-//  DeferredSequenceTests.swift
+//  DeferredTests.swift
 //
 //
 //  Created by Annalise Mariottini on 12/20/23.
@@ -9,7 +9,7 @@ import Afluent
 import Foundation
 import XCTest
 
-class DeferredSequenceTests: XCTestCase {
+class DeferredTests: XCTestCase {
     func testUpstreamSequenceDefersExecutionUntilIteration() async throws {
         let shouldNotStartExpectation = expectation(description: "sequence not started")
         shouldNotStartExpectation.isInverted = true
@@ -17,7 +17,7 @@ class DeferredSequenceTests: XCTestCase {
 
         let sent = Array(0...9)
 
-        let sequence = DeferredAsyncSequence {
+        let sequence = Deferred {
             defer {
                 shouldNotStartExpectation.fulfill()
                 shouldStartExpectation.fulfill()
@@ -45,7 +45,7 @@ class DeferredSequenceTests: XCTestCase {
     func testReturnsANewIteratorEachTime() async throws {
         let sent = Array(0...9)
 
-        let sequence = DeferredAsyncSequence {
+        let sequence = Deferred {
             AsyncStream(Int.self, { continuation in
                 sent.forEach { continuation.yield($0) }
                 continuation.finish()
@@ -75,7 +75,7 @@ class DeferredSequenceTests: XCTestCase {
     }
 
     func testChecksForCancellation() async throws {
-        let sequence = DeferredAsyncSequence<AsyncStream<Int>> { AsyncStream { _ in } }
+        let sequence = Deferred<AsyncStream<Int>> { AsyncStream { _ in } }
 
         let task = Task {
             try await Task.sleep(nanoseconds: 1_000_000)

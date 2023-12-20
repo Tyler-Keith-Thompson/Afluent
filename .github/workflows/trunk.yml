@@ -30,12 +30,14 @@ jobs:
     - name: Bump version and push tag
       id: bump_version
       uses: anothrNick/github-tag-action@1.67.0
+      if: github.ref == 'refs/heads/main'
       env:
         GITHUB_TOKEN: ${{ secrets.TOKEN }}
         WITH_V: false
         DEFAULT_BUMP: patch
         RELEASE_BRANCHES: main
     - name: Create a GitHub release
+      if: github.ref == 'refs/heads/main'
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ steps.bump_version.outputs.new_tag }}

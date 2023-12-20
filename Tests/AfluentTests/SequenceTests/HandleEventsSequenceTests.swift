@@ -11,6 +11,62 @@ import XCTest
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 final class HandleEventsSequenceTests: XCTestCase {
+    func testHandleMakeIterator() async throws {
+        actor Test {
+            var iteratorMade = false
+
+            func makeIterator() { iteratorMade = true }
+        }
+        let test = Test()
+
+        let exp = expectation(description: "thing happened")
+
+        Task {
+            _ = DeferredTask {
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            .toAsyncSequence()
+            .handleEvents(receiveMakeIterator: {
+                Task {
+                    await test.makeIterator()
+                    exp.fulfill()
+                }
+            })
+            .makeAsyncIterator()
+        }
+
+        await fulfillment(of: [exp], timeout: 1)
+
+        let iteratorMade = await test.iteratorMade
+
+        XCTAssert(iteratorMade)
+    }
+
+    func testHandleNext() async throws {
+        actor Test {
+            var nextCalled: Int = 0
+
+            func next() { nextCalled += 1 }
+        }
+        let test = Test()
+
+        let values = Array(0...9)
+
+        let task = Task {
+            let sequence = values.async.handleEvents(receiveNext: {
+                await test.next()
+            })
+
+            for try await _ in sequence { }
+        }
+
+        try await task.value
+
+        let nextCalled = await test.nextCalled
+
+        XCTAssertEqual(nextCalled, values.count + 1) // values + finish
+    }
+
     func testHandleOutput() async throws {
         actor Test {
             var output: Any?
@@ -120,5 +176,16 @@ final class HandleEventsSequenceTests: XCTestCase {
         let canceled = await test.canceled
 
         XCTAssert(canceled)
+    }
+}
+
+extension Array {
+    fileprivate var async: AsyncStream<Element> {
+        AsyncStream { continuation in
+            for element in self {
+                continuation.yield(element)
+            }
+            continuation.finish()
+        }
     }
 }

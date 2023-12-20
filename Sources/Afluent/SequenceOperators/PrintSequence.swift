@@ -16,6 +16,10 @@ extension AsyncSequence {
     /// - Returns: An `AsyncSequence` that behaves identically to the upstream but logs events.
     public func print(_ prefix: String = "") -> AsyncSequences.HandleEvents<Self> {
         handleEvents {
+            Swift.print("\(prefix) received make iterator")
+        } receiveNext: {
+            Swift.print("\(prefix) received next")
+        } receiveOutput: {
             Swift.print("\(prefix) received output: \($0)")
         } receiveError: {
             Swift.print("\(prefix) received error: \($0)")

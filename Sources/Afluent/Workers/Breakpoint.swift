@@ -19,15 +19,15 @@ extension AsynchronousUnitOfWork {
     ///
     /// - Returns: An asynchronous unit of work with the breakpoint conditions applied.
     @_transparent @_alwaysEmitIntoClient @inlinable public func breakpoint(receiveOutput: ((Success) async throws -> Bool)? = nil, receiveError: ((Error) async throws -> Bool)? = nil) -> some AsynchronousUnitOfWork<Success> {
-        handleEvents { output in
+        handleEvents(receiveOutput: { output in
             if try await receiveOutput?(output) == true {
                 raise(SIGTRAP)
             }
-        } receiveError: { error in
+        }, receiveError: { error in
             if try await receiveError?(error) == true {
                 raise(SIGTRAP)
             }
-        }
+        })
     }
 
     /// Introduces a breakpoint into the asynchronous unit of work when an error occurs.

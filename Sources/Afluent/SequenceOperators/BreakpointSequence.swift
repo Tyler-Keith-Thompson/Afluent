@@ -19,15 +19,15 @@ extension AsyncSequence {
     ///
     /// - Returns: An asynchronous unit of work with the breakpoint conditions applied.
     @_transparent @_alwaysEmitIntoClient @inlinable public func breakpoint(receiveOutput: ((Element) async throws -> Bool)? = nil, receiveError: ((Error) async throws -> Bool)? = nil) -> AsyncSequences.HandleEvents<Self> {
-        handleEvents { output in
+        handleEvents(receiveOutput: { output in
             if try await receiveOutput?(output) == true {
                 raise(SIGTRAP)
             }
-        } receiveError: { error in
+        }, receiveError: { error in
             if try await receiveError?(error) == true {
                 raise(SIGTRAP)
             }
-        }
+        })
     }
 
     /// Introduces a breakpoint into the async sequence when an error occurs.

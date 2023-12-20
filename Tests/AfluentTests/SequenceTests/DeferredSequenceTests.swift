@@ -54,13 +54,10 @@ class DeferredTests: XCTestCase {
         }
 
         @Sendable func iterate() async throws {
-            var iterator = sequence.makeAsyncIterator()
-
             var received: [Int] = []
-            while let i = try await iterator.next() {
+            for try await i in sequence {
                 received.append(i)
             }
-
             XCTAssertEqual(received, sent)
         }
 

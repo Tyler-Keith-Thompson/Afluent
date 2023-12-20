@@ -53,13 +53,9 @@ final class HandleEventsSequenceTests: XCTestCase {
         let values = Array(0...9)
 
         let task = Task {
-            let sequence = AsyncStream { continuation in
-                values.forEach { continuation.yield($0) }
-                continuation.finish()
-            }
-                .handleEvents(receiveNext: {
-                    await test.next()
-                })
+            let sequence = values.async.handleEvents(receiveNext: {
+                await test.next()
+            })
 
             for try await _ in sequence { }
         }
@@ -180,5 +176,16 @@ final class HandleEventsSequenceTests: XCTestCase {
         let canceled = await test.canceled
 
         XCTAssert(canceled)
+    }
+}
+
+extension Array {
+    fileprivate var async: AsyncStream<Element> {
+        AsyncStream { continuation in
+            for element in self {
+                continuation.yield(element)
+            }
+            continuation.finish()
+        }
     }
 }

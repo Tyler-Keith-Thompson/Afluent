@@ -65,6 +65,8 @@ extension AsyncSequence {
     /// Adds side-effects to the receiving events of the upstream `AsyncSequence`.
     ///
     /// - Parameters:
+    ///   - receiveMakeIterator: A closure that is invoked when the an iterator is requested from this sequence.
+    ///   - receiveNext: A closure that is invoked when the next element is requested from this sequence. The closure can throw errors.
     ///   - receiveOutput: A closure that is invoked when the upstream emits a successful output. The closure can throw errors.
     ///   - receiveError: A closure that is invoked when the upstream emits an error. The closure can throw errors.
     ///   - receiveCancel: A closure that is invoked when the unit of work is cancelled. The closure can throw errors.

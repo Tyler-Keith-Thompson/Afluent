@@ -16,6 +16,8 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` that behaves identically to the upstream but logs events.
     public func print(_ prefix: String = "") -> some AsynchronousUnitOfWork<Success> {
         handleEvents {
+            Swift.print("\(prefix) received execute")
+        } receiveOutput: {
             Swift.print("\(prefix) received output: \($0)")
         } receiveError: {
             Swift.print("\(prefix) received error: \($0)")

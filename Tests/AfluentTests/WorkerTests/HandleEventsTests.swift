@@ -11,6 +11,35 @@ import XCTest
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 final class HandleEventsTests: XCTestCase {
+    func testHandleExecute() async throws {
+        actor Test {
+            var executed = false
+
+            func execute() { executed = true }
+        }
+        let test = Test()
+
+        let exp = expectation(description: "thing happened")
+        let task = DeferredTask {
+            try await Task.sleep(for: .milliseconds(10))
+        }.handleEvents(receiveExecute: {
+            await test.execute()
+            exp.fulfill()
+        })
+
+        task.run()
+
+        try await Task.sleep(for: .milliseconds(2))
+
+        task.cancel()
+
+        await fulfillment(of: [exp], timeout: 1)
+
+        let executed = await test.executed
+
+        XCTAssert(executed)
+    }
+
     func testHandleOutput() async throws {
         actor Test {
             var output: Any?

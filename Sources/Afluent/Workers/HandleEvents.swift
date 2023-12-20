@@ -11,12 +11,14 @@ extension Workers {
     actor HandleEvents<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Upstream.Success == Success {
         let state = TaskState<Success>()
         let upstream: Upstream
+        let receiveExecute: (() async throws -> Void)?
         let receiveOutput: ((Success) async throws -> Void)?
         let receiveError: ((Error) async throws -> Void)?
         let receiveCancel: (() async throws -> Void)?
 
-        init(upstream: Upstream, @_inheritActorContext @_implicitSelfCapture receiveOutput: ((Success) async throws -> Void)?, @_inheritActorContext @_implicitSelfCapture receiveError: ((Error) async throws -> Void)?, @_inheritActorContext @_implicitSelfCapture receiveCancel: (() async throws -> Void)?) {
+        init(upstream: Upstream, @_inheritActorContext @_implicitSelfCapture receiveExecute: (() async throws -> Void)?, @_inheritActorContext @_implicitSelfCapture receiveOutput: ((Success) async throws -> Void)?, @_inheritActorContext @_implicitSelfCapture receiveError: ((Error) async throws -> Void)?, @_inheritActorContext @_implicitSelfCapture receiveCancel: (() async throws -> Void)?) {
             self.upstream = upstream
+            self.receiveExecute = receiveExecute
             self.receiveOutput = receiveOutput
             self.receiveError = receiveError
             self.receiveCancel = receiveCancel
@@ -27,6 +29,7 @@ extension Workers {
                 guard let self else { throw CancellationError() }
 
                 do {
+                    try await receiveExecute?()
                     try Task.checkCancellation()
                     let val = try await self.upstream.operation()
                     try await self.receiveOutput?(val)
@@ -55,7 +58,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` that performs the side-effects for the specified receiving events.
     ///
     /// - Note: The returned `AsynchronousUnitOfWork` forwards all receiving events from the upstream unit of work.
-    public func handleEvents(@_inheritActorContext @_implicitSelfCapture receiveOutput: ((Success) async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveError: ((Error) async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveCancel: (() async throws -> Void)? = nil) -> some AsynchronousUnitOfWork<Success> {
-        Workers.HandleEvents(upstream: self, receiveOutput: receiveOutput, receiveError: receiveError, receiveCancel: receiveCancel)
+    public func handleEvents(@_inheritActorContext @_implicitSelfCapture receiveExecute: (() async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveOutput: ((Success) async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveError: ((Error) async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveCancel: (() async throws -> Void)? = nil) -> some AsynchronousUnitOfWork<Success> {
+        Workers.HandleEvents(upstream: self, receiveExecute: receiveExecute, receiveOutput: receiveOutput, receiveError: receiveError, receiveCancel: receiveCancel)
     }
 }

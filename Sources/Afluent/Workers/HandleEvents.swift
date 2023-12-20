@@ -29,8 +29,8 @@ extension Workers {
                 guard let self else { throw CancellationError() }
 
                 do {
-                    try await receiveExecute?()
                     try Task.checkCancellation()
+                    try await receiveExecute?()
                     let val = try await self.upstream.operation()
                     try await self.receiveOutput?(val)
                     return val
@@ -51,6 +51,7 @@ extension AsynchronousUnitOfWork {
     /// Adds side-effects to the receiving events of the upstream `AsynchronousUnitOfWork`.
     ///
     /// - Parameters:
+    ///   - receiveExecute: A closure that is invoked immediately before the upstream is executed. The closure can throw errors.
     ///   - receiveOutput: A closure that is invoked when the upstream emits a successful output. The closure can throw errors.
     ///   - receiveError: A closure that is invoked when the upstream emits an error. The closure can throw errors.
     ///   - receiveCancel: A closure that is invoked when the unit of work is cancelled. The closure can throw errors.

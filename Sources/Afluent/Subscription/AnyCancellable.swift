@@ -50,3 +50,13 @@ extension AsynchronousUnitOfWork {
         return AnyCancellable(self)
     }
 }
+
+extension AsyncSequence {
+    /// Executes the current async sequence and returns an AnyCancellable token to cancel the subscription.
+    public func subscribe() -> AnyCancellable {
+        DeferredTask {
+            for try await _ in self { }
+        }
+        .subscribe()
+    }
+}

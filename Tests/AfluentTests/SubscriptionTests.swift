@@ -346,7 +346,7 @@ final class SubscriptionTests: XCTestCase {
             exp.fulfill()
         }
 
-        let completedSubject = SingleValueSubject<Void>()
+        let completedChannel = SingleValueChannel<Void>()
         let outputExp = expectation(description: "output received")
         outputExp.isInverted = true
 
@@ -355,7 +355,7 @@ final class SubscriptionTests: XCTestCase {
             case .finished: break
             case .failure(let error): XCTFail("Unexpected error \(error)")
             }
-            try? completedSubject.send()
+            try? await completedChannel.send()
         } receiveOutput: {
             outputExp.fulfill()
         }
@@ -364,7 +364,7 @@ final class SubscriptionTests: XCTestCase {
 
         subscription.cancel()
 
-        try await completedSubject.execute()
+        try await completedChannel.execute()
 
         await fulfillment(of: [exp, outputExp], timeout: 0.011)
 
@@ -398,7 +398,7 @@ final class SubscriptionTests: XCTestCase {
             exp.fulfill()
         }
 
-        let completedSubject = SingleValueSubject<Void>()
+        let completedChannel = SingleValueChannel<Void>()
         let outputExp = expectation(description: "output received")
         outputExp.isInverted = true
 
@@ -407,13 +407,13 @@ final class SubscriptionTests: XCTestCase {
             case .finished: break
             case .failure(let error): XCTFail("Unexpected error \(error)")
             }
-            try? completedSubject.send()
+            try? await completedChannel.send()
         } receiveOutput: {
             outputExp.fulfill()
         }
         noop(subscription)
 
-        try await completedSubject.execute()
+        try await completedChannel.execute()
 
         await fulfillment(of: [exp, outputExp], timeout: 0.011)
 
@@ -446,7 +446,7 @@ final class SubscriptionTests: XCTestCase {
             exp.fulfill()
         }
 
-        let completedSubject = SingleValueSubject<Void>()
+        let completedChannel = SingleValueChannel<Void>()
         let outputExp = expectation(description: "output received")
 
         let subscription = sequence.sink { completion in
@@ -454,7 +454,7 @@ final class SubscriptionTests: XCTestCase {
             case .finished: break
             case .failure(let error): XCTFail("Unexpected error \(error)")
             }
-            try? completedSubject.send()
+            try? await completedChannel.send()
         } receiveOutput: {
             outputExp.fulfill()
         }
@@ -463,7 +463,7 @@ final class SubscriptionTests: XCTestCase {
 
         subscription.cancel()
 
-        try await completedSubject.execute()
+        try await completedChannel.execute()
 
         await fulfillment(of: [exp, outputExp], timeout: 0.011)
 
@@ -499,7 +499,7 @@ final class SubscriptionTests: XCTestCase {
             exp.fulfill()
         }
 
-        let completedSubject = SingleValueSubject<Void>()
+        let completedChannel = SingleValueChannel<Void>()
         let outputExp = expectation(description: "output received")
         outputExp.isInverted = true
 
@@ -508,7 +508,7 @@ final class SubscriptionTests: XCTestCase {
             case .finished: XCTFail("Unexpected normal finish")
             case .failure(let error): XCTAssertEqual(error as? Err, .e1)
             }
-            try? completedSubject.send()
+            try? await completedChannel.send()
         } receiveOutput: {
             outputExp.fulfill()
         }
@@ -517,7 +517,7 @@ final class SubscriptionTests: XCTestCase {
 
         subscription.cancel()
 
-        try await completedSubject.execute()
+        try await completedChannel.execute()
 
         await fulfillment(of: [exp, outputExp], timeout: 0.011)
 

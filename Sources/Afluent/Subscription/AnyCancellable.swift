@@ -53,10 +53,33 @@ extension AsynchronousUnitOfWork {
 
 extension AsyncSequence {
     /// Executes the current async sequence and returns an AnyCancellable token to cancel the subscription.
-    public func subscribe() -> AnyCancellable {
+    ///
+    /// - Parameters:
+    ///   - receiveCompletion: A function that is executed when the stream has completed normally with `nil` or an error.
+    ///   - receiveOutput: A function that is executed when output is received from the sequence.
+    ///   If this function throws an error, then the stream is completed.
+    public func subscribe(receiveCompletion: ((AsyncSequences.Completion<Error>) async -> Void)? = nil,
+                          receiveOutput: ((Element) async throws -> Void)? = nil) -> AnyCancellable {
         DeferredTask {
-            for try await _ in self { }
+            do {
+                for try await output in self {
+                    try await receiveOutput?(output)
+                }
+                await receiveCompletion?(.finished)
+            } catch {
+                await receiveCompletion?(.failure(error))
+            }
         }
         .subscribe()
+    }
+}
+
+extension AsyncSequences {
+    /// A type that represents the completion of a sequence, either due to a normal completion with `nil` or an error.
+    public enum Completion<Failure: Error> {
+        /// The sequence finished normally.
+        case finished
+        /// The sequence completed due to the indicated error.
+        case failure(Failure)
     }
 }

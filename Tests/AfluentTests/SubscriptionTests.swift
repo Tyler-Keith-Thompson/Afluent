@@ -187,7 +187,7 @@ final class SubscriptionTests: XCTestCase {
             exp.fulfill()
         }
 
-        let subscription = sequence.subscribe()
+        let subscription = sequence.sink()
 
         try await Task.sleep(for: .milliseconds(2))
 
@@ -226,7 +226,7 @@ final class SubscriptionTests: XCTestCase {
             exp.fulfill()
         }
 
-        var subscription: AnyCancellable? = sequence.subscribe()
+        var subscription: AnyCancellable? = sequence.sink()
         noop(subscription)
 
         try await Task.sleep(for: .milliseconds(2))
@@ -266,7 +266,7 @@ final class SubscriptionTests: XCTestCase {
             exp.fulfill()
         }
 
-        sequence.subscribe()
+        sequence.sink()
             .store(in: &set)
 
         try await Task.sleep(for: .milliseconds(2))
@@ -306,7 +306,7 @@ final class SubscriptionTests: XCTestCase {
             exp.fulfill()
         }
 
-        sequence.subscribe()
+        sequence.sink()
             .store(in: &collection)
 
         try await Task.sleep(for: .milliseconds(2))
@@ -350,7 +350,7 @@ final class SubscriptionTests: XCTestCase {
         let outputExp = expectation(description: "output received")
         outputExp.isInverted = true
 
-        let subscription = sequence.subscribe { completion in
+        let subscription = sequence.sink { completion in
             switch completion {
             case .finished: break
             case .failure(let error): XCTFail("Unexpected error \(error)")
@@ -402,7 +402,7 @@ final class SubscriptionTests: XCTestCase {
         let outputExp = expectation(description: "output received")
         outputExp.isInverted = true
 
-        let subscription = sequence.subscribe { completion in
+        let subscription = sequence.sink { completion in
             switch completion {
             case .finished: break
             case .failure(let error): XCTFail("Unexpected error \(error)")
@@ -449,7 +449,7 @@ final class SubscriptionTests: XCTestCase {
         let completedSubject = SingleValueSubject<Void>()
         let outputExp = expectation(description: "output received")
 
-        let subscription = sequence.subscribe { completion in
+        let subscription = sequence.sink { completion in
             switch completion {
             case .finished: break
             case .failure(let error): XCTFail("Unexpected error \(error)")
@@ -503,7 +503,7 @@ final class SubscriptionTests: XCTestCase {
         let outputExp = expectation(description: "output received")
         outputExp.isInverted = true
 
-        let subscription = sequence.subscribe { completion in
+        let subscription = sequence.sink { completion in
             switch completion {
             case .finished: XCTFail("Unexpected normal finish")
             case .failure(let error): XCTAssertEqual(error as? Err, .e1)

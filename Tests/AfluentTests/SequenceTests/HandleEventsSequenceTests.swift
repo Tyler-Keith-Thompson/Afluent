@@ -50,7 +50,7 @@ final class HandleEventsSequenceTests: XCTestCase {
         }
         let test = Test()
 
-        let values = Array(0...9)
+        let values = Array(0 ... 9)
 
         let task = Task {
             let sequence = values.async.handleEvents(receiveNext: {
@@ -101,7 +101,7 @@ final class HandleEventsSequenceTests: XCTestCase {
 
     func testHandleComplete() async throws {
         let exp = expectation(description: "thing happened")
-        let task = Task {
+        Task {
             let sequence = DeferredTask { 1 }
                 .toAsyncSequence()
                 .handleEvents(receiveComplete: {

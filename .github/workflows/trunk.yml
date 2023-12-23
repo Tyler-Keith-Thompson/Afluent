@@ -4,11 +4,6 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    types:
-      - closed
-    branches:
-      - main
 
 jobs:
   test:
@@ -30,7 +25,6 @@ jobs:
     - name: Bump version and push tag
       id: bump_version
       uses: anothrNick/github-tag-action@1.67.0
-      if: github.ref == 'refs/heads/main'
       env:
         GITHUB_TOKEN: ${{ secrets.TOKEN }}
         WITH_V: false

@@ -4,9 +4,8 @@
 
 [Click here for documentation](https://tyler-keith-thompson.github.io/Afluent/documentation/afluent/)
 
-Afluent is a Swift library that fills the gap between `async/await` and more reactive paradigms. As we move away from Combine, there is a need for a library that gives developers the same powerful, fluent feature set for handling sequences and tasks.
-
-While async/await has simplified asynchronous code, it doesn't offer the full suite of operations for transforming, combining, and error-handling that Combine does. For sequences, you should use [swift-async-algorithms](https://github.com/apple/swift-async-algorithms). For tasks, which emit a single event over time, Afluent introduces a set of methods that bring you the same reactive features you've missed.
+Afluent is a Swift library that lives between [swift-async-algorithms](https://github.com/apple/swift-async-algorithms) and foundation, adding reactive operators to async/await and AsyncSequence. The goal of Afluent is to provide a reactive friendly operator style API to enhance Apple's offerings. As a consequence, Afluent will add features that Apple has either already built or is actively building.
+While async/await has simplified asynchronous code, it doesn't offer the full suite of operations for transforming, combining, and error-handling that Combine does. Afluent deliberately keeps as much of the Combine API as makes sense to make moving from Combine to Afluent much easier. As a consequence, you may have some minor symbol collisions when you import both Combine and Afluent in the same file.
 
 ## Features
 - Fluent, chainable interface
@@ -21,14 +20,15 @@ Add the Afluent package to your target dependencies in `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Tyler-Keith-Thompson/Afluent.git", from: "0.2.0")
+    .package(url: "https://github.com/Tyler-Keith-Thompson/Afluent.git", from: "0.3.0")
 ]
 ```
 
 
 ## Usage
 
-Here's a simple example that demonstrates how to fetch and decode JSON data using Afluent.
+### AsynchronousUnitOfWork
+While Combine always deals with sequences, `async/await` offers tasks. Tasks differ from sequences in that they will only ever emit one value eventually, a sequence may emit zero or more values eventually. This means instead of the Combine approach of dealing with a sequence of one element, you can use tasks for a more guaranteed execution. This is very ergonomic when working with network requests, check out the following example:
 ```swift
 struct Post: Codable {
     let userId: UInt
@@ -43,7 +43,8 @@ let posts = try await DeferredTask {
 .map(\.0) // Extract the data from the URLSession response
 .decode(type: [Post].self, decoder: JSONDecoder()) // Decode the JSON into an array of `Post` objects
 .retry() // Automatically retry the request if it fails
-.execute() // Execute the deferred task
+.execute() // Execute the deferred task and await the result.
+//.run() // Run could've also been used to execute the task without awaiting the result.
 ```
 
 In this example:
@@ -52,60 +53,21 @@ In this example:
 - `map` extracts the data payload from the URLSession data task response.
 - `decode` takes that data and decodes it into an array of Post objects.
 - `retry` will retry the task if it encounters an error.
-- `execute` runs the entire chain.
+- `execute` runs the entire chain and awaits the result.
+- `run` runs the entire chain without awaiting the result.
 
-## Using `async/await`: With and Without Afluent
-
-`async/await` has streamlined asynchronous programming in Swift, but certain operations can still be verbose or cumbersome. Afluent fills this gap, making complex tasks more concise and readable. Let's delve into a comparison:
-
-### Without Afluent
-
-Fetching, decoding JSON data, and implementing retries using just `async/await`:
-
-```swift
-func fetchPosts(retryCount: Int = 3) async throws -> [Post] {
-    let url = URL(string: "https://jsonplaceholder.typicode.com/posts")!
-    var currentAttempt = 0
-    
-    while currentAttempt < retryCount {
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            let decoder = JSONDecoder()
-            let posts = try decoder.decode([Post].self, from: data)
-            return posts
-        } catch {
-            currentAttempt += 1
-            if currentAttempt == retryCount {
-                throw error
-            }
-            // Optionally, add a delay or other logic before retrying
-        }
-    }
-    throw URLError(.cannotConnectToHost) // This is a generic error; you can replace it with a more specific one if needed.
-}
-
-do {
-    let posts = try await fetchPosts()
-    print(posts)
-} catch {
-    print("Error fetching posts after multiple retries: \(error)")
-}
-```
-
-### With Afluent
-Fetching, decoding JSON data, and implementing retries using Afluent:
-
-```swift
+### AsyncSequence
+There are times when you need sequence mechanics and Afluent is there to help! Here's the same example, but converted to an AsyncSequence with all the same operators.
 let posts = try await DeferredTask {
     try await URLSession.shared.data(from: URL(string: "https://jsonplaceholder.typicode.com/posts")!)
 }
+.toAsyncSequence() // Convert this to an AsyncSequence, thus enabled Swift Async Algorithms and standard library methods
 .map(\.0) // Extract the data from the URLSession response
 .decode(type: [Post].self, decoder: JSONDecoder()) // Decode the JSON into an array of `Post` objects
-.retry(3) // Automatically retry the request up to 3 times if it fails
-.execute() // Execute the deferred task
-```
+.retry() // Automatically retry the request if it fails
+.first() // Get the first result from the sequence
 
-### Why Afluent is Better
+### Why Afluent is Better than just using `async/await`
 
 - **Conciseness**: Afluent's chainable interface reduces boilerplate, making complex operations more concise.
   
@@ -124,27 +86,37 @@ If you're familiar with Combine and are looking to transition to Afluent, this g
 
 ### Key Differences:
 
-1. **Asynchronous Units vs. Publishers**: In Combine, you work with `Publishers`. In Afluent, the primary unit is an `AsynchronousUnitOfWork`.
+1. **Asynchronous Units of Work vs. Publishers vs. AsyncSequence**: 
+- In Combine, you work with `Publishers`. 
+- In Afluent, there are 2 choices. 
+    - For an asynchronous operation that emits one value eventually, use `AsynchonousUnitOfWork`. This is perfect for network requests or other "one-time" async operations and comes with all the operators that Combine comes with (including `share`).
+    - For async operations that emit multiple values over time, use `AsyncSequence` and simply rely on Afluent operators that extend both the standard library and Apple's open source Swift Async Algorithms package. This does not have 100% parity with Combine on its own, but almost entirely gives the same operators as Combine when combined with both of Apple's libraries.
 
-2. **Single Emission**: Unlike many Combine publishers that can emit multiple values over time, `AsynchronousUnitOfWork` in Afluent represents a single asynchronous operation.
-
-3. **Built for `async/await`**: Afluent is designed around Swift's `async/await` syntax, making it a natural fit for the new concurrency model.
+2. **Built for `async/await`**: Afluent is designed around Swift's `async/await` ans `AsyncSequence` syntax, making it a natural fit for the new concurrency model.
 
 ### Mapping Combine to Afluent:
 
-- **`Just` and `Future`**: In Combine, you might use `Just` for immediate values and `Future` for asynchronous operations. In Afluent, `Just` and `Future` are replaced by `DeferredTask`.
+- **`Just` and `Future`**: In Combine, you might use `Just` for immediate values and `Future` for asynchronous operations.
+    - For an `AsynchronousUnitOfWork` `DeferredTask` will replace both `Just` and `Future`.
+    - For `AsyncSequence` Afluent offers a `Just` sequence and the standard library's `AsyncStream` or `AsyncThrowingStream` provide the same mechanics as Combine's `Future`.
 
-- **`map`, `flatMap`**: These operators exist in both Combine and Afluent with similar functionality.
+- **`map`, `flatMap`, `filter`, `merge`, `zip`, etc...**:
+    - For an `AsynchronousUnitOfWork` the operators that make sense are all available within Afluent directly. For example, `map`, and `flatMap` make perfect sense, but `filter` doesn't, because an `AsynchronousUnitOfWork` only ever emits one value.
+    - For an `AsyncSequence` these operators are almost entirely provided by either Foundation or AsyncAlgorithms. 
 
 - **`catch` and `retry`**: Afluent provides these methods, similar to Combine, to handle errors and retry operations.
 
 - **`assign`**: Afluent also has an `assign` operator, similar to Combine's.
 
-- **`sink` and `subscribe`**: While Combine uses `sink`, Afluent offers `subscribe` which returns an `AnyCancellable`, and `run()` to create a new task in the background. Additionally, Afluent provides an `execute()` method which is `async throws` allowing you to await the result, and a `result` property, akin to `Task`.
+- **`sink` and `subscribe`**:
+    - For an `AsynchronousUnitOfWork` `subscribe` is the method Afluent provides. It's deliberately a little different than `sink` as only one value will be emitted. However, they serve the same general purpose.
+    - For an `AsyncSequence` Afluent provides a `sink` method that works the same way Combine's does.
 
 ### Transition Tips:
 
-1. **Understand the Scope**: Afluent replaces Combine only where Combine would be operating over a single value. For handling multiple values over time, consider using async algorithms.
+1. **Understand the Scope**:
+    - If you only emit one value eventually, Afluent can completely replace Combine. You'll probably use a `DeferredTask` and go from there.
+    - If you emit multiple values over time, you'll probably want to use a combination of Afluent, Foundation, and AsyncAlgorithms to supplement Combine. With all 3 of these you can get the majority of behavior Combine offered.
 
 2. **Embrace the Differences**: Afluent does not have a customizable `Failure` type like publishers in Combine. Every `AsynchronousUnitOfWork` can throw a `CancellationError`, making the failure type always `Error`.
 
@@ -159,32 +131,16 @@ Remember, while Afluent and Combine have similarities, they are distinct librari
 
 <details>
   <summary><strong>Frequently Asked Questions (FAQs)</strong></summary>
-
-  **1. What is the primary purpose of Afluent?**  
-  Afluent is designed to bridge the gap between `async/await` and more reactive paradigms. It provides a fluent interface for handling tasks, offering powerful features for transforming, combining, and error-handling.
-
-  **2. How does Afluent compare to Combine?**  
-  While both Afluent and Combine provide reactive features, Afluent is tailored for tasks that emit a single event over time. It's designed to work seamlessly with Swift's new `async/await` syntax, offering a rich set of operations similar to Combine but optimized for the new concurrency model.
-
-  **3. Why should I use Afluent over Combine?**  
-  If you're transitioning away from Combine and looking for a library that offers a similar feature set but is built around `async/await`, Afluent is a great choice. It provides a fluent, chainable interface with methods like `map`, `flatMap`, `catch`, `retry`, and more.
-
-  **4. How do I integrate Afluent into my project?**  
-  You can integrate Afluent using the Swift Package Manager. Add the Afluent package URL to your target dependencies in `Package.swift`.
-
-  **5. Can I use Afluent for sequences?**  
-  Afluent is primarily designed for tasks, which emit a single event over time. For sequences, consider using [swift-async-algorithms](https://github.com/apple/swift-async-algorithms).
-
-  **6. How does error handling work in Afluent?**  
-  Afluent provides several methods for error handling, such as `catch` and `retry`. You can transform errors, handle them, or even specify conditions for retrying tasks upon failure.
-
-  **7. Are there any examples or tutorials available for Afluent?**  
-  Yes, the README provides a simple example demonstrating how to fetch and decode JSON data using Afluent. For more detailed documentation, you can [click here](https://tyler-keith-thompson.github.io/Afluent/documentation/afluent/).
-
-  **8. How can I contribute to Afluent or report issues?**  
+  **1. How can I contribute to Afluent or report issues?**  
   Afluent is hosted on GitHub. You can fork the repository, make changes, and submit a pull request. For reporting issues, open a new issue on the GitHub repository with a detailed description.
 
-  **9. Why is it Afluent and not Affluent?**
+  **2. Why isn't there a `share` operator for sequences?**  
+  Afluent strives to not interfere with ongoing work from Apple. The desire for multicast or share functionality has been strong in the community and the [swift-async-algorithms team is working on a broadcast operator to help](https://github.com/apple/swift-async-algorithms). It's also worth noting that solving this problem is non-trivial, like timing operations. As a consequence, the Afluent team prefers to leave that complexity to Apple to manage.
+
+  **3. If you won't build `share` why did you build `Deferred`?**  
+  It's worth noting that the async algorithms team introduced a `deferred` global function that operates similarly to Afluent's `Deferred` sequence. The reason Afluent implemented this was because of the ease of implementation coupled with the more immediate need. At the time of writing Async Algorithms will not release `deferred` until v1.1 and Afluent can fill the gap easily until that happens. 
+
+  **4. Why is it Afluent and not Affluent?**
   Async/Await + Fluent == Afluent
 
 </details>

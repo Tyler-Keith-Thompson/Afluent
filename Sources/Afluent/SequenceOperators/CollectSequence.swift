@@ -19,6 +19,7 @@ extension AsyncSequences {
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
                 while let next = try await upstreamIterator.next() {
+                    try Task.checkCancellation()
                     collected.append(next)
                 }
                 return collected

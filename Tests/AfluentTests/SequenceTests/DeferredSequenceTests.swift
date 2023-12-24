@@ -1,5 +1,5 @@
 //
-//  DeferredTests.swift
+//  DeferredSequenceTests.swift
 //
 //
 //  Created by Annalise Mariottini on 12/20/23.
@@ -15,24 +15,24 @@ class DeferredTests: XCTestCase {
         shouldNotStartExpectation.isInverted = true
         let shouldStartExpectation = expectation(description: "sequence started")
 
-        let sent = Array(0...9)
+        let sent = Array(0 ... 9)
 
         let sequence = Deferred {
             defer {
                 shouldNotStartExpectation.fulfill()
                 shouldStartExpectation.fulfill()
             }
-            return AsyncStream(Int.self, { continuation in
+            return AsyncStream(Int.self) { continuation in
                 sent.forEach { continuation.yield($0) }
                 continuation.finish()
-            })
+            }
         }
 
         var iterator = sequence.makeAsyncIterator()
 
         await fulfillment(of: [shouldNotStartExpectation], timeout: 0.01)
 
-        var received = [try await iterator.next()]
+        var received = try [await iterator.next()]
 
         await fulfillment(of: [shouldStartExpectation], timeout: 0)
 
@@ -44,13 +44,13 @@ class DeferredTests: XCTestCase {
     }
 
     func testReturnsANewIteratorEachTime() async throws {
-        let sent = Array(0...9)
+        let sent = Array(0 ... 9)
 
         let sequence = Deferred {
-            AsyncStream(Int.self, { continuation in
+            AsyncStream(Int.self) { continuation in
                 sent.forEach { continuation.yield($0) }
                 continuation.finish()
-            })
+            }
         }
 
         @Sendable func iterate() async throws {
@@ -62,7 +62,7 @@ class DeferredTests: XCTestCase {
         }
 
         try await withThrowingTaskGroup(of: Void.self) { group in
-            for _ in 0...9 {
+            for _ in 0 ... 9 {
                 group.addTask {
                     try await iterate()
                 }
@@ -75,14 +75,14 @@ class DeferredTests: XCTestCase {
     func testCanRetryUpstreamSequence() async throws {
         var upstreamCount = 0
         let sequence = Deferred {
-            AsyncThrowingStream(Int.self, { continuation in
+            AsyncThrowingStream(Int.self) { continuation in
                 defer { upstreamCount += 1 }
                 guard upstreamCount > 0 else {
                     continuation.yield(with: .failure(NSError()))
                     return
                 }
                 continuation.finish()
-            })
+            }
         }
 
         for try await _ in sequence.retry() { }
@@ -94,14 +94,14 @@ class DeferredTests: XCTestCase {
         let sequence = Deferred<AsyncStream<Int>> { AsyncStream { _ in } }
 
         let task = Task {
-            try await Task.sleep(nanoseconds: 1_000_000)
+            try await Task.sleep(nanoseconds: 1000000)
             for try await _ in sequence { }
         }
         task.cancel()
 
         let result: Result<Void, Error> = await {
             do {
-                return .success(try await task.value)
+                return try .success(await task.value)
             } catch {
                 return .failure(error)
             }

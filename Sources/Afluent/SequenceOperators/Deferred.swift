@@ -34,7 +34,7 @@ extension AsyncSequences {
     /// ```
     public struct Deferred<Upstream: AsyncSequence>: AsyncSequence {
         public typealias Element = Upstream.Element
-        private let upstream: (() async throws -> Upstream)
+        private let upstream: () async throws -> Upstream
 
         /// Constructs an asynchronous sequence defining an closure that returns an asynchronous sequence
         /// that will later be called at the time of iteration.

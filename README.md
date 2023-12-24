@@ -58,6 +58,7 @@ In this example:
 
 ### AsyncSequence
 There are times when you need sequence mechanics and Afluent is there to help! Here's the same example, but converted to an AsyncSequence with all the same operators.
+```swift
 let posts = try await DeferredTask {
     try await URLSession.shared.data(from: URL(string: "https://jsonplaceholder.typicode.com/posts")!)
 }
@@ -66,6 +67,7 @@ let posts = try await DeferredTask {
 .decode(type: [Post].self, decoder: JSONDecoder()) // Decode the JSON into an array of `Post` objects
 .retry() // Automatically retry the request if it fails
 .first() // Get the first result from the sequence
+```
 
 ### Why Afluent is Better than just using `async/await`
 

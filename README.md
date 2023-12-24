@@ -131,6 +131,7 @@ Remember, while Afluent and Combine have similarities, they are distinct librari
 
 <details>
   <summary><strong>Frequently Asked Questions (FAQs)</strong></summary>
+  
   **1. How can I contribute to Afluent or report issues?**  
   Afluent is hosted on GitHub. You can fork the repository, make changes, and submit a pull request. For reporting issues, open a new issue on the GitHub repository with a detailed description.
 

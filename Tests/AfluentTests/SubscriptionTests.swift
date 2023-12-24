@@ -352,8 +352,8 @@ final class SubscriptionTests: XCTestCase {
 
         let subscription = sequence.sink { completion in
             switch completion {
-            case .finished: break
-            case .failure(let error): XCTFail("Unexpected error \(error)")
+                case .finished: break
+                case .failure(let error): XCTFail("Unexpected error \(error)")
             }
             try? await completedChannel.send()
         } receiveOutput: {
@@ -404,8 +404,8 @@ final class SubscriptionTests: XCTestCase {
 
         let subscription = sequence.sink { completion in
             switch completion {
-            case .finished: break
-            case .failure(let error): XCTFail("Unexpected error \(error)")
+                case .finished: break
+                case .failure(let error): XCTFail("Unexpected error \(error)")
             }
             try? await completedChannel.send()
         } receiveOutput: {
@@ -451,8 +451,8 @@ final class SubscriptionTests: XCTestCase {
 
         let subscription = sequence.sink { completion in
             switch completion {
-            case .finished: break
-            case .failure(let error): XCTFail("Unexpected error \(error)")
+                case .finished: break
+                case .failure(let error): XCTFail("Unexpected error \(error)")
             }
             try? await completedChannel.send()
         } receiveOutput: {
@@ -505,8 +505,8 @@ final class SubscriptionTests: XCTestCase {
 
         let subscription = sequence.sink { completion in
             switch completion {
-            case .finished: XCTFail("Unexpected normal finish")
-            case .failure(let error): XCTAssertEqual(error as? Err, .e1)
+                case .finished: XCTFail("Unexpected normal finish")
+                case .failure(let error): XCTAssertEqual(error as? Err, .e1)
             }
             try? await completedChannel.send()
         } receiveOutput: {
@@ -531,5 +531,5 @@ final class SubscriptionTests: XCTestCase {
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 extension SubscriptionTests {
-    func noop(_ any: Any?) { }
+    func noop(_: Any?) { }
 }

@@ -19,19 +19,18 @@ extension AsyncSequences {
         let receiveCancel: (() async throws -> Void)?
 
         public struct AsyncIterator: AsyncIteratorProtocol {
-            let upstream: Upstream
+            var upstream: Upstream.AsyncIterator
             let receiveNext: (() async throws -> Void)?
             let receiveOutput: ((Element) async throws -> Void)?
             let receiveError: ((Error) async throws -> Void)?
             let receiveComplete: (() async throws -> Void)?
             let receiveCancel: (() async throws -> Void)?
-            lazy var iterator = upstream.makeAsyncIterator()
 
             public mutating func next() async throws -> Element? {
                 do {
                     try Task.checkCancellation()
                     try await receiveNext?()
-                    if let val = try await iterator.next() {
+                    if let val = try await upstream.next() {
                         try await receiveOutput?(val)
                         return val
                     } else {
@@ -51,7 +50,7 @@ extension AsyncSequences {
 
         public func makeAsyncIterator() -> AsyncIterator {
             receiveMakeIterator?()
-            return AsyncIterator(upstream: upstream,
+            return AsyncIterator(upstream: upstream.makeAsyncIterator(),
                                  receiveNext: receiveNext,
                                  receiveOutput: receiveOutput,
                                  receiveError: receiveError,

@@ -26,7 +26,8 @@ extension AsyncSequences {
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstreamIterator: upstream.makeAsyncIterator(), decoder: decoder)
+            AsyncIterator(upstreamIterator: upstream.makeAsyncIterator(),
+                          decoder: decoder)
         }
     }
 }

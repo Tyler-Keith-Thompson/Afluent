@@ -12,12 +12,11 @@ extension AsyncSequences {
         let upstream: Upstream
 
         public struct AsyncIterator: AsyncIteratorProtocol {
-            let upstream: Upstream
-            lazy var iterator = upstream.makeAsyncIterator()
+            var upstream: Upstream.AsyncIterator
 
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
-                if let val = try await iterator.next() {
+                if let val = try await upstream.next() {
                     switch val {
                         case .element(let element): return element
                         case .failure(let error): throw error
@@ -30,7 +29,7 @@ extension AsyncSequences {
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstream: upstream)
+            AsyncIterator(upstream: upstream.makeAsyncIterator())
         }
     }
 }

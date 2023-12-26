@@ -24,15 +24,14 @@ extension AsyncSequences {
         let upstream: Upstream
 
         public struct AsyncIterator: AsyncIteratorProtocol {
-            let upstream: Upstream
+            var upstream: Upstream.AsyncIterator
             var completed = false
-            lazy var iterator = upstream.makeAsyncIterator()
 
             public mutating func next() async throws -> Element? {
                 guard !completed else { return nil }
                 do {
                     try Task.checkCancellation()
-                    if let val = try await iterator.next() {
+                    if let val = try await upstream.next() {
                         return .element(val)
                     } else {
                         completed = true
@@ -46,7 +45,7 @@ extension AsyncSequences {
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstream: upstream)
+            AsyncIterator(upstream: upstream.makeAsyncIterator())
         }
     }
 }

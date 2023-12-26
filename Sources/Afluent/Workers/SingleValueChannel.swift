@@ -29,22 +29,35 @@ public actor SingleValueChannel<Success: Sendable>: AsynchronousUnitOfWork {
     public func _operation() async throws -> AsynchronousOperation<Success> {
         AsynchronousOperation { [weak self] in
             guard let self else { throw CancellationError() }
-            if case .sentValue(let success) = await self.channelState {
-                return success
-            } else if case .sentError(let error) = await self.channelState {
-                throw error
-            }
 
             return try await withUnsafeThrowingContinuation { continuation in
                 Task { [weak self] in
-                    guard let self else { throw CancellationError() }
-                    await self.setchannelState(.hasContinuation(continuation))
+                    guard let self else {
+                        continuation.resume(throwing: CancellationError())
+                        return
+                    }
+                    if case .sentValue(let success) = await self.channelState {
+                        continuation.resume(returning: success)
+                    } else if case .sentError(let error) = await self.channelState {
+                        continuation.resume(throwing: error)
+                    } else {
+                        await self.setChannelState(.hasContinuation(continuation))
+                    }
                 }
             }
         }
     }
 
-    private func setchannelState(_ state: State) {
+    private func setChannelState(_ state: State) {
+        if case .hasContinuation(let continuation) = state {
+            if case .sentValue(let val) = channelState {
+                continuation.resume(returning: val)
+                return
+            } else if case .sentError(let error) = channelState {
+                continuation.resume(throwing: error)
+                return
+            }
+        }
         channelState = state
     }
 
@@ -56,7 +69,8 @@ public actor SingleValueChannel<Success: Sendable>: AsynchronousUnitOfWork {
     /// - Throws: `ChannelError.alreadyCompleted` if the channel is already completed.
     public func send(_ value: Success) throws {
         switch channelState {
-            case .noValue: channelState = .sentValue(value)
+            case .noValue:
+                channelState = .sentValue(value)
             case .hasContinuation(let continuation):
                 channelState = .sentValue(value)
                 continuation.resume(returning: value)
@@ -70,15 +84,8 @@ public actor SingleValueChannel<Success: Sendable>: AsynchronousUnitOfWork {
     /// Completes the channel with the provided value. If the channel is already completed, this method throws a `ChannelError.alreadyCompleted`.
     ///
     /// - Throws: `ChannelError.alreadyCompleted` if the channel is already completed.
-    public func send() throws where Success == Void {
-        switch channelState {
-            case .noValue: channelState = .sentValue(())
-            case .hasContinuation(let continuation):
-                channelState = .sentValue(())
-                continuation.resume(returning: ())
-            default:
-                throw ChannelError.alreadyCompleted
-        }
+    @inlinable public func send() throws where Success == Void {
+        try send(())
     }
 
     /// Sends an error to the channel.

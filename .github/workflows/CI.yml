@@ -10,7 +10,7 @@ on:
 
 jobs:
   test:
-    runs-on: macos-13
+    runs-on: macos-latest-xlarge
     steps:
       - uses: actions/checkout@v4
       - name: Run TESTS

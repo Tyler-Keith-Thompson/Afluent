@@ -23,11 +23,23 @@ let package = Package(name: "Afluent",
                                       .product(name: "Atomics", package: "swift-atomics"),
                                   ]),
                           .testTarget(name: "AfluentTests",
-                                      dependencies: [
-                                          "Afluent",
-                                          .product(name: "OHHTTPStubs", package: "OHHTTPStubs"),
-                                          .product(name: "OHHTTPStubsSwift", package: "OHHTTPStubs"),
-                                          .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"),
-                                          .product(name: "Clocks", package: "swift-clocks"),
-                                      ]),
+                                      dependencies: testDependencies()),
                       ])
+
+func testDependencies() -> [PackageDescription.Target.Dependency] {
+    #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+        [
+            "Afluent",
+            .product(name: "OHHTTPStubs", package: "OHHTTPStubs"),
+            .product(name: "OHHTTPStubsSwift", package: "OHHTTPStubs"),
+            .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"),
+            .product(name: "Clocks", package: "swift-clocks"),
+        ]
+    #else
+        [
+            "Afluent",
+            .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"),
+            .product(name: "Clocks", package: "swift-clocks"),
+        ]
+    #endif
+}

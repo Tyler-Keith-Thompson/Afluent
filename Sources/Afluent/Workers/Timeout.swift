@@ -8,17 +8,21 @@
 import Foundation
 
 extension Workers {
-    actor Timeout<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Upstream.Success == Success {
+    actor Timeout<Upstream: AsynchronousUnitOfWork, Success: Sendable, C: Clock>: AsynchronousUnitOfWork where Upstream.Success == Success {
         let state = TaskState<Success>()
         let upstream: Upstream
         var customError: Error?
         var timedOut = false
-        let duration: Measurement<UnitDuration>
+        let clock: C
+        let duration: C.Duration
+        let tolerance: C.Duration?
 
-        init(upstream: Upstream, duration: Measurement<UnitDuration>, error: Error?) {
+        init(upstream: Upstream, customError: Error?, clock: C, duration: C.Duration, tolerance: C.Duration?) {
             self.upstream = upstream
+            self.customError = customError
+            self.clock = clock
             self.duration = duration
-            customError = error
+            self.tolerance = tolerance
         }
 
         func _operation() async throws -> AsynchronousOperation<Success> {
@@ -28,7 +32,7 @@ extension Workers {
                 await self.reset()
                 let timeoutTask = Task { [weak self] in
                     guard let self else { throw CancellationError() }
-                    try await Task.sleep(nanoseconds: UInt64(self.duration.converted(to: .nanoseconds).value))
+                    try await self.clock.sleep(until: self.clock.now.advanced(by: self.duration), tolerance: self.tolerance)
                     await self.timeout()
                     self.upstream.cancel()
                 }
@@ -69,7 +73,22 @@ extension AsynchronousUnitOfWork {
     /// - Parameter duration: The maximum duration the operation is allowed to take, represented as a `Measurement<UnitDuration>`.
     /// - Parameter customError: A custom error to throw if timeout occurs. If no value is supplied a `CancellationError` is thrown.
     /// - Returns: An asynchronous unit of work that includes the timeout behavior, encapsulating the operation's success or failure.
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     public func timeout(_ duration: Measurement<UnitDuration>, customError: Error? = nil) -> some AsynchronousUnitOfWork<Success> {
-        Workers.Timeout(upstream: self, duration: duration, error: customError)
+        Workers.Timeout(upstream: self, customError: customError, clock: SuspendingClock(), duration: .nanoseconds(UInt(duration.converted(to: .nanoseconds).value)), tolerance: nil)
+    }
+
+    /// Adds a timeout to the current asynchronous unit of work.
+    ///
+    /// If the operation does not complete within the specified duration, it will be terminated.
+    ///
+    /// - Parameter duration: The maximum duration the operation is allowed to take, represented as a `Clock.Duration`.
+    /// - Parameter clock: The clock used for timekeeping. Defaults to `SuspendingClock()`.
+    /// - Parameter tolerance: An optional tolerance for the delay. Defaults to `nil`.
+    /// - Parameter customError: A custom error to throw if timeout occurs. If no value is supplied a `CancellationError` is thrown.
+    /// - Returns: An asynchronous unit of work that includes the timeout behavior, encapsulating the operation's success or failure.
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    public func timeout<C: Clock>(_ duration: C.Duration, clock: C, tolerance: C.Duration? = nil, customError: Error? = nil) -> some AsynchronousUnitOfWork<Success> {
+        Workers.Timeout(upstream: self, customError: customError, clock: clock, duration: duration, tolerance: tolerance)
     }
 }

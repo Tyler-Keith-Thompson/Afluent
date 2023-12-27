@@ -44,7 +44,7 @@ extension AsynchronousUnitOfWork {
     ///
     /// - Parameters:
     ///   - duration: The duration to delay the output, conforming to the `C.Instant.Duration` type.
-    ///   - clock: The clock used for timekeeping. Defaults to `ContinuousClock()`.
+    ///   - clock: The clock used for timekeeping. Defaults to `SuspendingClock()`.
     ///   - tolerance: An optional tolerance for the delay. Defaults to `nil`.
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that emits the upstream output after the specified delay.

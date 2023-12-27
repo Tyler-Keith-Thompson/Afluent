@@ -94,7 +94,6 @@ class DeferredTests: XCTestCase {
         let sequence = Deferred<AsyncStream<Int>> { AsyncStream { _ in } }
 
         let task = Task {
-            try await Task.sleep(nanoseconds: 1000000)
             for try await _ in sequence { }
         }
         task.cancel()

@@ -32,7 +32,7 @@ final class FlatMapTests: XCTestCase {
         let test = Test()
 
         try await DeferredTask {
-            try await Task.sleep(nanoseconds: 10000)
+            await Task.yield()
             await test.append("1")
         }.flatMap {
             DeferredTask {
@@ -56,7 +56,7 @@ final class FlatMapTests: XCTestCase {
         let test = Test()
 
         try await DeferredTask {
-            try! await Task.sleep(nanoseconds: 10000)
+            await Task.yield()
             await test.append("1")
         }.flatMap {
             DeferredTask {

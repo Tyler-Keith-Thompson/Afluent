@@ -20,23 +20,16 @@ final class HandleEventsSequenceTests: XCTestCase {
         }
         let test = Test()
 
-        let exp = expectation(description: "thing happened")
-
-        Task {
-            _ = DeferredTask {
-                try await Task.sleep(for: .milliseconds(10))
-            }
-            .toAsyncSequence()
-            .handleEvents(receiveMakeIterator: {
-                Task {
-                    await test.makeIterator()
-                    exp.fulfill()
-                }
-            })
-            .makeAsyncIterator()
-        }
-
-        await fulfillment(of: [exp], timeout: 1)
+        _ = await Task {
+            _ = DeferredTask { }
+                .toAsyncSequence()
+                .handleEvents(receiveMakeIterator: {
+                    Task {
+                        await test.makeIterator()
+                    }
+                })
+                .makeAsyncIterator()
+        }.value
 
         let iteratorMade = await test.iteratorMade
 
@@ -76,7 +69,6 @@ final class HandleEventsSequenceTests: XCTestCase {
         }
         let test = Test()
 
-        let exp = expectation(description: "thing happened")
         let task = Task {
             try await DeferredTask {
                 1
@@ -84,16 +76,11 @@ final class HandleEventsSequenceTests: XCTestCase {
             .toAsyncSequence()
             .handleEvents(receiveOutput: {
                 await test.output($0)
-                exp.fulfill()
             })
             .first()
         }
 
-        try await Task.sleep(for: .milliseconds(2))
-
-        task.cancel()
-
-        await fulfillment(of: [exp], timeout: 1)
+        _ = try await task.value
 
         let output = await test.output
 
@@ -123,7 +110,7 @@ final class HandleEventsSequenceTests: XCTestCase {
         let test = Test()
 
         let exp = expectation(description: "thing happened")
-        let task = Task {
+        Task {
             try await DeferredTask {
                 throw URLError(.badURL)
             }
@@ -135,10 +122,6 @@ final class HandleEventsSequenceTests: XCTestCase {
             .first()
         }
 
-        try await Task.sleep(for: .milliseconds(2))
-
-        task.cancel()
-
         await fulfillment(of: [exp], timeout: 1)
 
         let error = await test.error
@@ -147,7 +130,7 @@ final class HandleEventsSequenceTests: XCTestCase {
     }
 
     func testHandleCancel() async throws {
-        try await withMainSerialExecutor {
+        await withMainSerialExecutor { [self] in
             actor Test {
                 var canceled = false
 
@@ -156,21 +139,16 @@ final class HandleEventsSequenceTests: XCTestCase {
             let test = Test()
 
             let exp = expectation(description: "thing happened")
-            let task = Task {
-                try await DeferredTask {
-                    try await Task.sleep(for: .milliseconds(10))
-                }
-                .toAsyncSequence()
-                .handleEvents(receiveCancel: {
-                    await test.cancel()
-                    exp.fulfill()
-                })
-                .first()
+            var task: AnyCancellable?
+            task = DeferredTask {
+                task?.cancel()
             }
-
-            try await Task.sleep(for: .milliseconds(2))
-
-            task.cancel()
+            .toAsyncSequence()
+            .handleEvents(receiveCancel: {
+                await test.cancel()
+                exp.fulfill()
+            })
+            .sink()
 
             await fulfillment(of: [exp], timeout: 1)
 

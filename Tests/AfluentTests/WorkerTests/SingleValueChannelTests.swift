@@ -62,12 +62,11 @@ final class SingleValueChannelTests: XCTestCase {
             let unitOfWork = subject
                 .materialize()
                 .map {
-                    exp.fulfill()
+                    defer { exp.fulfill() }
                     return $0
                 }
 
             Task {
-                try await Task.sleep(nanoseconds: UInt64(Measurement<UnitDuration>.milliseconds(10).converted(to: .nanoseconds).value))
                 try await subject.send(error: Err.e1)
             }
 
@@ -111,7 +110,6 @@ final class SingleValueChannelTests: XCTestCase {
                 }
 
             Task {
-                try await Task.sleep(nanoseconds: UInt64(Measurement<UnitDuration>.milliseconds(10).converted(to: .nanoseconds).value))
                 try await subject.send(error: Err.e1)
 
                 let result = await Task { try await subject.send(error: Err.e1) }.result

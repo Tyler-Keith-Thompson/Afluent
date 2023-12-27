@@ -21,18 +21,12 @@ final class HandleEventsTests: XCTestCase {
         let test = Test()
 
         let exp = expectation(description: "thing happened")
-        let task = DeferredTask {
-            try await Task.sleep(for: .milliseconds(10))
-        }.handleEvents(receiveOperation: {
-            await test.operation()
-            exp.fulfill()
-        })
-
-        task.run()
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        task.cancel()
+        DeferredTask { }
+            .handleEvents(receiveOperation: {
+                await test.operation()
+                exp.fulfill()
+            })
+            .run()
 
         await fulfillment(of: [exp], timeout: 1)
 
@@ -50,18 +44,12 @@ final class HandleEventsTests: XCTestCase {
         let test = Test()
 
         let exp = expectation(description: "thing happened")
-        let task = DeferredTask {
+        DeferredTask {
             1
         }.handleEvents(receiveOutput: {
             await test.output($0)
             exp.fulfill()
-        })
-
-        task.run()
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        task.cancel()
+        }).run()
 
         await fulfillment(of: [exp], timeout: 1)
 
@@ -79,18 +67,12 @@ final class HandleEventsTests: XCTestCase {
         let test = Test()
 
         let exp = expectation(description: "thing happened")
-        let task = DeferredTask {
+        DeferredTask {
             throw URLError(.badURL)
         }.handleEvents(receiveError: {
             await test.error($0)
             exp.fulfill()
-        })
-
-        task.run()
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        task.cancel()
+        }).run()
 
         await fulfillment(of: [exp], timeout: 1)
 
@@ -100,7 +82,7 @@ final class HandleEventsTests: XCTestCase {
     }
 
     func testHandleCancel() async throws {
-        try await withMainSerialExecutor {
+        await withMainSerialExecutor {
             actor Test {
                 var canceled = false
 
@@ -109,20 +91,15 @@ final class HandleEventsTests: XCTestCase {
             let test = Test()
 
             let exp = expectation(description: "thing happened")
-            let task = DeferredTask {
-                try await Task.sleep(for: .milliseconds(10))
-            }.handleEvents(receiveCancel: {
-                await test.cancel()
-                exp.fulfill()
-            })
+            var task: AnyCancellable?
+            task = DeferredTask { task?.cancel() }
+                .handleEvents(receiveCancel: {
+                    await test.cancel()
+                    exp.fulfill()
+                })
+                .subscribe()
 
-            task.run()
-
-            try await Task.sleep(for: .milliseconds(2))
-
-            task.cancel()
-
-            await fulfillment(of: [exp], timeout: 1)
+            await fulfillment(of: [exp], timeout: 0.1)
 
             let canceled = await test.canceled
 

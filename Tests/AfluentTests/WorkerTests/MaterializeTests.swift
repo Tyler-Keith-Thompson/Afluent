@@ -59,7 +59,7 @@ final class MaterializeTests: XCTestCase {
     }
 
     func testMaterializeDoesNotInterfereWithCancellation() async throws {
-        try await withMainSerialExecutor {
+        await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
@@ -70,20 +70,19 @@ final class MaterializeTests: XCTestCase {
             let test = Test()
 
             let exp = expectation(description: "thing happened")
-            exp.isInverted = true
-            let task = DeferredTask {
+            var task: AnyCancellable?
+            task = DeferredTask {
                 await test.start()
-                try await Task.sleep(for: .milliseconds(10))
-            }.map {
-                await test.end()
+                task?.cancel()
+            }
+            .handleEvents(receiveCancel: {
                 exp.fulfill()
-            }.materialize()
-
-            task.run()
-
-            try await Task.sleep(for: .milliseconds(2))
-
-            task.cancel()
+            })
+            .map {
+                await test.end()
+            }
+            .materialize()
+            .subscribe()
 
             await fulfillment(of: [exp], timeout: 0.011)
 

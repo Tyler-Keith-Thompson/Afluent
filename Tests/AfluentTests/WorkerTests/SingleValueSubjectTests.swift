@@ -32,7 +32,7 @@ final class SingleValueSubjectTests: XCTestCase {
         let exp = expectation(description: "task executed")
         let subject = SingleValueSubject<Int>()
         subject.map {
-            exp.fulfill()
+            defer { exp.fulfill() }
             XCTAssertEqual($0, expected)
             return $0
         }.run() // task started
@@ -67,7 +67,6 @@ final class SingleValueSubjectTests: XCTestCase {
                 }
 
             Task {
-                try await Task.sleep(nanoseconds: UInt64(Measurement<UnitDuration>.milliseconds(10).converted(to: .nanoseconds).value))
                 try subject.send(error: Err.e1)
             }
 
@@ -110,7 +109,6 @@ final class SingleValueSubjectTests: XCTestCase {
                 }
 
             Task {
-                try await Task.sleep(nanoseconds: UInt64(Measurement<UnitDuration>.milliseconds(10).converted(to: .nanoseconds).value))
                 try subject.send(error: Err.e1)
                 XCTAssertThrowsError(try subject.send(error: Err.e1))
                 exp1.fulfill()

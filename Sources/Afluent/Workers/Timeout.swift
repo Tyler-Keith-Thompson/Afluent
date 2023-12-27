@@ -8,6 +8,7 @@
 import Foundation
 
 extension Workers {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     actor Timeout<Upstream: AsynchronousUnitOfWork, Success: Sendable, C: Clock>: AsynchronousUnitOfWork where Upstream.Success == Success {
         let state = TaskState<Success>()
         let upstream: Upstream

@@ -12,7 +12,7 @@ import XCTest
 
 final class AssertNoFailureSequenceTests: XCTestCase {
     func testAssertNoFailureThrowsFatalErrorWhenThereIsAFailure() throws {
-        throw XCTSkip("Sadly, CwlPreconditionTesting does not support concurrency yet, who knew?")
+        try XCTSkipUnless(false, "Sadly, CwlPreconditionTesting does not support concurrency yet, who knew?")
         XCTAssertThrowsFatalError {
             let exp = self.expectation(description: "thing happened")
             Task {

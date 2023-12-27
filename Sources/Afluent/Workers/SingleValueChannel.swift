@@ -31,17 +31,21 @@ public actor SingleValueChannel<Success: Sendable>: AsynchronousUnitOfWork {
             guard let self else { throw CancellationError() }
 
             return try await withUnsafeThrowingContinuation { continuation in
-                Task { [weak self] in
-                    guard let self else {
+                Task {
+                    await withTaskCancellationHandler { [weak self] in
+                        guard let self else {
+                            continuation.resume(throwing: CancellationError())
+                            return
+                        }
+                        if case .sentValue(let success) = await self.channelState {
+                            continuation.resume(returning: success)
+                        } else if case .sentError(let error) = await self.channelState {
+                            continuation.resume(throwing: error)
+                        } else {
+                            await self.setChannelState(.hasContinuation(continuation))
+                        }
+                    } onCancel: {
                         continuation.resume(throwing: CancellationError())
-                        return
-                    }
-                    if case .sentValue(let success) = await self.channelState {
-                        continuation.resume(returning: success)
-                    } else if case .sentError(let error) = await self.channelState {
-                        continuation.resume(throwing: error)
-                    } else {
-                        await self.setChannelState(.hasContinuation(continuation))
                     }
                 }
             }

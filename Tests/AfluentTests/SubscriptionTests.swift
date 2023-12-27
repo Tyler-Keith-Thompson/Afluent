@@ -16,7 +16,7 @@ final class SubscriptionTests: XCTestCase {
     var collection = [AnyCancellable]()
 
     func testDeferredTaskCancelledBeforeItEnds() async throws {
-        try await withMainSerialExecutor {
+        await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
@@ -27,22 +27,19 @@ final class SubscriptionTests: XCTestCase {
             let test = Test()
 
             let exp = expectation(description: "thing happened")
-            exp.isInverted = true
-            let task = DeferredTask {
+            var subscription: AnyCancellable?
+            subscription = DeferredTask {
                 await test.start()
-                try await Task.sleep(for: .milliseconds(10))
-            }.map {
-                await test.end()
-                exp.fulfill()
+                subscription?.cancel()
             }
+            .handleEvents(receiveCancel: {
+                exp.fulfill()
+            })
+            .map {
+                await test.end()
+            }.subscribe()
 
-            let subscription = task.subscribe()
-
-            try await Task.sleep(for: .milliseconds(2))
-
-            subscription.cancel()
-
-            await fulfillment(of: [exp], timeout: 0.011)
+            await fulfillment(of: [exp], timeout: 0.1)
 
             let started = await test.started
             let ended = await test.ended
@@ -64,23 +61,23 @@ final class SubscriptionTests: XCTestCase {
             let test = Test()
 
             let exp = expectation(description: "thing happened")
-            exp.isInverted = true
-            let task = DeferredTask {
+            var subscription: AnyCancellable?
+            subscription = DeferredTask {
                 await test.start()
+                subscription = nil
                 try await Task.sleep(for: .milliseconds(10))
-            }.map {
-                await test.end()
-                exp.fulfill()
             }
+            .handleEvents(receiveCancel: {
+                exp.fulfill()
+            })
+            .map {
+                await test.end()
+            }
+            .subscribe()
 
-            var subscription: AnyCancellable? = task.subscribe()
             noop(subscription)
 
-            try await Task.sleep(for: .milliseconds(2))
-
-            subscription = nil
-
-            await fulfillment(of: [exp], timeout: 0.011)
+            await fulfillment(of: [exp], timeout: 0.1)
 
             let started = await test.started
             let ended = await test.ended
@@ -91,7 +88,7 @@ final class SubscriptionTests: XCTestCase {
     }
 
     func testDeferredTaskCancelledViaDeinitialization_WhenStoredInSet() async throws {
-        try await withMainSerialExecutor {
+        await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
@@ -102,23 +99,22 @@ final class SubscriptionTests: XCTestCase {
             let test = Test()
 
             let exp = expectation(description: "thing happened")
-            exp.isInverted = true
-            let task = DeferredTask {
+            DeferredTask {
                 await test.start()
+                set.removeAll()
                 try await Task.sleep(for: .milliseconds(10))
-            }.map {
+            }
+            .handleEvents(receiveCancel: {
+                exp.fulfill()
+            })
+            .map {
                 await test.end()
                 exp.fulfill()
             }
+            .subscribe()
+            .store(in: &set)
 
-            task.subscribe()
-                .store(in: &set)
-
-            try await Task.sleep(for: .milliseconds(2))
-
-            set.removeAll()
-
-            await fulfillment(of: [exp], timeout: 0.011)
+            await fulfillment(of: [exp], timeout: 0.01)
 
             let started = await test.started
             let ended = await test.ended
@@ -129,7 +125,7 @@ final class SubscriptionTests: XCTestCase {
     }
 
     func testDeferredTaskCancelledViaDeinitialization_WhenStoredInCollection() async throws {
-        try await withMainSerialExecutor {
+        await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
@@ -140,23 +136,21 @@ final class SubscriptionTests: XCTestCase {
             let test = Test()
 
             let exp = expectation(description: "thing happened")
-            exp.isInverted = true
-            let task = DeferredTask {
+            DeferredTask {
                 await test.start()
-                try await Task.sleep(for: .milliseconds(10))
-            }.map {
+                collection.removeAll()
+            }
+            .handleEvents(receiveCancel: {
+                exp.fulfill()
+            })
+            .map {
                 await test.end()
                 exp.fulfill()
             }
+            .subscribe()
+            .store(in: &collection)
 
-            task.subscribe()
-                .store(in: &collection)
-
-            try await Task.sleep(for: .milliseconds(2))
-
-            collection.removeAll()
-
-            await fulfillment(of: [exp], timeout: 0.011)
+            await fulfillment(of: [exp], timeout: 0.1)
 
             let started = await test.started
             let ended = await test.ended
@@ -180,25 +174,25 @@ final class SubscriptionTests: XCTestCase {
             let test = Test()
 
             let exp = expectation(description: "thing happened")
-            exp.isInverted = true
-            let sequence = AsyncStream<Void> { continuation in
+            var subscription: AnyCancellable?
+            subscription = AsyncStream<AnyCancellable?> { continuation in
                 Task {
                     await test.start()
-                    try await Task.sleep(for: .milliseconds(10))
-                    continuation.yield()
+                    continuation.yield(subscription)
                 }
-            }.map {
-                await test.end()
-                exp.fulfill()
             }
+            .map { $0?.cancel() }
+            .handleEvents(receiveCancel: {
+                exp.fulfill()
+            })
+            .map {
+                if !Task.isCancelled {
+                    await test.end()
+                }
+            }
+            .sink()
 
-            let subscription = sequence.sink()
-
-            try await Task.sleep(for: .milliseconds(2))
-
-            subscription.cancel()
-
-            await fulfillment(of: [exp], timeout: 0.011)
+            await fulfillment(of: [exp], timeout: 0.01)
 
             let started = await test.started
             let ended = await test.ended

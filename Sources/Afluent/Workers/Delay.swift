@@ -36,8 +36,8 @@ extension AsynchronousUnitOfWork {
     ///
     /// - Availability: macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0 and above.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-    public func delay(for duration: Measurement<UnitDuration>) -> some AsynchronousUnitOfWork<Success> {
-        Workers.Delay(upstream: self, clock: SuspendingClock(), duration: .nanoseconds(UInt(duration.converted(to: .nanoseconds).value)), tolerance: nil)
+    public func delay(for duration: Duration) -> some AsynchronousUnitOfWork<Success> {
+        Workers.Delay(upstream: self, clock: SuspendingClock(), duration: duration, tolerance: nil)
     }
 
     /// Delays the emission of output from the upstream `AsynchronousUnitOfWork` by a specified duration using a given clock.

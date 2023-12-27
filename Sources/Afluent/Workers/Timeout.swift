@@ -71,12 +71,12 @@ extension AsynchronousUnitOfWork {
     ///
     /// If the operation does not complete within the specified duration, it will be terminated.
     ///
-    /// - Parameter duration: The maximum duration the operation is allowed to take, represented as a `Measurement<UnitDuration>`.
+    /// - Parameter duration: The maximum duration the operation is allowed to take, represented as a `Duration`.
     /// - Parameter customError: A custom error to throw if timeout occurs. If no value is supplied a `CancellationError` is thrown.
     /// - Returns: An asynchronous unit of work that includes the timeout behavior, encapsulating the operation's success or failure.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-    public func timeout(_ duration: Measurement<UnitDuration>, customError: Error? = nil) -> some AsynchronousUnitOfWork<Success> {
-        Workers.Timeout(upstream: self, customError: customError, clock: SuspendingClock(), duration: .nanoseconds(UInt(duration.converted(to: .nanoseconds).value)), tolerance: nil)
+    public func timeout(_ duration: Duration, customError: Error? = nil) -> some AsynchronousUnitOfWork<Success> {
+        Workers.Timeout(upstream: self, customError: customError, clock: SuspendingClock(), duration: duration, tolerance: nil)
     }
 
     /// Adds a timeout to the current asynchronous unit of work.

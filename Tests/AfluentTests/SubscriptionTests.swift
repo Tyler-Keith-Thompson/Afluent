@@ -50,7 +50,7 @@ final class SubscriptionTests: XCTestCase {
     }
 
     func testDeferredTaskCancelledViaDeinitialization() async throws {
-        try await withMainSerialExecutor {
+        await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
@@ -65,7 +65,6 @@ final class SubscriptionTests: XCTestCase {
             subscription = DeferredTask {
                 await test.start()
                 subscription = nil
-                try await Task.sleep(for: .milliseconds(10))
             }
             .handleEvents(receiveCancel: {
                 exp.fulfill()
@@ -102,7 +101,6 @@ final class SubscriptionTests: XCTestCase {
             DeferredTask {
                 await test.start()
                 set.removeAll()
-                try await Task.sleep(for: .milliseconds(10))
             }
             .handleEvents(receiveCancel: {
                 exp.fulfill()
@@ -163,7 +161,7 @@ final class SubscriptionTests: XCTestCase {
     // MARK: AsyncSequence
 
     func testAsyncSequenceCancelledBeforeItEnds() async throws {
-        try await withMainSerialExecutor {
+        await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false

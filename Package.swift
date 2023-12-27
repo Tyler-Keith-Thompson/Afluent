@@ -3,33 +3,33 @@
 
 import PackageDescription
 
-let package = Package(
-    name: "Afluent",
-    platforms: [.iOS(.v15), .macOS(.v13), .macCatalyst(.v15), .tvOS(.v16), .watchOS(.v9)],
-    products: [
-        .library(
-            name: "Afluent",
-            targets: ["Afluent"]),
-    ],
-    dependencies: [
-        .package(url: "https://github.com/mattgallagher/CwlPreconditionTesting.git", from: "2.0.0"),
-        .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
-        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
-        .package(url: "https://github.com/AliSoftware/OHHTTPStubs.git", from: "9.1.0"),
-        .package(url: "https://github.com/nicklockwood/SwiftFormat", from: "0.52.11"),
-    ],
-    targets: [
-        .target(name: "Afluent",
-                dependencies: [
-                    .product(name: "Atomics", package: "swift-atomics"),
-                ]),
-        .testTarget(
-            name: "AfluentTests",
-            dependencies: [
-                "Afluent",
-                .product(name: "CwlPreconditionTesting", package: "CwlPreconditionTesting"),
-                .product(name: "OHHTTPStubs", package: "OHHTTPStubs"),
-                .product(name: "OHHTTPStubsSwift", package: "OHHTTPStubs"),
-            ]),
-    ]
-)
+let package = Package(name: "Afluent",
+                      platforms: [.iOS(.v15), .macOS(.v13), .macCatalyst(.v15), .tvOS(.v16), .watchOS(.v9)],
+                      products: [
+                          .library(name: "Afluent",
+                                   targets: ["Afluent"]),
+                      ],
+                      dependencies: [
+                          .package(url: "https://github.com/mattgallagher/CwlPreconditionTesting.git", from: "2.0.0"),
+                          .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
+                          .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
+                          .package(url: "https://github.com/AliSoftware/OHHTTPStubs.git", from: "9.1.0"),
+                          .package(url: "https://github.com/nicklockwood/SwiftFormat", from: "0.52.11"),
+                          .package(url: "https://github.com/pointfreeco/swift-clocks.git", from: "1.0.2"),
+                          .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.1.0"),
+                      ],
+                      targets: [
+                          .target(name: "Afluent",
+                                  dependencies: [
+                                      .product(name: "Atomics", package: "swift-atomics"),
+                                  ]),
+                          .testTarget(name: "AfluentTests",
+                                      dependencies: [
+                                          "Afluent",
+                                          .product(name: "CwlPreconditionTesting", package: "CwlPreconditionTesting"),
+                                          .product(name: "OHHTTPStubs", package: "OHHTTPStubs"),
+                                          .product(name: "OHHTTPStubsSwift", package: "OHHTTPStubs"),
+                                          .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"),
+                                          .product(name: "Clocks", package: "swift-clocks"),
+                                      ]),
+                      ])

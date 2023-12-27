@@ -6,20 +6,23 @@
 //
 
 import Afluent
+import Clocks
 import Foundation
 import XCTest
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 final class DelayTests: XCTestCase {
-    func testAssertNoFailureDoesNotThrowIfThereIsNoFailure() throws {
-        let exp = expectation(description: "thing happened")
-        let date = Date()
+    func testDeferredTaskCanDelayForAnExpectedDuration() async throws {
+        let clock = TestClock()
+        var finished = false
         DeferredTask { }
-            .delay(for: .milliseconds(10))
-            .map { _ in exp.fulfill() }
+            .delay(for: .milliseconds(10), clock: clock, tolerance: nil)
+            .handleEvents(receiveOutput: { _ in finished = true })
             .run()
 
-        wait(for: [exp], timeout: 0.02)
-        XCTAssert(Date().timeIntervalSince(date) > Measurement<UnitDuration>(value: 10, unit: .milliseconds).converted(to: .seconds).value)
+        await clock.advance(by: .milliseconds(1))
+        XCTAssertFalse(finished)
+        await clock.advance(by: .milliseconds(9))
+        XCTAssert(finished)
     }
 }

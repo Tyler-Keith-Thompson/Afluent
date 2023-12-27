@@ -73,12 +73,16 @@ class DeferredTests: XCTestCase {
     }
 
     func testCanRetryUpstreamSequence() async throws {
+        enum Err: Error {
+            case e1
+        }
+
         var upstreamCount = 0
         let sequence = Deferred {
             AsyncThrowingStream(Int.self) { continuation in
                 defer { upstreamCount += 1 }
                 guard upstreamCount > 0 else {
-                    continuation.yield(with: .failure(NSError()))
+                    continuation.yield(with: .failure(Err.e1))
                     return
                 }
                 continuation.finish()
@@ -94,7 +98,6 @@ class DeferredTests: XCTestCase {
         let sequence = Deferred<AsyncStream<Int>> { AsyncStream { _ in } }
 
         let task = Task {
-            try await Task.sleep(nanoseconds: 1000000)
             for try await _ in sequence { }
         }
         task.cancel()

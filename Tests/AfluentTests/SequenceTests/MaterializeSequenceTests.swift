@@ -6,6 +6,7 @@
 //
 
 import Afluent
+import ConcurrencyExtras
 import Foundation
 import XCTest
 
@@ -75,41 +76,41 @@ final class MaterializeSequenceTests: XCTestCase {
     }
 
     func testMaterializeDoesNotInterfereWithCancellation() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
-        }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let task = Task {
-            try await DeferredTask {
-                await test.start()
-                try await Task.sleep(for: .milliseconds(10))
-            }.map {
-                await test.end()
-                exp.fulfill()
+                func start() { started = true }
+                func end() { ended = true }
             }
-            .toAsyncSequence()
-            .materialize()
-            .first()
+            let test = Test()
+
+            let exp = expectation(description: "thing happened")
+            var task: Task<Void, Error>?
+            task = Task {
+                _ = try await DeferredTask {
+                    await test.start()
+                    task?.cancel()
+                }
+                .handleEvents(receiveCancel: {
+                    exp.fulfill()
+                })
+                .map {
+                    await test.end()
+                }
+                .toAsyncSequence()
+                .materialize()
+                .first()
+            }
+
+            await fulfillment(of: [exp], timeout: 0.01)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssertFalse(ended)
         }
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        task.cancel()
-
-        await fulfillment(of: [exp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssertFalse(ended)
     }
 }

@@ -65,8 +65,8 @@ extension AsyncSequence {
     /// Delays delivery of all output to the downstream receiver by a specified amount of time
     /// - Parameter interval: The amount of time to delay.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-    public func delay(for interval: Measurement<UnitDuration>, tolerance: Measurement<UnitDuration>? = nil) -> AsyncSequences.Delay<Self, SuspendingClock> {
-        delay(for: .nanoseconds(UInt(interval.converted(to: .nanoseconds).value)), tolerance: tolerance.flatMap { .nanoseconds(UInt($0.converted(to: .nanoseconds).value)) }, clock: SuspendingClock())
+    public func delay(for interval: Duration, tolerance: Duration) -> AsyncSequences.Delay<Self, SuspendingClock> {
+        delay(for: interval, tolerance: tolerance, clock: SuspendingClock())
     }
 
     /// Delays delivery of all output to the downstream receiver by a specified amount of time

@@ -6,6 +6,7 @@
 //
 
 import Afluent
+import ConcurrencyExtras
 import Foundation
 import XCTest
 
@@ -31,7 +32,7 @@ final class SingleValueSubjectTests: XCTestCase {
         let exp = expectation(description: "task executed")
         let subject = SingleValueSubject<Int>()
         subject.map {
-            exp.fulfill()
+            defer { exp.fulfill() }
             XCTAssertEqual($0, expected)
             return $0
         }.run() // task started
@@ -54,29 +55,28 @@ final class SingleValueSubjectTests: XCTestCase {
     }
 
     func testSingleValueSubjectEmittingErrorAfterTaskRuns() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
+        try await withMainSerialExecutor {
+            enum Err: Error { case e1 }
+            let exp = expectation(description: "task executed")
+            let subject = SingleValueSubject<Int>()
+            let unitOfWork = subject
+                .materialize()
+                .map {
+                    exp.fulfill()
+                    return $0
+                }
 
-        enum Err: Error { case e1 }
-        let exp = expectation(description: "task executed")
-        let subject = SingleValueSubject<Int>()
-        let unitOfWork = subject
-            .materialize()
-            .map {
-                exp.fulfill()
-                return $0
+            Task {
+                try subject.send(error: Err.e1)
             }
 
-        Task {
-            try await Task.sleep(nanoseconds: UInt64(Measurement<UnitDuration>.milliseconds(10).converted(to: .nanoseconds).value))
-            try subject.send(error: Err.e1)
-        }
+            let actualResult = try await unitOfWork.execute()
+            XCTAssertThrowsError(try actualResult.get()) { error in
+                XCTAssertEqual(error as? Err, .e1)
+            }
 
-        let actualResult = try await unitOfWork.execute()
-        XCTAssertThrowsError(try actualResult.get()) { error in
-            XCTAssertEqual(error as? Err, .e1)
+            await fulfillment(of: [exp], timeout: 0.01)
         }
-
-        await fulfillment(of: [exp], timeout: 0.01)
     }
 
     func testSingleValueSubjectOnlyEmitsValueOnce() async throws {
@@ -96,32 +96,31 @@ final class SingleValueSubjectTests: XCTestCase {
     }
 
     func testSingleValueSubjectOnlyEmitsErrorOnce() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
+        try await withMainSerialExecutor {
+            enum Err: Error { case e1 }
+            let exp = expectation(description: "task executed")
+            let exp1 = expectation(description: "Subject error sent")
+            let subject = SingleValueSubject<Int>()
+            let unitOfWork = subject
+                .materialize()
+                .map {
+                    exp.fulfill()
+                    return $0
+                }
 
-        enum Err: Error { case e1 }
-        let exp = expectation(description: "task executed")
-        let exp1 = expectation(description: "Subject error sent")
-        let subject = SingleValueSubject<Int>()
-        let unitOfWork = subject
-            .materialize()
-            .map {
-                exp.fulfill()
-                return $0
+            Task {
+                try subject.send(error: Err.e1)
+                XCTAssertThrowsError(try subject.send(error: Err.e1))
+                exp1.fulfill()
             }
 
-        Task {
-            try await Task.sleep(nanoseconds: UInt64(Measurement<UnitDuration>.milliseconds(10).converted(to: .nanoseconds).value))
-            try subject.send(error: Err.e1)
-            XCTAssertThrowsError(try subject.send(error: Err.e1))
-            exp1.fulfill()
-        }
+            let actualResult = try await unitOfWork.execute()
+            XCTAssertThrowsError(try actualResult.get()) { error in
+                XCTAssertEqual(error as? Err, .e1)
+            }
 
-        let actualResult = try await unitOfWork.execute()
-        XCTAssertThrowsError(try actualResult.get()) { error in
-            XCTAssertEqual(error as? Err, .e1)
+            await fulfillment(of: [exp, exp1], timeout: 0.01)
         }
-
-        await fulfillment(of: [exp, exp1], timeout: 0.01)
     }
 
     func testVoidSingleValueSubjectEmittingValueBeforeTaskRuns() async throws {

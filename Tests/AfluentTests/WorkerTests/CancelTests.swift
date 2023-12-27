@@ -6,6 +6,7 @@
 //
 
 import Afluent
+import ConcurrencyExtras
 import Foundation
 import XCTest
 
@@ -23,38 +24,37 @@ final class CancelTests: XCTestCase {
     }
 
     func testDeferredTaskCancelledBeforeItEnds() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
+                func start() { started = true }
+                func end() { ended = true }
+            }
+            let test = Test()
+
+            let exp = expectation(description: "thing happened")
+            var task: AnyCancellable?
+            task = DeferredTask {
+                await test.start()
+                task?.cancel()
+            }
+            .handleEvents(receiveCancel: {
+                exp.fulfill()
+            })
+            .map {
+                await test.end()
+            }
+            .subscribe()
+
+            await fulfillment(of: [exp], timeout: 0.01)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssertFalse(ended)
         }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let task = DeferredTask {
-            await test.start()
-            try await Task.sleep(for: .milliseconds(10))
-        }.map {
-            await test.end()
-            exp.fulfill()
-        }
-
-        task.run()
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        task.cancel()
-
-        await fulfillment(of: [exp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssertFalse(ended)
     }
 }

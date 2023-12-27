@@ -6,6 +6,7 @@
 //
 
 import Afluent
+import ConcurrencyExtras
 import Foundation
 import XCTest
 
@@ -54,29 +55,28 @@ final class SingleValueChannelTests: XCTestCase {
     }
 
     func testSingleValueSubjectEmittingErrorAfterTaskRuns() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
+        try await withMainSerialExecutor {
+            enum Err: Error { case e1 }
+            let exp = expectation(description: "task executed")
+            let subject = SingleValueChannel<Int>()
+            let unitOfWork = subject
+                .materialize()
+                .map {
+                    defer { exp.fulfill() }
+                    return $0
+                }
 
-        enum Err: Error { case e1 }
-        let exp = expectation(description: "task executed")
-        let subject = SingleValueChannel<Int>()
-        let unitOfWork = subject
-            .materialize()
-            .map {
-                exp.fulfill()
-                return $0
+            Task {
+                try await subject.send(error: Err.e1)
             }
 
-        Task {
-            try await Task.sleep(nanoseconds: UInt64(Measurement<UnitDuration>.milliseconds(10).converted(to: .nanoseconds).value))
-            try await subject.send(error: Err.e1)
-        }
+            let actualResult = try await unitOfWork.execute()
+            XCTAssertThrowsError(try actualResult.get()) { error in
+                XCTAssertEqual(error as? Err, .e1)
+            }
 
-        let actualResult = try await unitOfWork.execute()
-        XCTAssertThrowsError(try actualResult.get()) { error in
-            XCTAssertEqual(error as? Err, .e1)
+            await fulfillment(of: [exp], timeout: 0.01)
         }
-
-        await fulfillment(of: [exp], timeout: 0.01)
     }
 
     func testSingleValueSubjectOnlyEmitsValueOnce() async throws {
@@ -97,34 +97,33 @@ final class SingleValueChannelTests: XCTestCase {
     }
 
     func testSingleValueSubjectOnlyEmitsErrorOnce() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
+        try await withMainSerialExecutor {
+            enum Err: Error { case e1 }
+            let exp = expectation(description: "task executed")
+            let exp1 = expectation(description: "Subject error sent")
+            let subject = SingleValueChannel<Int>()
+            let unitOfWork = subject
+                .materialize()
+                .map {
+                    exp.fulfill()
+                    return $0
+                }
 
-        enum Err: Error { case e1 }
-        let exp = expectation(description: "task executed")
-        let exp1 = expectation(description: "Subject error sent")
-        let subject = SingleValueChannel<Int>()
-        let unitOfWork = subject
-            .materialize()
-            .map {
-                exp.fulfill()
-                return $0
+            Task {
+                try await subject.send(error: Err.e1)
+
+                let result = await Task { try await subject.send(error: Err.e1) }.result
+                XCTAssertThrowsError(try result.get())
+                exp1.fulfill()
             }
 
-        Task {
-            try await Task.sleep(nanoseconds: UInt64(Measurement<UnitDuration>.milliseconds(10).converted(to: .nanoseconds).value))
-            try await subject.send(error: Err.e1)
+            let actualResult = try await unitOfWork.execute()
+            XCTAssertThrowsError(try actualResult.get()) { error in
+                XCTAssertEqual(error as? Err, .e1)
+            }
 
-            let result = await Task { try await subject.send(error: Err.e1) }.result
-            XCTAssertThrowsError(try result.get())
-            exp1.fulfill()
+            await fulfillment(of: [exp, exp1], timeout: 0.01)
         }
-
-        let actualResult = try await unitOfWork.execute()
-        XCTAssertThrowsError(try actualResult.get()) { error in
-            XCTAssertEqual(error as? Err, .e1)
-        }
-
-        await fulfillment(of: [exp, exp1], timeout: 0.01)
     }
 
     func testVoidSingleValueSubjectEmittingValueBeforeTaskRuns() async throws {

@@ -6,6 +6,7 @@
 //
 
 import Afluent
+import ConcurrencyExtras
 import Foundation
 import XCTest
 
@@ -15,517 +16,529 @@ final class SubscriptionTests: XCTestCase {
     var collection = [AnyCancellable]()
 
     func testDeferredTaskCancelledBeforeItEnds() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        try await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
+                func start() { started = true }
+                func end() { ended = true }
+            }
+            let test = Test()
+
+            let exp = expectation(description: "thing happened")
+            exp.isInverted = true
+            let task = DeferredTask {
+                await test.start()
+                try await Task.sleep(for: .milliseconds(10))
+            }.map {
+                await test.end()
+                exp.fulfill()
+            }
+
+            let subscription = task.subscribe()
+
+            try await Task.sleep(for: .milliseconds(2))
+
+            subscription.cancel()
+
+            await fulfillment(of: [exp], timeout: 0.011)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssertFalse(ended)
         }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let task = DeferredTask {
-            await test.start()
-            try await Task.sleep(for: .milliseconds(10))
-        }.map {
-            await test.end()
-            exp.fulfill()
-        }
-
-        let subscription = task.subscribe()
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        subscription.cancel()
-
-        await fulfillment(of: [exp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssertFalse(ended)
     }
 
     func testDeferredTaskCancelledViaDeinitialization() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        try await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
+                func start() { started = true }
+                func end() { ended = true }
+            }
+            let test = Test()
+
+            let exp = expectation(description: "thing happened")
+            exp.isInverted = true
+            let task = DeferredTask {
+                await test.start()
+                try await Task.sleep(for: .milliseconds(10))
+            }.map {
+                await test.end()
+                exp.fulfill()
+            }
+
+            var subscription: AnyCancellable? = task.subscribe()
+            noop(subscription)
+
+            try await Task.sleep(for: .milliseconds(2))
+
+            subscription = nil
+
+            await fulfillment(of: [exp], timeout: 0.011)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssertFalse(ended)
         }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let task = DeferredTask {
-            await test.start()
-            try await Task.sleep(for: .milliseconds(10))
-        }.map {
-            await test.end()
-            exp.fulfill()
-        }
-
-        var subscription: AnyCancellable? = task.subscribe()
-        noop(subscription)
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        subscription = nil
-
-        await fulfillment(of: [exp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssertFalse(ended)
     }
 
     func testDeferredTaskCancelledViaDeinitialization_WhenStoredInSet() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        try await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
+                func start() { started = true }
+                func end() { ended = true }
+            }
+            let test = Test()
+
+            let exp = expectation(description: "thing happened")
+            exp.isInverted = true
+            let task = DeferredTask {
+                await test.start()
+                try await Task.sleep(for: .milliseconds(10))
+            }.map {
+                await test.end()
+                exp.fulfill()
+            }
+
+            task.subscribe()
+                .store(in: &set)
+
+            try await Task.sleep(for: .milliseconds(2))
+
+            set.removeAll()
+
+            await fulfillment(of: [exp], timeout: 0.011)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssertFalse(ended)
         }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let task = DeferredTask {
-            await test.start()
-            try await Task.sleep(for: .milliseconds(10))
-        }.map {
-            await test.end()
-            exp.fulfill()
-        }
-
-        task.subscribe()
-            .store(in: &set)
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        set.removeAll()
-
-        await fulfillment(of: [exp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssertFalse(ended)
     }
 
     func testDeferredTaskCancelledViaDeinitialization_WhenStoredInCollection() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        try await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
+                func start() { started = true }
+                func end() { ended = true }
+            }
+            let test = Test()
+
+            let exp = expectation(description: "thing happened")
+            exp.isInverted = true
+            let task = DeferredTask {
+                await test.start()
+                try await Task.sleep(for: .milliseconds(10))
+            }.map {
+                await test.end()
+                exp.fulfill()
+            }
+
+            task.subscribe()
+                .store(in: &collection)
+
+            try await Task.sleep(for: .milliseconds(2))
+
+            collection.removeAll()
+
+            await fulfillment(of: [exp], timeout: 0.011)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssertFalse(ended)
         }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let task = DeferredTask {
-            await test.start()
-            try await Task.sleep(for: .milliseconds(10))
-        }.map {
-            await test.end()
-            exp.fulfill()
-        }
-
-        task.subscribe()
-            .store(in: &collection)
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        collection.removeAll()
-
-        await fulfillment(of: [exp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssertFalse(ended)
     }
 
     // MARK: AsyncSequence
 
     func testAsyncSequenceCancelledBeforeItEnds() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        try await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
-        }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let sequence = AsyncStream<Void> { continuation in
-            Task {
-                await test.start()
-                try await Task.sleep(for: .milliseconds(10))
-                continuation.yield()
+                func start() { started = true }
+                func end() { ended = true }
             }
-        }.map {
-            await test.end()
-            exp.fulfill()
+            let test = Test()
+
+            let exp = expectation(description: "thing happened")
+            exp.isInverted = true
+            let sequence = AsyncStream<Void> { continuation in
+                Task {
+                    await test.start()
+                    try await Task.sleep(for: .milliseconds(10))
+                    continuation.yield()
+                }
+            }.map {
+                await test.end()
+                exp.fulfill()
+            }
+
+            let subscription = sequence.sink()
+
+            try await Task.sleep(for: .milliseconds(2))
+
+            subscription.cancel()
+
+            await fulfillment(of: [exp], timeout: 0.011)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssertFalse(ended)
         }
-
-        let subscription = sequence.sink()
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        subscription.cancel()
-
-        await fulfillment(of: [exp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssertFalse(ended)
     }
 
     func testAsyncSequenceCancelledViaDeinitialization() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        try await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
-        }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let sequence = AsyncStream<Void> { continuation in
-            Task {
-                await test.start()
-                try await Task.sleep(for: .milliseconds(10))
-                continuation.yield()
+                func start() { started = true }
+                func end() { ended = true }
             }
-        }.map {
-            await test.end()
-            exp.fulfill()
+            let test = Test()
+
+            let exp = expectation(description: "thing happened")
+            exp.isInverted = true
+            let sequence = AsyncStream<Void> { continuation in
+                Task {
+                    await test.start()
+                    try await Task.sleep(for: .milliseconds(10))
+                    continuation.yield()
+                }
+            }.map {
+                await test.end()
+                exp.fulfill()
+            }
+
+            var subscription: AnyCancellable? = sequence.sink()
+            noop(subscription)
+
+            try await Task.sleep(for: .milliseconds(2))
+
+            subscription = nil
+
+            await fulfillment(of: [exp], timeout: 0.011)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssertFalse(ended)
         }
-
-        var subscription: AnyCancellable? = sequence.sink()
-        noop(subscription)
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        subscription = nil
-
-        await fulfillment(of: [exp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssertFalse(ended)
     }
 
     func testAsyncSequenceCancelledViaDeinitialization_WhenStoredInSet() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        try await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
-        }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let sequence = AsyncStream<Void> { continuation in
-            Task {
-                await test.start()
-                try await Task.sleep(for: .milliseconds(10))
-                continuation.yield()
+                func start() { started = true }
+                func end() { ended = true }
             }
-        }.map {
-            await test.end()
-            exp.fulfill()
+            let test = Test()
+
+            let exp = expectation(description: "thing happened")
+            exp.isInverted = true
+            let sequence = AsyncStream<Void> { continuation in
+                Task {
+                    await test.start()
+                    try await Task.sleep(for: .milliseconds(10))
+                    continuation.yield()
+                }
+            }.map {
+                await test.end()
+                exp.fulfill()
+            }
+
+            sequence.sink()
+                .store(in: &set)
+
+            try await Task.sleep(for: .milliseconds(2))
+
+            set.removeAll()
+
+            await fulfillment(of: [exp], timeout: 0.011)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssertFalse(ended)
         }
-
-        sequence.sink()
-            .store(in: &set)
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        set.removeAll()
-
-        await fulfillment(of: [exp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssertFalse(ended)
     }
 
     func testAsyncSequenceCancelledViaDeinitialization_WhenStoredInCollection() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        try await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
-        }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let sequence = AsyncStream<Void> { continuation in
-            Task {
-                await test.start()
-                try await Task.sleep(for: .milliseconds(10))
-                continuation.yield()
+                func start() { started = true }
+                func end() { ended = true }
             }
-        }.map {
-            await test.end()
-            exp.fulfill()
+            let test = Test()
+
+            let exp = expectation(description: "thing happened")
+            exp.isInverted = true
+            let sequence = AsyncStream<Void> { continuation in
+                Task {
+                    await test.start()
+                    try await Task.sleep(for: .milliseconds(10))
+                    continuation.yield()
+                }
+            }.map {
+                await test.end()
+                exp.fulfill()
+            }
+
+            sequence.sink()
+                .store(in: &collection)
+
+            try await Task.sleep(for: .milliseconds(2))
+
+            collection.removeAll()
+
+            await fulfillment(of: [exp], timeout: 0.011)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssertFalse(ended)
         }
-
-        sequence.sink()
-            .store(in: &collection)
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        collection.removeAll()
-
-        await fulfillment(of: [exp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssertFalse(ended)
     }
 
     func testAsyncSequenceReceivesCompletionWhenCancelled() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        try await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
-        }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let sequence = AsyncThrowingStream<Void, Error> { continuation in
-            Task {
-                await test.start()
-                try await Task.sleep(for: .milliseconds(10))
-                continuation.yield()
+                func start() { started = true }
+                func end() { ended = true }
             }
-        }.map {
-            await test.end()
-            exp.fulfill()
-        }
+            let test = Test()
 
-        let completedChannel = SingleValueChannel<Void>()
-        let outputExp = expectation(description: "output received")
-        outputExp.isInverted = true
-
-        let subscription = sequence.sink { completion in
-            switch completion {
-                case .finished: break
-                case .failure(let error): XCTFail("Unexpected error \(error)")
+            let exp = expectation(description: "thing happened")
+            exp.isInverted = true
+            let sequence = AsyncThrowingStream<Void, Error> { continuation in
+                Task {
+                    await test.start()
+                    try await Task.sleep(for: .milliseconds(10))
+                    continuation.yield()
+                }
+            }.map {
+                await test.end()
+                exp.fulfill()
             }
-            try? await completedChannel.send()
-        } receiveOutput: {
-            outputExp.fulfill()
+
+            let completedChannel = SingleValueChannel<Void>()
+            let outputExp = expectation(description: "output received")
+            outputExp.isInverted = true
+
+            let subscription = sequence.sink { completion in
+                switch completion {
+                    case .finished: break
+                    case .failure(let error): XCTFail("Unexpected error \(error)")
+                }
+                try? await completedChannel.send()
+            } receiveOutput: {
+                outputExp.fulfill()
+            }
+
+            try await Task.sleep(for: .milliseconds(2))
+
+            subscription.cancel()
+
+            try await completedChannel.execute()
+
+            await fulfillment(of: [exp, outputExp], timeout: 0.011)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssertFalse(ended)
         }
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        subscription.cancel()
-
-        try await completedChannel.execute()
-
-        await fulfillment(of: [exp, outputExp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssertFalse(ended)
     }
 
     func testAsyncSequenceReceivesCompletionWhenStreamCompletes() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        try await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
-        }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let sequence = AsyncThrowingStream<Void, Error> { continuation in
-            Task {
-                await test.start()
-                continuation.finish()
+                func start() { started = true }
+                func end() { ended = true }
             }
-        }.map {
-            await test.end()
-            exp.fulfill()
-        }
+            let test = Test()
 
-        let completedChannel = SingleValueChannel<Void>()
-        let outputExp = expectation(description: "output received")
-        outputExp.isInverted = true
-
-        let subscription = sequence.sink { completion in
-            switch completion {
-                case .finished: break
-                case .failure(let error): XCTFail("Unexpected error \(error)")
+            let exp = expectation(description: "thing happened")
+            exp.isInverted = true
+            let sequence = AsyncThrowingStream<Void, Error> { continuation in
+                Task {
+                    await test.start()
+                    continuation.finish()
+                }
+            }.map {
+                await test.end()
+                exp.fulfill()
             }
-            try? await completedChannel.send()
-        } receiveOutput: {
-            outputExp.fulfill()
+
+            let completedChannel = SingleValueChannel<Void>()
+            let outputExp = expectation(description: "output received")
+            outputExp.isInverted = true
+
+            let subscription = sequence.sink { completion in
+                switch completion {
+                    case .finished: break
+                    case .failure(let error): XCTFail("Unexpected error \(error)")
+                }
+                try? await completedChannel.send()
+            } receiveOutput: {
+                outputExp.fulfill()
+            }
+            noop(subscription)
+
+            try await completedChannel.execute()
+
+            await fulfillment(of: [exp, outputExp], timeout: 0.011)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssertFalse(ended)
         }
-        noop(subscription)
-
-        try await completedChannel.execute()
-
-        await fulfillment(of: [exp, outputExp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssertFalse(ended)
     }
 
     func testAsyncSequenceReceivesOutputThenCompletionWhenCancelled() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        try await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
-        }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        let sequence = AsyncStream<Void> { continuation in
-            Task {
-                await test.start()
-                continuation.yield()
+                func start() { started = true }
+                func end() { ended = true }
             }
-        }.map {
-            await test.end()
-            exp.fulfill()
-        }
+            let test = Test()
 
-        let completedChannel = SingleValueChannel<Void>()
-        let outputExp = expectation(description: "output received")
-
-        let subscription = sequence.sink { completion in
-            switch completion {
-                case .finished: break
-                case .failure(let error): XCTFail("Unexpected error \(error)")
+            let exp = expectation(description: "thing happened")
+            let sequence = AsyncStream<Void> { continuation in
+                Task {
+                    await test.start()
+                    continuation.yield()
+                }
+            }.map {
+                await test.end()
+                exp.fulfill()
             }
-            try? await completedChannel.send()
-        } receiveOutput: {
-            outputExp.fulfill()
+
+            let completedChannel = SingleValueChannel<Void>()
+            let outputExp = expectation(description: "output received")
+
+            let subscription = sequence.sink { completion in
+                switch completion {
+                    case .finished: break
+                    case .failure(let error): XCTFail("Unexpected error \(error)")
+                }
+                try? await completedChannel.send()
+            } receiveOutput: {
+                outputExp.fulfill()
+            }
+
+            try await Task.sleep(for: .milliseconds(2))
+
+            subscription.cancel()
+
+            try await completedChannel.execute()
+
+            await fulfillment(of: [exp, outputExp], timeout: 0.011)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssert(ended)
         }
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        subscription.cancel()
-
-        try await completedChannel.execute()
-
-        await fulfillment(of: [exp, outputExp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssert(ended)
     }
 
     func testAsyncSequenceReceivesErrorInCompletion() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var started = false
-            var ended = false
+        try await withMainSerialExecutor {
+            actor Test {
+                var started = false
+                var ended = false
 
-            func start() { started = true }
-            func end() { ended = true }
-        }
-        let test = Test()
-
-        enum Err: Error, Equatable { case e1 }
-
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let sequence = AsyncThrowingStream<Void, Error> { continuation in
-            Task {
-                await test.start()
-                continuation.yield(with: .failure(Err.e1))
+                func start() { started = true }
+                func end() { ended = true }
             }
-        }.map {
-            await test.end()
-            exp.fulfill()
-        }
+            let test = Test()
 
-        let completedChannel = SingleValueChannel<Void>()
-        let outputExp = expectation(description: "output received")
-        outputExp.isInverted = true
+            enum Err: Error, Equatable { case e1 }
 
-        let subscription = sequence.sink { completion in
-            switch completion {
-                case .finished: XCTFail("Unexpected normal finish")
-                case .failure(let error): XCTAssertEqual(error as? Err, .e1)
+            let exp = expectation(description: "thing happened")
+            exp.isInverted = true
+            let sequence = AsyncThrowingStream<Void, Error> { continuation in
+                Task {
+                    await test.start()
+                    continuation.yield(with: .failure(Err.e1))
+                }
+            }.map {
+                await test.end()
+                exp.fulfill()
             }
-            try? await completedChannel.send()
-        } receiveOutput: {
-            outputExp.fulfill()
+
+            let completedChannel = SingleValueChannel<Void>()
+            let outputExp = expectation(description: "output received")
+            outputExp.isInverted = true
+
+            let subscription = sequence.sink { completion in
+                switch completion {
+                    case .finished: XCTFail("Unexpected normal finish")
+                    case .failure(let error): XCTAssertEqual(error as? Err, .e1)
+                }
+                try? await completedChannel.send()
+            } receiveOutput: {
+                outputExp.fulfill()
+            }
+
+            try await Task.sleep(for: .milliseconds(2))
+
+            subscription.cancel()
+
+            try await completedChannel.execute()
+
+            await fulfillment(of: [exp, outputExp], timeout: 0.011)
+
+            let started = await test.started
+            let ended = await test.ended
+
+            XCTAssert(started)
+            XCTAssertFalse(ended)
         }
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        subscription.cancel()
-
-        try await completedChannel.execute()
-
-        await fulfillment(of: [exp, outputExp], timeout: 0.011)
-
-        let started = await test.started
-        let ended = await test.ended
-
-        XCTAssert(started)
-        XCTAssertFalse(ended)
     }
 }
 

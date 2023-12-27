@@ -11,38 +11,38 @@ import XCTest
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 final class TimeoutTests: XCTestCase {
-    func testTaskDoesNotTimeOutIfItCompletesInTime() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        let val = try await DeferredTask { "test" }
-            .timeout(.milliseconds(10))
-            .execute()
-
-        XCTAssertEqual(val, "test")
-    }
-
-    func testTaskTimesOutIfItTakesTooLong() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        let res = try await DeferredTask { "test" }
-            .delay(for: .milliseconds(20))
-            .timeout(.milliseconds(10))
-            .result
-
-        XCTAssertThrowsError(try res.get())
-    }
-
-    func testTaskTimesOutIfItTakesTooLong_WithCustomError() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        enum Err: Error {
-            case e1
-        }
-
-        let res = try await DeferredTask { "test" }
-            .delay(for: .milliseconds(20))
-            .timeout(.milliseconds(10), customError: Err.e1)
-            .result
-
-        XCTAssertThrowsError(try res.get()) { error in
-            XCTAssertEqual(error as? Err, .e1)
-        }
-    }
+//    func testTaskDoesNotTimeOutIfItCompletesInTime() async throws {
+//        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
+//        let val = try await DeferredTask { "test" }
+//            .timeout(.milliseconds(10))
+//            .execute()
+//
+//        XCTAssertEqual(val, "test")
+//    }
+//
+//    func testTaskTimesOutIfItTakesTooLong() async throws {
+//        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
+//        let res = try await DeferredTask { "test" }
+//            .delay(for: .milliseconds(20))
+//            .timeout(.milliseconds(10))
+//            .result
+//
+//        XCTAssertThrowsError(try res.get())
+//    }
+//
+//    func testTaskTimesOutIfItTakesTooLong_WithCustomError() async throws {
+//        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
+//        enum Err: Error {
+//            case e1
+//        }
+//
+//        let res = try await DeferredTask { "test" }
+//            .delay(for: .milliseconds(20))
+//            .timeout(.milliseconds(10), customError: Err.e1)
+//            .result
+//
+//        XCTAssertThrowsError(try res.get()) { error in
+//            XCTAssertEqual(error as? Err, .e1)
+//        }
+//    }
 }

@@ -6,6 +6,7 @@
 //
 
 import Afluent
+import ConcurrencyExtras
 import Foundation
 import XCTest
 
@@ -146,36 +147,37 @@ final class HandleEventsSequenceTests: XCTestCase {
     }
 
     func testHandleCancel() async throws {
-        try XCTSkipIf(ProcessInfo.processInfo.environment["CI"] == "true")
-        actor Test {
-            var canceled = false
+        try await withMainSerialExecutor {
+            actor Test {
+                var canceled = false
 
-            func cancel() { canceled = true }
-        }
-        let test = Test()
-
-        let exp = expectation(description: "thing happened")
-        let task = Task {
-            try await DeferredTask {
-                try await Task.sleep(for: .milliseconds(10))
+                func cancel() { canceled = true }
             }
-            .toAsyncSequence()
-            .handleEvents(receiveCancel: {
-                await test.cancel()
-                exp.fulfill()
-            })
-            .first()
+            let test = Test()
+
+            let exp = expectation(description: "thing happened")
+            let task = Task {
+                try await DeferredTask {
+                    try await Task.sleep(for: .milliseconds(10))
+                }
+                .toAsyncSequence()
+                .handleEvents(receiveCancel: {
+                    await test.cancel()
+                    exp.fulfill()
+                })
+                .first()
+            }
+
+            try await Task.sleep(for: .milliseconds(2))
+
+            task.cancel()
+
+            await fulfillment(of: [exp], timeout: 1)
+
+            let canceled = await test.canceled
+
+            XCTAssert(canceled)
         }
-
-        try await Task.sleep(for: .milliseconds(2))
-
-        task.cancel()
-
-        await fulfillment(of: [exp], timeout: 1)
-
-        let canceled = await test.canceled
-
-        XCTAssert(canceled)
     }
 }
 

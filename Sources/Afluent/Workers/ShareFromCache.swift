@@ -15,13 +15,15 @@ extension AsynchronousUnitOfWork {
         hasher.combine(column)
         let key = hasher.finalize()
         switch strategy {
-            case .cacheUntilCompletionOrCancellation:
-                return cache.retrieveOrCreate(unitOfWork: handleEvents(receiveOutput: { [weak cache] _ in
-                    cache?.clearAsynchronousUnitOfWork(withKey: key)
-                }, receiveCancel: { [weak cache] in
-                    cache?.clearAsynchronousUnitOfWork(withKey: key)
-                }).share(),
-                keyedBy: key)
+        case .cacheUntilCompletionOrCancellation:
+            return cache.retrieveOrCreate(unitOfWork: handleEvents(receiveOutput: { [weak cache] _ in
+                cache?.clearAsynchronousUnitOfWork(withKey: key)
+            }, receiveError: { [weak cache] _ in
+                cache?.clearAsynchronousUnitOfWork(withKey: key)
+            }, receiveCancel: { [weak cache] in
+                cache?.clearAsynchronousUnitOfWork(withKey: key)
+            }).share(),
+                                          keyedBy: key)
         }
     }
 

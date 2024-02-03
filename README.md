@@ -1,6 +1,8 @@
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/Tyler-keith-thompson/Afluent/trunk.yml) ![GitHub](https://img.shields.io/github/license/Tyler-keith-thompson/Afluent) [![swift-version](https://img.shields.io/badge/swift-5.8-brightgreen.svg)](https://github.com/apple/swift) [![xcode-version](https://img.shields.io/badge/xcode-14+-brightgreen)](https://developer.apple.com/xcode/)
 
 # Afluent
+![AfluentLogo](https://github.com/Tyler-Keith-Thompson/Afluent/assets/33705774/ba1b24b2-cd70-4c9c-824a-e89ee89348a8)
+
 
 [Click here for documentation](https://tyler-keith-thompson.github.io/Afluent/documentation/afluent/)
 

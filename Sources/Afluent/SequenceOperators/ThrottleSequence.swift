@@ -68,7 +68,6 @@ extension AsyncSequences {
                         
                         if timeSinceFirstInstant >= interval {
                             defer {
-                                self.firstIntervalInstant = nil
                                 firstElement = nil
                             }
                             self.firstIntervalInstant = instant

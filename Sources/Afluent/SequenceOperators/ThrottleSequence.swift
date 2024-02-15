@@ -23,25 +23,22 @@ extension AsyncSequences {
             let interval: C.Duration
             var iterator: AsyncThrowingStream<(Instant, Element), Error>.Iterator
             let clock: C
-            let latest: Bool
             
             private var firstIntervalInstant: C.Instant?
-            private var firstElement: Element?
-            private var lastElement: Element?
             
             init(upstream: Upstream,
                  interval: C.Duration,
-                 clock: C,
-                 latest: Bool) {
+                 clock: C) {
                 self.upstream = upstream
                 self.interval = interval
                 self.clock = clock
-                self.latest = latest
+                
                 let stream = AsyncThrowingStream<(Instant, Element), Error> { continuation in
                     Task {
                         do {
                             for try await el in upstream {
-                                continuation.yield((clock.now, el))
+                                let time = clock.now
+                                continuation.yield((time, el))
                             }
                             continuation.finish()
                         } catch {
@@ -57,23 +54,11 @@ extension AsyncSequences {
                 
                 while let (instant, element) = try await iterator.next() {
                     
-                    if let firstIntervalInstant {
-                        
-                        // Set first element in interval
-                        if firstElement == nil {
-                            firstElement = element
-                        }
-                        
-                        // Update last element in interval
-                        lastElement = element
-                        
-                        let timeSinceFirstInstant = firstIntervalInstant.duration(to: clock.now)
-                        
+                     if let firstIntervalInstant {
+                        let timeSinceFirstInstant = firstIntervalInstant.duration(to: instant)
                         if timeSinceFirstInstant >= interval {
-                            // Start new interval and reset first element
                             self.firstIntervalInstant = instant
-                            firstElement = nil
-                            return latest ? lastElement : firstElement
+                            return element
                         } else {
                             continue
                         }
@@ -81,14 +66,14 @@ extension AsyncSequences {
                         // return first element in sequence and start throttle invervals
                         firstIntervalInstant = instant
                         return element
-                    }
+                   }
                 }
                 return nil
             }
         }
         
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstream: upstream, interval: interval, clock: clock, latest: latest)
+            AsyncIterator(upstream: upstream, interval: interval, clock: clock)
         }
     }
 }

@@ -23,6 +23,11 @@ final class ThrottleSequenceTests: XCTestCase {
                 continuation.yield(3)
                 continuation.yield(4)
                 continuation.yield(5)
+                continuation.yield(6)
+                continuation.yield(7)
+                continuation.yield(8)
+                continuation.yield(9)
+                continuation.yield(10)
                 continuation.finish()
             }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
             
@@ -33,7 +38,7 @@ final class ThrottleSequenceTests: XCTestCase {
                     elements.append(element)
                 }
                 
-                XCTAssertEqual(elements, [5])
+                XCTAssertEqual(elements, [10])
             }
             
             await testClock.run()
@@ -51,6 +56,11 @@ final class ThrottleSequenceTests: XCTestCase {
                 continuation.yield(3)
                 continuation.yield(4)
                 continuation.yield(5)
+                continuation.yield(6)
+                continuation.yield(7)
+                continuation.yield(8)
+                continuation.yield(9)
+                continuation.yield(10)
                 continuation.finish()
             }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
             
@@ -96,6 +106,31 @@ final class ThrottleSequenceTests: XCTestCase {
                     .handleEvents(receiveOutput: { _ in
                         await testClock.advance(by: .milliseconds(10))
                         continuation.yield(5)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(6)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(7)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(8)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(9)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(10)
                         continuation.finish()
                     })
                     .run()
@@ -108,7 +143,7 @@ final class ThrottleSequenceTests: XCTestCase {
                     elements.append(element)
                 }
                 
-                XCTAssertEqual(elements, [1,2,3,4,5])
+                XCTAssertEqual(elements, [1,2,3,4,5,6,7,8,9,10])
             }
             
             await testClock.run()
@@ -142,6 +177,31 @@ final class ThrottleSequenceTests: XCTestCase {
                     .handleEvents(receiveOutput: { _ in
                         await testClock.advance(by: .milliseconds(10))
                         continuation.yield(5)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(6)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(7)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(8)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(9)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(10)
                         continuation.finish()
                     })
                     .run()
@@ -154,7 +214,7 @@ final class ThrottleSequenceTests: XCTestCase {
                     elements.append(element)
                 }
                 
-                XCTAssertEqual(elements, [1,2,3,4,5])
+                XCTAssertEqual(elements, [1,2,3,4,5,6,7,8,9,10])
             }
             
             await testClock.run()
@@ -188,6 +248,31 @@ final class ThrottleSequenceTests: XCTestCase {
                     .handleEvents(receiveOutput: { _ in
                         await testClock.advance(by: .milliseconds(10))
                         continuation.yield(5)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(6)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(7)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(8)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(9)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(10)
                         continuation.finish()
                     })
                     .run()
@@ -200,7 +285,7 @@ final class ThrottleSequenceTests: XCTestCase {
                     elements.append(element)
                 }
                 
-                XCTAssertEqual(elements, [1,2,4,5])
+                XCTAssertEqual(elements, [1,2,4,6,8,10])
             }
             
             await testClock.run()
@@ -216,28 +301,53 @@ final class ThrottleSequenceTests: XCTestCase {
             let stream = AsyncStream { continuation in
                 continuation.yield(1)
                 DeferredTask { () }
-                .delay(for: .milliseconds(10))
-                .handleEvents(receiveOutput: { _ in
-                    await testClock.advance(by: .milliseconds(10))
-                    continuation.yield(2)
-                })
-                .delay(for: .milliseconds(10))
-                .handleEvents(receiveOutput: { _ in
-                    await testClock.advance(by: .milliseconds(10))
-                    continuation.yield(3)
-                })
-                .delay(for: .milliseconds(10))
-                .handleEvents(receiveOutput: { _ in
-                    await testClock.advance(by: .milliseconds(10))
-                    continuation.yield(4)
-                })
-                .delay(for: .milliseconds(10))
-                .handleEvents(receiveOutput: { _ in
-                    await testClock.advance(by: .milliseconds(10))
-                    continuation.yield(5)
-                    continuation.finish()
-                })
-                .run()
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(2)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(3)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(4)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(5)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(6)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(7)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(8)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(9)
+                    })
+                    .delay(for: .milliseconds(10))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(10)
+                        continuation.finish()
+                    })
+                    .run()
             }.throttle(for: .milliseconds(20), clock: testClock, latest: false)
             
             let task = Task {
@@ -247,7 +357,7 @@ final class ThrottleSequenceTests: XCTestCase {
                     elements.append(element)
                 }
                 
-                XCTAssertEqual(elements, [1,2,3,5])
+                XCTAssertEqual(elements, [1,2,3,5,7,9])
             }
             
             await testClock.run()

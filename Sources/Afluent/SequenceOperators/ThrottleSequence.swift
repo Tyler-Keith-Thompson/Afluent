@@ -24,22 +24,18 @@ extension AsyncSequences {
             
             init(firstElement: Element? = nil, 
                  lastElement: Element? = nil,
-                 lastElementInstant: C.Instant? = nil,
                  intervalStartInstant: C.Instant? = nil) {
                 self.firstElement = firstElement
                 self.lastElement = lastElement
-                self.lastElementInstant = lastElementInstant
                 self.intervalStartInstant = intervalStartInstant
             }
         
-            func updateFirstElement(_ element: Element?, instant: C.Instant) {
+            func updateFirstElement(_ element: Element?) {
                 firstElement = element
-                lastElementInstant = instant
             }
             
-            func updateLastElement(_ element: Element?, instant: C.Instant) {
+            func updateLastElement(_ element: Element?) {
                 lastElement = element
-                lastElementInstant = instant
             }
             
             func updateIntervalStartInstant(_ instant: C.Instant) {
@@ -65,37 +61,26 @@ extension AsyncSequences {
                 self.clock = clock
                 self.latest = latest
                 let stream = AsyncThrowingStream<(Element?, Element?), Error> { continuation in
-                    
-                    // Need a task to run and save the first and last element of all elements from iterators.
-                    
-                    // Need a task to listen for the current time interval.
-                    
-                    
                     let intervalEvents = IntervalEvents(firstElement: nil, lastElement: nil, intervalStartInstant: clock.now)
                     
                     let intervalTask = DeferredTask {
-                        Swift.print("RUN")
-                       
-                            if let intervalStartInstant = await intervalEvents.intervalStartInstant {
-                                let firstElement = await intervalEvents.firstElement
-                                let lastElement = await intervalEvents.lastElement
-                                
-                                let intervalEndInstant = intervalStartInstant.advanced(by: interval)
-                                Swift.print("SLEEP: \(intervalEndInstant)")
-                                
-                                try await clock.sleep(until: intervalEndInstant, tolerance: nil)
-                                
-                                Swift.print("YIELD")
-                                Swift.print("FIRST: \(firstElement)")
-                                Swift.print("LAST: \(lastElement)")
-                                continuation.yield((firstElement, lastElement))
-                                await intervalEvents.updateFirstElement(nil, instant: clock.now)
-                                //await intervalEvents.updateLastElement(nil, instant: clock.now)
-                                
-                                await intervalEvents.updateIntervalStartInstant(clock.now)
+                        if let intervalStartInstant = await intervalEvents.intervalStartInstant {
+                            let firstElement = await intervalEvents.firstElement
+                            let lastElement = await intervalEvents.lastElement
+                            
+                            // I think there is a race condition because if you don't use different sleep methods for latest, the updated lastElement won't return after being updated a few milliseconds before.  Instead the previous element will return.  We can get around this for now by using 2 different sleep methods.
+                            if latest {
+                                try await clock.sleep(for: interval, tolerance: nil)
                             } else {
-                                Swift.print("NO START!!")
+                                let intervalEndInstant = intervalStartInstant.advanced(by: interval)
+                                try await clock.sleep(until: intervalEndInstant, tolerance: nil)
                             }
+                            
+                            continuation.yield((firstElement, lastElement))
+                            await intervalEvents.updateFirstElement(nil)
+                            
+                            await intervalEvents.updateIntervalStartInstant(clock.now)
+                        }
                     }
                     
                     Task {
@@ -103,17 +88,15 @@ extension AsyncSequences {
                             for try await el in upstream {
                                 if await intervalEvents.firstElement == nil {
                                     intervalTask.run()
-                                    await intervalEvents.updateFirstElement(el, instant: clock.now)
-                                    Swift.print("UPDATE First: \(el)")
+                                    await intervalEvents.updateFirstElement(el)
                                 }
-                                await intervalEvents.updateLastElement(el, instant: clock.now)
-                                Swift.print("UPDATE Last: \(el)")
+                                await intervalEvents.updateLastElement(el)
                             }
                             await continuation.yield((intervalEvents.firstElement, intervalEvents.lastElement))
-                            Swift.print("----FINISH----")
                             intervalTask.cancel()
                             continuation.finish()
                         } catch {
+                            intervalTask.cancel()
                             continuation.finish(throwing: error)
                         }
                     }

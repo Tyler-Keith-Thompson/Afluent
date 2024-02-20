@@ -117,57 +117,37 @@ final class ThrottleSequenceTests: XCTestCase {
             let testClock = TestClock()
             let stream = AsyncStream { continuation in
                 DeferredTask { () }
-                    .delay(for: .milliseconds(100))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(100)) {
                         continuation.yield(1)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(2)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(3)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(4)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(5)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(6)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(7)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(8)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(9)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(10)
                         continuation.finish()
-                    })
+                    }
                     .run()
             }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
             
@@ -193,52 +173,34 @@ final class ThrottleSequenceTests: XCTestCase {
             let stream = AsyncStream { continuation in
                 continuation.yield(1)
                 DeferredTask { () }
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(2)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(3)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(4)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(5)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(6)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(7)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(8)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(9)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(10)
                         continuation.finish()
-                    })
+                    }
                     .run()
             }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
             
@@ -264,52 +226,34 @@ final class ThrottleSequenceTests: XCTestCase {
             let stream = AsyncStream { continuation in
                 continuation.yield(1)
                 DeferredTask { () }
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(2)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(3)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(4)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(5)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(6)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(7)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(8)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(9)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(10)
                         continuation.finish()
-                    })
+                    }
                     .run()
             }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
             
@@ -335,52 +279,34 @@ final class ThrottleSequenceTests: XCTestCase {
             let stream = AsyncStream { continuation in
                 continuation.yield(1)
                 DeferredTask { () }
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(2)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(3)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(4)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(5)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(6)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(7)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(8)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(9)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(10)
                         continuation.finish()
-                    })
+                    }
                     .run()
             }.throttle(for: .milliseconds(20), clock: testClock, latest: true)
             
@@ -407,52 +333,34 @@ final class ThrottleSequenceTests: XCTestCase {
             let stream = AsyncStream { continuation in
                 continuation.yield(1)
                 DeferredTask { () }
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(2)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(3)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(4)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(5)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(6)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(7)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(8)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(9)
-                    })
-                    .delay(for: .milliseconds(10))
-                    .handleEvents(receiveOutput: { _ in
-                        await testClock.advance(by: .milliseconds(10))
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(10)
                         continuation.finish()
-                    })
+                    }
                     .run()
             }.throttle(for: .milliseconds(20), clock: testClock, latest: false)
             
@@ -472,4 +380,20 @@ final class ThrottleSequenceTests: XCTestCase {
             
         }
     }
+}
+
+@available(iOS 16.0, *)
+private extension AsynchronousUnitOfWork {
+    
+    func delayAndAdvance<D: DurationProtocol & Hashable>(clock: TestClock<D>, delay: Duration, completion: @escaping () -> Void) -> any AsynchronousUnitOfWork {
+        self.delay(for: delay)
+            .handleEvents(receiveOutput: { _ in
+                guard let advance = delay as? D else {
+                    return
+                }
+                await clock.advance(by: advance)
+                completion()
+            })
+    }
+    
 }

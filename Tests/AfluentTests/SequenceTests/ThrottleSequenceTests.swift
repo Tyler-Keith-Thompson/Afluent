@@ -14,6 +14,36 @@ import ConcurrencyExtras
 @available(iOS 16.0, *)
 final class ThrottleSequenceTests: XCTestCase {
     
+    func testThrottleDoesNotThrottleUntilFirstValueIsReceived() async throws {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let stream = AsyncStream { continuation in
+                DeferredTask { () }
+                    .delay(for: .milliseconds(100))
+                    .handleEvents(receiveOutput: { _ in
+                        await testClock.advance(by: .milliseconds(10))
+                        continuation.yield(1)
+                        continuation.finish()
+                    })
+                    .run()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
+            
+            let task = Task {
+                var elements = [Int]()
+                
+                for try await element in stream {
+                    elements.append(element)
+                }
+                
+                XCTAssertEqual(elements, [1])
+            }
+            
+            await testClock.run()
+            
+            _ = await task.result
+        }
+    }
+    
     func testThrottleDropsAllElementsExceptLast_whenElementsAreReceivedAllAtOnce_andLatestEqualTrue() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()

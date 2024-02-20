@@ -14,6 +14,10 @@ import ConcurrencyExtras
 @available(iOS 16.0, *)
 final class ThrottleSequenceTests: XCTestCase {
     
+    enum TestError: Error {
+        case upstreamError
+    }
+    
     func testThrottleDropsAllElementsExceptLast_whenElementsAreReceivedAllAtOnce_andLatestEqualTrue() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
@@ -72,6 +76,34 @@ final class ThrottleSequenceTests: XCTestCase {
                 }
                 
                 XCTAssertEqual(elements, [1])
+            }
+            
+            await testClock.run()
+            
+            _ = await task.result
+        }
+    }
+    
+    func testThrottleHandlesErrors() async {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let stream = AsyncThrowingStream { continuation in
+                continuation.yield(1)
+                continuation.yield(2)
+                continuation.yield(3)
+                continuation.yield(with: .failure(TestError.upstreamError))
+                continuation.finish()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
+            
+            let task = Task {
+                var elements = [Int]()
+                do {
+                    for try await element in stream {
+                        elements.append(element)
+                    }
+                } catch {
+                    XCTAssertNotNil(error as? TestError)
+                }
             }
             
             await testClock.run()

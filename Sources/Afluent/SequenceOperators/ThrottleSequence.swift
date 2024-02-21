@@ -17,18 +17,25 @@ extension AsyncSequences {
         let latest: Bool
         
         actor IntervalEvents {
+            var hasSeenFirstElement: Bool
             var firstElement: Element?
             var latestElement: Element?
             var startInstant: C.Instant?
             
-            init(firstElement: Element? = nil, 
+            init(hasSeenFirstElement: Bool = false,
+                 firstElement: Element? = nil,
                  latestElement: Element? = nil,
                  startInstant: C.Instant? = nil) {
+                self.hasSeenFirstElement = hasSeenFirstElement
                 self.firstElement = firstElement
                 self.latestElement = latestElement
                 self.startInstant = startInstant
             }
         
+            func updateHasSeenFirstElement() {
+                hasSeenFirstElement = true
+            }
+            
             func updateFirst(element: Element?) {
                 firstElement = element
             }
@@ -85,6 +92,12 @@ extension AsyncSequences {
                     Task {
                         do {
                             for try await el in upstream {
+                                if await !intervalEvents.hasSeenFirstElement {
+                                    continuation.yield((el, el))
+                                    await intervalEvents.updateHasSeenFirstElement()
+                                    continue
+                                }
+                                
                                 if await intervalEvents.firstElement == nil {
                                     intervalTask.run()
                                     await intervalEvents.updateFirst(element: el)

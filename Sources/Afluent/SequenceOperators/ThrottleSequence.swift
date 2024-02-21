@@ -18,15 +18,18 @@ extension AsyncSequences {
         
         actor IntervalEvents {
             var hasSeenFirstElement: Bool
+            var hasCompletedFirstInterval: Bool
             var firstElement: Element?
             var latestElement: Element?
             var startInstant: C.Instant?
             
             init(hasSeenFirstElement: Bool = false,
+                 hasCompletedFirstInterval: Bool = false,
                  firstElement: Element? = nil,
                  latestElement: Element? = nil,
                  startInstant: C.Instant? = nil) {
                 self.hasSeenFirstElement = hasSeenFirstElement
+                self.hasCompletedFirstInterval = hasCompletedFirstInterval
                 self.firstElement = firstElement
                 self.latestElement = latestElement
                 self.startInstant = startInstant
@@ -34,6 +37,10 @@ extension AsyncSequences {
         
             func updateHasSeenFirstElement() {
                 hasSeenFirstElement = true
+            }
+            
+            func updateHasCompletedFirstInterval() {
+                hasCompletedFirstInterval = true
             }
             
             func updateFirst(element: Element?) {
@@ -67,25 +74,26 @@ extension AsyncSequences {
                 self.clock = clock
                 self.latest = latest
                 let stream = AsyncThrowingStream<(Element?, Element?), Error> { continuation in
-                    let intervalEvents = IntervalEvents(startInstant: clock.now)
+                    
+                    let intervalEvents = IntervalEvents()
                     
                     let intervalTask = DeferredTask {
                         if let intervalStartInstant = await intervalEvents.startInstant {
+                          
+                            let intervalEndInstant = intervalStartInstant.advanced(by: interval)
+                        
+                            try await clock.sleep(until: intervalEndInstant, tolerance: nil)
+                            
                             let firstElement = await intervalEvents.firstElement
                             let latestElement = await intervalEvents.latestElement
                             
-                            // I think there is a race condition because if you don't use different sleep methods for latest, the updated lastElement won't return after being updated a few milliseconds before.  Instead the previous element will return.  We can get around this for now by using 2 different sleep methods.
-                            if latest {
-                                try await clock.sleep(for: interval, tolerance: nil)
-                            } else {
-                                let intervalEndInstant = intervalStartInstant.advanced(by: interval)
-                                try await clock.sleep(until: intervalEndInstant, tolerance: nil)
+                            continuation.yield((firstElement, latestElement))
+                            
+                            if await intervalEvents.hasCompletedFirstInterval {
+                                await intervalEvents.updateHasCompletedFirstInterval()
                             }
                             
-                            continuation.yield((firstElement, latestElement))
                             await intervalEvents.updateFirst(element: nil)
-                            
-                            await intervalEvents.updateStart(instant: clock.now)
                         }
                     }
                     
@@ -93,18 +101,23 @@ extension AsyncSequences {
                         do {
                             for try await el in upstream {
                                 if await !intervalEvents.hasSeenFirstElement {
+                                        
                                     continuation.yield((el, el))
                                     await intervalEvents.updateHasSeenFirstElement()
                                     continue
                                 }
                                 
                                 if await intervalEvents.firstElement == nil {
-                                    intervalTask.run()
+                                    await intervalEvents.updateStart(instant: clock.now)
                                     await intervalEvents.updateFirst(element: el)
+                                    
+                                    intervalTask.run()
                                 }
+                                
                                 await intervalEvents.updateLatest(element: el)
                             }
                             await continuation.yield((intervalEvents.firstElement, intervalEvents.latestElement))
+                            
                             intervalTask.cancel()
                             continuation.finish()
                         } catch {
@@ -118,8 +131,8 @@ extension AsyncSequences {
             
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
-                while let (first, last) = try await iterator.next() {
-                    return latest ? last : first
+                while let (firstElement, latestElement) = try await iterator.next() {
+                    return latest ? latestElement : firstElement
                 }
                 return nil
             }

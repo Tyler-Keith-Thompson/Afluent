@@ -16,12 +16,14 @@ extension AsyncSequences {
         let clock: C
         let latest: Bool
         
-        actor IntervalEvents {
+        class IntervalEvents {
             var hasSeenFirstElement: Bool
             var hasCompletedFirstInterval: Bool
             var firstElement: Element?
             var latestElement: Element?
             var startInstant: C.Instant?
+
+            private let lock = NSRecursiveLock()
             
             init(hasSeenFirstElement: Bool = false,
                  hasCompletedFirstInterval: Bool = false,
@@ -36,23 +38,33 @@ extension AsyncSequences {
             }
         
             func updateHasSeenFirstElement() {
-                hasSeenFirstElement = true
+                lock.protect {
+                    hasSeenFirstElement = true
+                }
             }
             
             func updateHasCompletedFirstInterval() {
-                hasCompletedFirstInterval = true
+                lock.protect {
+                    hasCompletedFirstInterval = true
+                }
             }
             
             func updateFirst(element: Element?) {
-                firstElement = element
+                lock.protect {
+                    firstElement = element
+                }
             }
             
             func updateLatest(element: Element?) {
-                latestElement = element
+                lock.protect {
+                    latestElement = element
+                }
             }
             
             func updateStart(instant: C.Instant) {
-                startInstant = instant
+                lock.protect {
+                    startInstant = instant
+                }
             }
         }
         
@@ -78,45 +90,45 @@ extension AsyncSequences {
                     let intervalEvents = IntervalEvents()
                     
                     let intervalTask = DeferredTask {
-                        if let intervalStartInstant = await intervalEvents.startInstant {
+                        if let intervalStartInstant = intervalEvents.startInstant {
                           
                             let intervalEndInstant = intervalStartInstant.advanced(by: interval)
                         
                             try await clock.sleep(until: intervalEndInstant, tolerance: nil)
                             
-                            let firstElement = await intervalEvents.firstElement
-                            let latestElement = await intervalEvents.latestElement
+                            let firstElement = intervalEvents.firstElement
+                            let latestElement = intervalEvents.latestElement
                             
                             continuation.yield((firstElement, latestElement))
                             
-                            if await intervalEvents.hasCompletedFirstInterval {
-                                await intervalEvents.updateHasCompletedFirstInterval()
+                            if intervalEvents.hasCompletedFirstInterval {
+                                intervalEvents.updateHasCompletedFirstInterval()
                             }
                             
-                            await intervalEvents.updateFirst(element: nil)
+                            intervalEvents.updateFirst(element: nil)
                         }
                     }
                     
                     Task {
                         do {
                             for try await el in upstream {
-                                if await !intervalEvents.hasSeenFirstElement {
+                                if !intervalEvents.hasSeenFirstElement {
                                         
                                     continuation.yield((el, el))
-                                    await intervalEvents.updateHasSeenFirstElement()
+                                    intervalEvents.updateHasSeenFirstElement()
                                     continue
                                 }
                                 
-                                if await intervalEvents.firstElement == nil {
-                                    await intervalEvents.updateStart(instant: clock.now)
-                                    await intervalEvents.updateFirst(element: el)
+                                if intervalEvents.firstElement == nil {
+                                    intervalEvents.updateStart(instant: clock.now)
+                                    intervalEvents.updateFirst(element: el)
                                     
                                     intervalTask.run()
                                 }
                                 
-                                await intervalEvents.updateLatest(element: el)
+                                intervalEvents.updateLatest(element: el)
                             }
-                            await continuation.yield((intervalEvents.firstElement, intervalEvents.latestElement))
+                            continuation.yield((intervalEvents.firstElement, intervalEvents.latestElement))
                             
                             intervalTask.cancel()
                             continuation.finish()

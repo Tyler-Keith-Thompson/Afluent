@@ -10,7 +10,6 @@ import XCTest
 import Afluent
 import Clocks
 import ConcurrencyExtras
-import Benchmark
 import Combine
 
 @available(iOS 16.0, *)
@@ -18,6 +17,53 @@ final class ThrottleSequenceTests: XCTestCase {
     
     enum TestError: Error {
         case upstreamError
+    }
+    
+    func testThrottleWithNoElements() async throws {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let stream = AsyncStream<Int> { continuation in
+                continuation.finish()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
+            
+            let task = Task {
+                var elements = [Int]()
+                
+                for try await element in stream {
+                    elements.append(element)
+                }
+                
+                XCTAssert(elements.isEmpty)
+            }
+            
+            await testClock.run()
+            
+            _ = await task.result
+        }
+    }
+    
+    func testThrottleWithOneElement() async throws {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let stream = AsyncStream<Int> { continuation in
+                continuation.yield(1)
+                continuation.finish()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
+            
+            let task = Task {
+                var elements = [Int]()
+                
+                for try await element in stream {
+                    elements.append(element)
+                }
+                
+                XCTAssertEqual(elements, [1])
+            }
+            
+            await testClock.run()
+            
+            _ = await task.result
+        }
     }
     
     func testThrottleOnlyReturnsFirstAndLastElement_whenReceivingMultipleElementsAtOnce_andLatestIsTrue() async throws {
@@ -371,7 +417,7 @@ final class ThrottleSequenceTests: XCTestCase {
                         continuation.yield(2)
                         continuation.yield(3)
                     }
-                    .delayAndAdvance(clock: testClock, delay: .milliseconds(20)) {
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(4)
                         continuation.yield(5)
                     }
@@ -395,7 +441,7 @@ final class ThrottleSequenceTests: XCTestCase {
                     elements.append(element)
                 }
                 
-                XCTAssertEqual(elements, [1,3,7,10])
+                XCTAssertEqual(elements, [1,5,10])
             }
             
             await testClock.run()
@@ -414,7 +460,7 @@ final class ThrottleSequenceTests: XCTestCase {
                         continuation.yield(2)
                         continuation.yield(3)
                     }
-                    .delayAndAdvance(clock: testClock, delay: .milliseconds(20)) {
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(4)
                         continuation.yield(5)
                     }
@@ -438,7 +484,7 @@ final class ThrottleSequenceTests: XCTestCase {
                     elements.append(element)
                 }
                 
-                XCTAssertEqual(elements, [1,2,4,8])
+                XCTAssertEqual(elements, [1,2,6])
             }
             
             await testClock.run()
@@ -457,7 +503,7 @@ final class ThrottleSequenceTests: XCTestCase {
                         continuation.yield(2)
                         continuation.yield(3)
                     }
-                    .delayAndAdvance(clock: testClock, delay: .milliseconds(20)) {
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(4)
                         continuation.yield(5)
                     }
@@ -481,7 +527,7 @@ final class ThrottleSequenceTests: XCTestCase {
                     elements.append(element)
                 }
                 
-                XCTAssertEqual(elements, [1,5,10])
+                XCTAssertEqual(elements, [1,7,10])
             }
             
             await testClock.run()
@@ -500,7 +546,7 @@ final class ThrottleSequenceTests: XCTestCase {
                         continuation.yield(2)
                         continuation.yield(3)
                     }
-                    .delayAndAdvance(clock: testClock, delay: .milliseconds(20)) {
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
                         continuation.yield(4)
                         continuation.yield(5)
                     }
@@ -524,7 +570,7 @@ final class ThrottleSequenceTests: XCTestCase {
                     elements.append(element)
                 }
                 
-                XCTAssertEqual(elements, [1,2,6])
+                XCTAssertEqual(elements, [1,2,8])
             }
             
             await testClock.run()

@@ -36,9 +36,13 @@ final class ThrottleSequenceTests: XCTestCase {
                 XCTAssert(elements.isEmpty)
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
             
             _ = await task.result
+            
+            XCTAssertEqual(startInstant, testClock.now)
         }
     }
     
@@ -60,9 +64,13 @@ final class ThrottleSequenceTests: XCTestCase {
                 XCTAssertEqual(elements, [1])
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
             
             _ = await task.result
+            
+            XCTAssertEqual(startInstant, testClock.now)
         }
     }
     
@@ -93,9 +101,13 @@ final class ThrottleSequenceTests: XCTestCase {
                 XCTAssertEqual(elements, [1, 10])
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
             
             _ = await task.result
+            
+            XCTAssertEqual(startInstant, testClock.now)
         }
     }
     
@@ -126,9 +138,13 @@ final class ThrottleSequenceTests: XCTestCase {
                 XCTAssertEqual(elements, [1, 2])
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
             
             _ = await task.result
+            
+            XCTAssertEqual(startInstant, testClock.now)
         }
     }
     
@@ -154,9 +170,13 @@ final class ThrottleSequenceTests: XCTestCase {
                 }
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
             
             _ = await task.result
+            
+            XCTAssertEqual(startInstant, testClock.now)
         }
     }
     
@@ -205,9 +225,14 @@ final class ThrottleSequenceTests: XCTestCase {
                 XCTAssertEqual(elements, [1,3,4,5,6,7,8,9,10])
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
             
             _ = await task.result
+            
+            XCTAssertNotEqual(startInstant, testClock.now)
+            XCTAssertEqual(testClock.now, .init(offset: .milliseconds(170)))
         }
     }
     
@@ -260,9 +285,14 @@ final class ThrottleSequenceTests: XCTestCase {
                 XCTAssertEqual(elements, [1,2,3,4,5,6,7,8,9,10])
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
             
             _ = await task.result
+            
+            XCTAssertNotEqual(startInstant, testClock.now)
+            XCTAssertEqual(testClock.now, .init(offset: .milliseconds(100)))
         }
     }
     
@@ -315,9 +345,14 @@ final class ThrottleSequenceTests: XCTestCase {
                 XCTAssertEqual(elements, [1,2,3,4,5,6,7,8,9,10])
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
             
             _ = await task.result
+            
+            XCTAssertNotEqual(startInstant, testClock.now)
+            XCTAssertEqual(testClock.now, .init(offset: .milliseconds(100)))
         }
     }
     
@@ -358,9 +393,14 @@ final class ThrottleSequenceTests: XCTestCase {
                 XCTAssertEqual(elements, [1,3,5,7,10])
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
-    
+            
             _ = await task.result
+            
+            XCTAssertNotEqual(startInstant, testClock.now)
+            XCTAssertEqual(testClock.now, .init(offset: .milliseconds(40)))
         }
     }
 
@@ -401,9 +441,14 @@ final class ThrottleSequenceTests: XCTestCase {
                 XCTAssertEqual(elements, [1,2,4,6,8])
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
-    
+            
             _ = await task.result
+            
+            XCTAssertNotEqual(startInstant, testClock.now)
+            XCTAssertEqual(testClock.now, .init(offset: .milliseconds(40)))
         }
     }
     
@@ -444,9 +489,14 @@ final class ThrottleSequenceTests: XCTestCase {
                 XCTAssertEqual(elements, [1,5,10])
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
-    
+            
             _ = await task.result
+            
+            XCTAssertNotEqual(startInstant, testClock.now)
+            XCTAssertEqual(testClock.now, .init(offset: .milliseconds(40)))
         }
     }
 
@@ -487,9 +537,14 @@ final class ThrottleSequenceTests: XCTestCase {
                 XCTAssertEqual(elements, [1,2,6])
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
-    
+            
             _ = await task.result
+            
+            XCTAssertNotEqual(startInstant, testClock.now)
+            XCTAssertEqual(testClock.now, .init(offset: .milliseconds(40)))
         }
     }
     
@@ -530,9 +585,14 @@ final class ThrottleSequenceTests: XCTestCase {
                 XCTAssertEqual(elements, [1,7,10])
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
-    
+            
             _ = await task.result
+            
+            XCTAssertNotEqual(startInstant, testClock.now)
+            XCTAssertEqual(testClock.now, .init(offset: .milliseconds(40)))
         }
     }
 
@@ -573,9 +633,14 @@ final class ThrottleSequenceTests: XCTestCase {
                 XCTAssertEqual(elements, [1,2,8])
             }
             
+            let startInstant = testClock.now
+            
             await testClock.run()
-    
+            
             _ = await task.result
+            
+            XCTAssertNotEqual(startInstant, testClock.now)
+            XCTAssertEqual(testClock.now, .init(offset: .milliseconds(40)))
         }
     }
 }

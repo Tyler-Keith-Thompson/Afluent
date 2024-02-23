@@ -18,7 +18,6 @@ extension AsyncSequences {
         
         class IntervalEvents {
             var hasSeenFirstElement: Bool
-            var hasCompletedFirstInterval: Bool
             var firstElement: Element?
             var latestElement: Element?
             var startInstant: C.Instant?
@@ -26,12 +25,10 @@ extension AsyncSequences {
             private let lock = NSRecursiveLock()
             
             init(hasSeenFirstElement: Bool = false,
-                 hasCompletedFirstInterval: Bool = false,
                  firstElement: Element? = nil,
                  latestElement: Element? = nil,
                  startInstant: C.Instant? = nil) {
                 self.hasSeenFirstElement = hasSeenFirstElement
-                self.hasCompletedFirstInterval = hasCompletedFirstInterval
                 self.firstElement = firstElement
                 self.latestElement = latestElement
                 self.startInstant = startInstant
@@ -40,12 +37,6 @@ extension AsyncSequences {
             func updateHasSeenFirstElement() {
                 lock.protect {
                     hasSeenFirstElement = true
-                }
-            }
-            
-            func updateHasCompletedFirstInterval() {
-                lock.protect {
-                    hasCompletedFirstInterval = true
                 }
             }
             
@@ -100,10 +91,6 @@ extension AsyncSequences {
                             let latestElement = intervalEvents.latestElement
                             
                             continuation.yield((firstElement, latestElement))
-                            
-                            if intervalEvents.hasCompletedFirstInterval {
-                                intervalEvents.updateHasCompletedFirstInterval()
-                            }
                             
                             intervalEvents.updateFirst(element: nil)
                         }

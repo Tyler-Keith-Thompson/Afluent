@@ -18,7 +18,6 @@ extension AsyncSequences {
         
         class IntervalEvents {
             var hasSeenFirstElement: Bool
-            var hasSeenSecondElement: Bool
             var isRunningIntervalTask: Bool
             var firstElement: Element?
             var latestElement: Element?
@@ -33,7 +32,6 @@ extension AsyncSequences {
                  latestElement: Element? = nil,
                  startInstant: C.Instant? = nil) {
                 self.hasSeenFirstElement = hasSeenFirstElement
-                self.hasSeenSecondElement = hasSeenSecondElement
                 self.isRunningIntervalTask = isRunningIntervalTask
                 self.firstElement = firstElement
                 self.latestElement = latestElement
@@ -43,12 +41,6 @@ extension AsyncSequences {
             func updateHasSeenFirstElement() {
                 lock.protect {
                     hasSeenFirstElement = true
-                }
-            }
-            
-            func updateHasSeenSecondElement() {
-                lock.protect {
-                    hasSeenSecondElement = true
                 }
             }
             

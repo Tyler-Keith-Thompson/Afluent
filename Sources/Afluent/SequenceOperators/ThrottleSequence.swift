@@ -18,7 +18,6 @@ extension AsyncSequences {
         
         class IntervalEvents {
             var hasSeenFirstElement: Bool
-            var isRunningIntervalTask: Bool
             var firstElement: Element?
             var latestElement: Element?
             var startInstant: C.Instant?
@@ -26,13 +25,10 @@ extension AsyncSequences {
             private let lock = NSRecursiveLock()
             
             init(hasSeenFirstElement: Bool = false,
-                 hasSeenSecondElement: Bool = false,
-                 isRunningIntervalTask: Bool = false,
                  firstElement: Element? = nil,
                  latestElement: Element? = nil,
                  startInstant: C.Instant? = nil) {
                 self.hasSeenFirstElement = hasSeenFirstElement
-                self.isRunningIntervalTask = isRunningIntervalTask
                 self.firstElement = firstElement
                 self.latestElement = latestElement
                 self.startInstant = startInstant
@@ -41,12 +37,6 @@ extension AsyncSequences {
             func updateHasSeenFirstElement() {
                 lock.protect {
                     hasSeenFirstElement = true
-                }
-            }
-            
-            func updateIsRunningIntervalTask(_ isRunning: Bool) {
-                lock.protect {
-                    isRunningIntervalTask = isRunning
                 }
             }
             
@@ -72,66 +62,80 @@ extension AsyncSequences {
         public struct AsyncIterator: AsyncIteratorProtocol {
             typealias Instant = C.Instant
             
-            var upstreamIterator: Upstream.AsyncIterator
+            var upstream: Upstream
             let interval: C.Duration
             let clock: C
             let latest: Bool
-
+            
+            var iterator: AsyncThrowingStream<(Element?, Element?), Error>.Iterator?
             let intervalEvents = IntervalEvents()
             
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
                 
-                let intervalEvents = self.intervalEvents
                 let clock = self.clock
                 let latest = self.latest
                 let interval = self.interval
+                let upstream = self.upstream
+                let intervalEvents = self.intervalEvents
                 
-                let intervalTask = DeferredTask {
-                    
-                    guard let intervalEndInstant = intervalEvents.startInstant?.advanced(by: interval) else {
-                        return
-                    }
                 
-                    try await clock.sleep(until: intervalEndInstant, tolerance: .zero)
-                    
-                    intervalEvents.updateIsRunningIntervalTask(false)
+                if iterator == nil {
+                    self.iterator = AsyncThrowingStream<(Element?, Element?), Error> { continuation in
+                        
+                        let intervalTask = DeferredTask {
+                            if let intervalStartInstant = intervalEvents.startInstant {
+                                
+                                let intervalEndInstant = intervalStartInstant.advanced(by: interval)
+                                try await clock.sleep(until: intervalEndInstant, tolerance: nil)
+                                
+                                let firstElement = intervalEvents.firstElement
+                                let latestElement = intervalEvents.latestElement
+                                
+                                continuation.yield((firstElement, latestElement))
+                                
+                                intervalEvents.updateFirst(element: nil)
+                            }
+                        }
+                        
+                        Task {
+                            do {
+                                for try await el in upstream {
+                                    if !intervalEvents.hasSeenFirstElement {
+                                        continuation.yield((el, el))
+                                        intervalEvents.updateHasSeenFirstElement()
+                                        continue
+                                    }
+                                    
+                                    if intervalEvents.firstElement == nil {
+                                        intervalEvents.updateStart(instant: clock.now)
+                                        intervalEvents.updateFirst(element: el)
+                                        
+                                        intervalTask.run()
+                                    }
+                                    intervalEvents.updateLatest(element: el)
+                                }
+                                continuation.yield((intervalEvents.firstElement, intervalEvents.latestElement))
+                                intervalTask.cancel()
+                                continuation.finish()
+                            } catch {
+                                intervalTask.cancel()
+                                continuation.finish(throwing: error)
+                            }
+                        }
+                    }.makeAsyncIterator()
                 }
                 
-                repeat {
-                    
-                    guard let element = try await upstreamIterator.next() else {
-                        intervalTask.cancel()
-                        return nil
-                    }
-                    
-                    if !intervalEvents.hasSeenFirstElement {
-                        intervalEvents.updateHasSeenFirstElement()
-                        return element
-                    }
-                    
-                    if intervalEvents.firstElement == nil {
-                        intervalEvents.updateStart(instant: clock.now)
-                        intervalEvents.updateFirst(element: element)
-                    }
-                    
-                    intervalEvents.updateLatest(element: element)
-
-                    if !intervalEvents.isRunningIntervalTask {
-                        let firstElement = intervalEvents.firstElement
-                        let latestElement = intervalEvents.latestElement
-                        intervalEvents.updateFirst(element: nil)
-                        intervalEvents.updateIsRunningIntervalTask(true)
-                        intervalTask.run()
-                        return latest ? latestElement : firstElement
-                    }
-                    
-                } while true
+                while let (firstElement, latestElement) = try await self.iterator?.next() {
+                    return latest ? latestElement : firstElement
+                }
+                
+                return nil
             }
         }
         
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstreamIterator: upstream.makeAsyncIterator(), interval: interval, clock: clock, latest: latest)
+            AsyncIterator(upstream: upstream, interval: interval, clock: clock, latest: latest)
         }
     }
 }

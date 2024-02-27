@@ -62,7 +62,7 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
     
-    func testThrottleOnlyReturnsFirstAndLastElement_whenReceivingMultipleElementsAtOnce_andLatestIsTrue() async throws {
+    func testThrottleOnlyReturnsFirstAndLatestElement_whenReceivingMultipleElementsAtOnce_andLatestIsTrue() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
             let stream = AsyncStream { continuation in
@@ -124,7 +124,7 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
     
-    func testThrottleHandlesErrors() async {
+    func testThrottleReturnsLatestElementInIntervalBeforeError_whenLatestIsTrue() async {
         await withMainSerialExecutor {
             let testClock = TestClock()
             let stream = AsyncThrowingStream { continuation in
@@ -132,6 +132,36 @@ final class ThrottleSequenceTests: XCTestCase {
                 continuation.yield(2)
                 continuation.yield(3)
                 continuation.yield(with: .failure(TestError.upstreamError))
+                continuation.yield(4)
+                continuation.finish()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
+            
+            let task = Task {
+                var elements = [Int]()
+                do {
+                    for try await element in stream {
+                        elements.append(element)
+                    }
+                } catch {
+                    XCTAssertNotNil(error as? TestError)
+                }
+                
+                XCTAssertEqual(elements, [1, 3])
+            }
+            
+            _ = await task.result
+        }
+    }
+    
+    func testThrottleReturnsFirstElementInIntervalBeforeError_whenLatestIsFalse() async {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let stream = AsyncThrowingStream { continuation in
+                continuation.yield(1)
+                continuation.yield(2)
+                continuation.yield(3)
+                continuation.yield(with: .failure(TestError.upstreamError))
+                continuation.yield(4)
                 continuation.finish()
             }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
             
@@ -144,6 +174,8 @@ final class ThrottleSequenceTests: XCTestCase {
                 } catch {
                     XCTAssertNotNil(error as? TestError)
                 }
+                
+                XCTAssertEqual(elements, [1, 2])
             }
             
             _ = await task.result
@@ -305,7 +337,7 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
     
-    func testThrottleOnlyReturnsLastElement_whenMultipleElementsAreReceivedDuringEachThrottleInterval_10ms_andLatestIsTrue() async throws {
+    func testThrottleOnlyReturnsLatestElementInInterval_whenMultipleElementsAreReceivedDuringEachThrottleInterval_10ms_andLatestIsTrue() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
             let stream = AsyncStream { continuation in
@@ -346,7 +378,7 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
 
-    func testThrottleOnlyReturnsFirstElement_whenMultipleElementsAreReceivedDuringEachThrottleInterval_10ms_andLatestIsFalse() async throws {
+    func testThrottleOnlyReturnsFirstElementInInterval_whenMultipleElementsAreReceivedDuringEachThrottleInterval_10ms_andLatestIsFalse() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
             let stream = AsyncStream { continuation in
@@ -387,7 +419,291 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
     
-    func testThrottleOnlyReturnsLastElement_whenMultipleElementsAreReceivedDuringEachThrottleInterval_20ms_andLatestIsTrue() async throws {
+    func testThrottleOnlyReturnsLatestElement_whenMultipleElementsAreReceivedAfterMultipleThrottleIntervalsHavePassed_10ms_andLatestIsTrue() async throws {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let stream = AsyncStream { continuation in
+                DeferredTask { () }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(1)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(50)) {
+                        continuation.yield(2)
+                        continuation.yield(3)
+                        continuation.yield(4)
+                        continuation.yield(6)
+                        continuation.yield(7)
+                        continuation.yield(8)
+                        continuation.yield(9)
+                        continuation.yield(10)
+                        continuation.finish()
+                    }
+                    .run()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
+            
+            let task = Task {
+                var elements = [Int]()
+                
+                for try await element in stream {
+                    elements.append(element)
+                }
+                
+                XCTAssertEqual(elements, [1,10])
+            }
+            
+            _ = await task.result
+        }
+    }
+    
+    func testThrottleOnlyReturnsFirstElement_whenMultipleElementsAreReceivedAfterMultipleThrottleIntervalsHavePassed_10ms_andLatestIsFalse() async throws {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let stream = AsyncStream { continuation in
+                DeferredTask { () }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(1)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(50)) {
+                        continuation.yield(2)
+                        continuation.yield(3)
+                        continuation.yield(4)
+                        continuation.yield(6)
+                        continuation.yield(7)
+                        continuation.yield(8)
+                        continuation.yield(9)
+                        continuation.yield(10)
+                        continuation.finish()
+                    }
+                    .run()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
+            
+            let task = Task {
+                var elements = [Int]()
+                
+                for try await element in stream {
+                    elements.append(element)
+                }
+                
+                XCTAssertEqual(elements, [1,2])
+            }
+            
+            _ = await task.result
+        }
+    }
+    
+    func testThrottleOnlyReturnsLatestElement_afterMultipleThrottleIntervalsHavePassed_10ms_andLatestIsTrue() async throws {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let stream = AsyncStream { continuation in
+                DeferredTask { () }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(1)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(2)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(3)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(4)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(100)) {
+                        continuation.yield(5)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(6)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(7)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(8)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(9)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(10)
+                        continuation.finish()
+                    }
+                    .run()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
+            
+            let task = Task {
+                var elements = [Int]()
+                
+                for try await element in stream {
+                    elements.append(element)
+                }
+                
+                XCTAssertEqual(elements, [1,2,3,4,5,6,7,8,9,10])
+            }
+            
+            _ = await task.result
+        }
+    }
+    
+    func testThrottleOnlyReturnsLatestElement_afterMultipleThrottleIntervalsHavePassed_10ms_andLatestIsFalse() async throws {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let stream = AsyncStream { continuation in
+                DeferredTask { () }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(1)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(2)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(3)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(4)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(100)) {
+                        continuation.yield(5)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(6)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(7)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(8)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(9)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(10)
+                        continuation.finish()
+                    }
+                    .run()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
+            
+            let task = Task {
+                var elements = [Int]()
+                
+                for try await element in stream {
+                    elements.append(element)
+                }
+                
+                XCTAssertEqual(elements, [1,2,3,4,5,6,7,8,9,10])
+            }
+            
+            _ = await task.result
+        }
+    }
+    
+    func testThrottleOnlyReturnsLatestElement_afterMultipleThrottleIntervalsHavePassedAtBeginning_10ms_andLatestIsTrue() async throws {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let stream = AsyncStream { continuation in
+                DeferredTask { () }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(1)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(100)) {
+                        continuation.yield(2)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(3)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(4)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(5)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(6)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(7)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(8)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(9)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(10)
+                        continuation.finish()
+                    }
+                    .run()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
+            
+            let task = Task {
+                var elements = [Int]()
+                
+                for try await element in stream {
+                    elements.append(element)
+                }
+                
+                XCTAssertEqual(elements, [1,2,3,4,5,6,7,8,9,10])
+            }
+            
+            _ = await task.result
+        }
+    }
+    
+    func testThrottleOnlyReturnsLatestElement_afterMultipleThrottleIntervalsHavePassedAtBeginning_10ms_andLatestIsFalse() async throws {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let stream = AsyncStream { continuation in
+                DeferredTask { () }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(1)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(100)) {
+                        continuation.yield(2)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(3)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(4)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(5)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(6)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(7)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(8)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(9)
+                    }
+                    .delayAndAdvance(clock: testClock, delay: .milliseconds(10)) {
+                        continuation.yield(10)
+                        continuation.finish()
+                    }
+                    .run()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
+            
+            let task = Task {
+                var elements = [Int]()
+                
+                for try await element in stream {
+                    elements.append(element)
+                }
+                
+                XCTAssertEqual(elements, [1,2,3,4,5,6,7,8,9,10])
+            }
+            
+            _ = await task.result
+        }
+    }
+    
+    func testThrottleOnlyReturnsLatestElementInInterval_whenMultipleElementsAreReceivedDuringEachThrottleInterval_20ms_andLatestIsTrue() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
             let stream = AsyncStream { continuation in
@@ -428,7 +744,7 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
 
-    func testThrottleOnlyReturnsLastElement_whenMultipleElementsAreReceivedDuringEachThrottleInterval_20ms_andLatestIsFalse() async throws {
+    func testThrottleOnlyReturnsLatestElementInInterval_whenMultipleElementsAreReceivedDuringEachThrottleInterval_20ms_andLatestIsFalse() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
             let stream = AsyncStream { continuation in
@@ -469,7 +785,7 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
     
-    func testThrottleOnlyReturnsLastElement_whenMultipleElementsAreReceivedDuringEachThrottleInterval_30ms_andLatestIsTrue() async throws {
+    func testThrottleOnlyReturnsLatestElementInInterval_whenMultipleElementsAreReceivedDuringEachThrottleInterval_30ms_andLatestIsTrue() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
             let stream = AsyncStream { continuation in
@@ -510,7 +826,7 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
 
-    func testThrottleOnlyReturnsLastElement_whenMultipleElementsAreReceivedDuringEachThrottleInterval_30ms_andLatestIsFalse() async throws {
+    func testThrottleOnlyReturnsFirstElementInInterval_whenMultipleElementsAreReceivedDuringEachThrottleInterval_30ms_andLatestIsFalse() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
             let stream = AsyncStream { continuation in

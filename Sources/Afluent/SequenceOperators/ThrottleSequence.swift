@@ -116,11 +116,12 @@ extension AsyncSequences {
                                     intervalEvents.updateLatest(element: el)
                                 }
                                 continuation.yield((intervalEvents.firstElement, intervalEvents.latestElement))
-                                intervalTask.cancel()
                                 continuation.finish()
-                            } catch {
                                 intervalTask.cancel()
+                            } catch {
+                                continuation.yield((intervalEvents.firstElement, intervalEvents.latestElement))
                                 continuation.finish(throwing: error)
+                                intervalTask.cancel()
                             }
                         }
                     }.makeAsyncIterator()

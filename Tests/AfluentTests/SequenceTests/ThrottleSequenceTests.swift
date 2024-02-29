@@ -27,7 +27,7 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
     
-    func testThrottleWithNoElements() async throws {
+    func testThrottleWithNoElements_returnsEmpty_andLatestIsTrue() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
             let elementContainer = ElementContainer()
@@ -49,7 +49,29 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
     
-    func testThrottleWithOneElement() async throws {
+    func testThrottleWithNoElements_returnsEmpty_andLatestIsFalse() async throws {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let elementContainer = ElementContainer()
+            
+            let stream = AsyncStream<Int> { continuation in
+                continuation.finish()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
+            
+            let task = Task {
+                for try await element in stream {
+                    await elementContainer.append(element)
+                }
+            }
+            
+            _ = await task.result
+            
+            let elements = await elementContainer.elements
+            XCTAssert(elements.isEmpty)
+        }
+    }
+    
+    func testThrottleWithOneElement_returnsOneElement_andLatestIsTrue() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
             let elementContainer = ElementContainer()
@@ -72,7 +94,30 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
     
-    func testThrottleOnlyReturnsFirstAndLatestElementImmediately_whenReceivingMultipleElementsAtOnceAndStreamEnds_andLatestIsTrue() async throws {
+    func testThrottleWithOneElement_returnsOneElement_andLatestIsFalse() async throws {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let elementContainer = ElementContainer()
+            
+            let stream = AsyncStream<Int> { continuation in
+                continuation.yield(1)
+                continuation.finish()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
+            
+            let task = Task {
+                for try await element in stream {
+                    await elementContainer.append(element)
+                }
+            }
+            
+            _ = await task.result
+            
+            let elements = await elementContainer.elements
+            XCTAssertEqual(elements, [1])
+        }
+    }
+    
+    func testThrottleReturnsFirstAndLatestElementImmediately_whenReceivingMultipleElementsAtOnceAndStreamEnds_andLatestIsTrue() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
             let elementContainer = ElementContainer()
@@ -117,7 +162,7 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
     
-    func testThrottleOnlyReturnsFirstAndSecondElementImmediately_whenReceivingMultipleElementsAtOnceAndStreamEnds_andLatestIsFalse() async throws {
+    func testThrottleReturnsFirstAndSecondElementImmediately_whenReceivingMultipleElementsAtOnceAndStreamEnds_andLatestIsFalse() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
             let elementContainer = ElementContainer()

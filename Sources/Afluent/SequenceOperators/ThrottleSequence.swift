@@ -83,7 +83,6 @@ extension AsyncSequences {
                 try Task.checkCancellation()
                 
                 let clock = self.clock
-                let latest = self.latest
                 let interval = self.interval
                 let upstream = self.upstream
                 let intervalEvents = self.intervalEvents
@@ -116,11 +115,9 @@ extension AsyncSequences {
                                         intervalEvents.updateHasSeenFirstElement()
                                         continue
                                     }
-                                    
                                     if intervalEvents.firstElement == nil {
                                         intervalEvents.updateStart(instant: clock.now)
                                         intervalEvents.updateFirst(element: el)
-                                        
                                         intervalTask.run()
                                     }
                                     intervalEvents.updateLatest(element: el)

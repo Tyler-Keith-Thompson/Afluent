@@ -18,6 +18,7 @@ extension AsyncSequences {
         
         class IntervalEvents {
             var hasSeenFirstElement: Bool
+            var hasStartedInterval: Bool
             var firstElement: Element?
             var latestElement: Element?
             var startInstant: C.Instant?
@@ -25,10 +26,12 @@ extension AsyncSequences {
             private let lock = NSRecursiveLock()
             
             init(hasSeenFirstElement: Bool = false,
+                 hasStartedInterval: Bool = false,
                  firstElement: Element? = nil,
                  latestElement: Element? = nil,
                  startInstant: C.Instant? = nil) {
                 self.hasSeenFirstElement = hasSeenFirstElement
+                self.hasStartedInterval = hasStartedInterval
                 self.firstElement = firstElement
                 self.latestElement = latestElement
                 self.startInstant = startInstant
@@ -37,6 +40,12 @@ extension AsyncSequences {
             func updateHasSeenFirstElement() {
                 lock.protect {
                     hasSeenFirstElement = true
+                }
+            }
+            
+            func updateHasStartedInterval(_ hasStarted: Bool) {
+                lock.protect {
+                    hasStartedInterval = hasStarted
                 }
             }
             
@@ -79,12 +88,12 @@ extension AsyncSequences {
                 let upstream = self.upstream
                 let intervalEvents = self.intervalEvents
                 
-                
                 if iterator == nil {
                     self.iterator = AsyncThrowingStream<(Element?, Element?), Error> { continuation in
                         
                         let intervalTask = DeferredTask {
                             if let intervalStartInstant = intervalEvents.startInstant {
+                                intervalEvents.updateHasStartedInterval(true)
                                 
                                 let intervalEndInstant = intervalStartInstant.advanced(by: interval)
                                 try await clock.sleep(until: intervalEndInstant, tolerance: nil)
@@ -95,6 +104,7 @@ extension AsyncSequences {
                                 continuation.yield((firstElement, latestElement))
                                 
                                 intervalEvents.updateFirst(element: nil)
+                                intervalEvents.updateHasStartedInterval(false)
                             }
                         }
                         
@@ -115,15 +125,20 @@ extension AsyncSequences {
                                     }
                                     intervalEvents.updateLatest(element: el)
                                 }
-                                continuation.yield((intervalEvents.firstElement, intervalEvents.latestElement))
+                                if intervalEvents.hasStartedInterval {
+                                    continuation.yield((intervalEvents.firstElement, intervalEvents.latestElement))
+                                }
                                 continuation.finish()
-                                intervalTask.cancel()
                             } catch {
                                 continuation.yield((intervalEvents.firstElement, intervalEvents.latestElement))
                                 continuation.finish(throwing: error)
-                                intervalTask.cancel()
                             }
                         }
+                        
+                        continuation.onTermination = { _ in
+                            intervalTask.cancel()
+                        }
+                        
                     }.makeAsyncIterator()
                 }
                 

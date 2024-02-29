@@ -869,12 +869,12 @@ final class ThrottleSequenceTests: XCTestCase {
 }
 
 @available(iOS 16.0, *)
-extension AsynchronousUnitOfWork {
-    func delayAndAdvance<D: DurationProtocol & Hashable>(clock: TestClock<D>, delay: Duration, completion: @escaping () -> Void) -> any AsynchronousUnitOfWork {
-        self.delay(for: delay)
-            .handleEvents(receiveOutput: { _ in
-                guard let advance = delay as? D else {
-                    return
+private extension AsyncSequence {
+    func delayThenHandleOutput(for duration: Duration, handler: @escaping (Sendable) async -> Void) -> any AsynchronousUnitOfWork {
+        self
+            .handleEvents(receiveOutput: { output in
+                Task {
+                    handler(output)
                 }
                 await clock.advance(by: advance)
                 completion()

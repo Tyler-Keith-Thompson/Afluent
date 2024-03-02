@@ -16,16 +16,18 @@ final class GroupBySequenceTests: XCTestCase {
         await withMainSerialExecutor {
             let stream = AsyncStream<String> { continuation in
                 continuation.finish()
-            }.groupBy { element in
-                return element.uppercased()
             }
+                .groupBy { element in
+                    return element.uppercased()
+                }
+                .map {
+                    $0.key
+                }
+                .collect()
             
             let task = Task {
-                var elements = [String]()
-                for try await element in stream {
-                    elements.append(element)
-                }
-                XCTAssert(elements.isEmpty)
+                let keys = try await stream.first()
+                XCTAssert(keys?.isEmpty ?? true)
             }
             
             _ = await task.result

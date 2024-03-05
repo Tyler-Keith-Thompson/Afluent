@@ -155,6 +155,10 @@ extension AsyncSequences {
 
 @available(iOS 16.0, *)
 extension AsyncSequence {
+    /// Emits either the first or latest element received during a specified amount of time.
+    /// - Parameter interval: The interval of time in which to observe and emit either the first or latest element.
+    /// - Parameter latest: If `true`, emits the latest element in the time interval.  If `false`, emits the first element in the time interval.
+    /// - Note: The first element in upstream will always be returned immediately.  Once a second element is received, then the clock will begin for the given time interval and return the first or latest element once completed.
     public func throttle<C: Clock>(for interval: C.Duration, clock: C, latest: Bool = false) -> AsyncSequences.Throttle<Self, C> {
         AsyncSequences.Throttle(upstream: self, interval: interval, clock: clock, latest: latest)
     }

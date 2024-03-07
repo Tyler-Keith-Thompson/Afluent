@@ -91,23 +91,22 @@ extension AsyncSequences {
                     self.iterator = AsyncThrowingStream<(Element?, Element?), Error> { continuation in
                         
                         let intervalTask = DeferredTask {
-                            if let intervalStartInstant = state.startInstant {
-                                state.updateHasStartedInterval(true)
-                                
-                                let intervalEndInstant = intervalStartInstant.advanced(by: interval)
-                                try await clock.sleep(until: intervalEndInstant, tolerance: nil)
-                                
-                                let firstElement = state.firstElement
-                                let latestElement = state.latestElement
-                                
-                                continuation.yield((firstElement, latestElement))
-                                
-                                state.updateFirst(element: nil)
-                                state.updateHasStartedInterval(false)
-                            }
+                            guard let intervalStartInstant = state.startInstant else { return }
+                            state.updateHasStartedInterval(true)
+                            
+                            let intervalEndInstant = intervalStartInstant.advanced(by: interval)
+                            try await clock.sleep(until: intervalEndInstant, tolerance: nil)
+                            
+                            let firstElement = state.firstElement
+                            let latestElement = state.latestElement
+                            
+                            continuation.yield((firstElement, latestElement))
+                            
+                            state.updateFirst(element: nil)
+                            state.updateHasStartedInterval(false)
                         }
                         
-                        Task {
+                        let iterationTask = Task {
                             do {
                                 for try await el in upstream {
                                     if !state.hasSeenFirstElement {
@@ -134,6 +133,7 @@ extension AsyncSequences {
                         
                         continuation.onTermination = { _ in
                             intervalTask.cancel()
+                            iterationTask.cancel()
                         }
                         
                     }.makeAsyncIterator()

@@ -17,11 +17,72 @@ extension AsyncSequences {
         let latest: Bool
         
         class State {
-            var hasSeenFirstElement: Bool
-            var hasStartedInterval: Bool
-            var firstElement: Element?
-            var latestElement: Element?
-            var startInstant: C.Instant?
+            var hasSeenFirstElement: Bool {
+                get {
+                    lock.protect {
+                        _hasSeenFirstElement
+                    }
+                }
+                set {
+                    lock.protect {
+                        _hasSeenFirstElement = newValue
+                    }
+                }
+            }
+            var hasStartedInterval: Bool {
+                get {
+                    lock.protect {
+                        _hasStartedInterval
+                    }
+                }
+                set {
+                    lock.protect {
+                        _hasStartedInterval = newValue
+                    }
+                }
+            }
+            var firstElement: Element? {
+                get {
+                    lock.protect {
+                        _firstElement
+                    }
+                }
+                set {
+                    lock.protect {
+                        _firstElement = newValue
+                    }
+                }
+            }
+            var latestElement: Element? {
+                get {
+                    lock.protect {
+                        _latestElement
+                    }
+                }
+                set {
+                    lock.protect {
+                        _latestElement = newValue
+                    }
+                }
+            }
+            var startInstant: C.Instant? {
+                get {
+                    lock.protect {
+                        _startInstant
+                    }
+                }
+                set {
+                    lock.protect {
+                        _startInstant = newValue
+                    }
+                }
+            }
+            
+            private var _hasSeenFirstElement: Bool
+            private var _hasStartedInterval: Bool
+            private var _firstElement: Element?
+            private var _latestElement: Element?
+            private var _startInstant: C.Instant?
             
             private let lock = NSRecursiveLock()
             
@@ -30,41 +91,11 @@ extension AsyncSequences {
                  firstElement: Element? = nil,
                  latestElement: Element? = nil,
                  startInstant: C.Instant? = nil) {
-                self.hasSeenFirstElement = hasSeenFirstElement
-                self.hasStartedInterval = hasStartedInterval
-                self.firstElement = firstElement
-                self.latestElement = latestElement
-                self.startInstant = startInstant
-            }
-            
-            func updateHasSeenFirstElement() {
-                lock.protect {
-                    hasSeenFirstElement = true
-                }
-            }
-            
-            func updateHasStartedInterval(_ hasStarted: Bool) {
-                lock.protect {
-                    hasStartedInterval = hasStarted
-                }
-            }
-            
-            func updateFirst(element: Element?) {
-                lock.protect {
-                    firstElement = element
-                }
-            }
-            
-            func updateLatest(element: Element?) {
-                lock.protect {
-                    latestElement = element
-                }
-            }
-            
-            func updateStart(instant: C.Instant) {
-                lock.protect {
-                    startInstant = instant
-                }
+                self._hasSeenFirstElement = hasSeenFirstElement
+                self._hasStartedInterval = hasStartedInterval
+                self._firstElement = firstElement
+                self._latestElement = latestElement
+                self._startInstant = startInstant
             }
         }
         
@@ -92,7 +123,7 @@ extension AsyncSequences {
                         
                         let intervalTask = DeferredTask {
                             guard let intervalStartInstant = state.startInstant else { return }
-                            state.updateHasStartedInterval(true)
+                            state.hasStartedInterval = true
                             
                             let intervalEndInstant = intervalStartInstant.advanced(by: interval)
                             try await clock.sleep(until: intervalEndInstant, tolerance: nil)
@@ -102,8 +133,8 @@ extension AsyncSequences {
                             
                             continuation.yield((firstElement, latestElement))
                             
-                            state.updateFirst(element: nil)
-                            state.updateHasStartedInterval(false)
+                            state.firstElement = nil
+                            state.hasStartedInterval = false
                         }
                         
                         let iterationTask = Task {
@@ -111,15 +142,15 @@ extension AsyncSequences {
                                 for try await el in upstream {
                                     if !state.hasSeenFirstElement {
                                         continuation.yield((el, el))
-                                        state.updateHasSeenFirstElement()
+                                        state.hasSeenFirstElement = true
                                         continue
                                     }
                                     if state.firstElement == nil {
-                                        state.updateStart(instant: clock.now)
-                                        state.updateFirst(element: el)
+                                        state.startInstant = clock.now
+                                        state.firstElement = el
                                         intervalTask.run()
                                     }
-                                    state.updateLatest(element: el)
+                                    state.latestElement = el
                                 }
                                 if state.hasStartedInterval {
                                     continuation.yield((state.firstElement, state.latestElement))

@@ -16,7 +16,7 @@ extension AsyncSequences {
         let clock: C
         let latest: Bool
         
-        class IntervalEvents {
+        class State {
             var hasSeenFirstElement: Bool
             var hasStartedInterval: Bool
             var firstElement: Element?
@@ -77,7 +77,7 @@ extension AsyncSequences {
             let latest: Bool
             
             var iterator: AsyncThrowingStream<(Element?, Element?), Error>.Iterator?
-            let intervalEvents = IntervalEvents()
+            let state = State()
             
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
@@ -85,49 +85,49 @@ extension AsyncSequences {
                 let clock = self.clock
                 let interval = self.interval
                 let upstream = self.upstream
-                let intervalEvents = self.intervalEvents
+                let state = self.state
                 
                 if iterator == nil {
                     self.iterator = AsyncThrowingStream<(Element?, Element?), Error> { continuation in
                         
                         let intervalTask = DeferredTask {
-                            if let intervalStartInstant = intervalEvents.startInstant {
-                                intervalEvents.updateHasStartedInterval(true)
+                            if let intervalStartInstant = state.startInstant {
+                                state.updateHasStartedInterval(true)
                                 
                                 let intervalEndInstant = intervalStartInstant.advanced(by: interval)
                                 try await clock.sleep(until: intervalEndInstant, tolerance: nil)
                                 
-                                let firstElement = intervalEvents.firstElement
-                                let latestElement = intervalEvents.latestElement
+                                let firstElement = state.firstElement
+                                let latestElement = state.latestElement
                                 
                                 continuation.yield((firstElement, latestElement))
                                 
-                                intervalEvents.updateFirst(element: nil)
-                                intervalEvents.updateHasStartedInterval(false)
+                                state.updateFirst(element: nil)
+                                state.updateHasStartedInterval(false)
                             }
                         }
                         
                         Task {
                             do {
                                 for try await el in upstream {
-                                    if !intervalEvents.hasSeenFirstElement {
+                                    if !state.hasSeenFirstElement {
                                         continuation.yield((el, el))
-                                        intervalEvents.updateHasSeenFirstElement()
+                                        state.updateHasSeenFirstElement()
                                         continue
                                     }
-                                    if intervalEvents.firstElement == nil {
-                                        intervalEvents.updateStart(instant: clock.now)
-                                        intervalEvents.updateFirst(element: el)
+                                    if state.firstElement == nil {
+                                        state.updateStart(instant: clock.now)
+                                        state.updateFirst(element: el)
                                         intervalTask.run()
                                     }
-                                    intervalEvents.updateLatest(element: el)
+                                    state.updateLatest(element: el)
                                 }
-                                if intervalEvents.hasStartedInterval {
-                                    continuation.yield((intervalEvents.firstElement, intervalEvents.latestElement))
+                                if state.hasStartedInterval {
+                                    continuation.yield((state.firstElement, state.latestElement))
                                 }
                                 continuation.finish()
                             } catch {
-                                continuation.yield((intervalEvents.firstElement, intervalEvents.latestElement))
+                                continuation.yield((state.firstElement, state.latestElement))
                                 continuation.finish(throwing: error)
                             }
                         }

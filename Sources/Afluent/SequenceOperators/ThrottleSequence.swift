@@ -157,7 +157,9 @@ extension AsyncSequences {
                                 }
                                 continuation.finish()
                             } catch {
-                                continuation.yield((state.firstElement, state.latestElement))
+                                if state.hasStartedInterval {
+                                    continuation.yield((state.firstElement, state.latestElement))
+                                }
                                 continuation.finish(throwing: error)
                             }
                         }

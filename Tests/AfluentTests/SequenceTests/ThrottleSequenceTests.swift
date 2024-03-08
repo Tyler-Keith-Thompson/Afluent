@@ -269,6 +269,108 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
     
+    func testThrottleReturnsLatestElementInIntervalBeforeErrorInStreamWithDelay_whenLatestIsTrue() async {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let elementContainer = ElementContainer()
+            
+            let stream = AsyncThrowingStream { continuation in
+                DeferredTask {
+                    continuation.yield(1)
+                }
+                .delayThenHandleOutput(for: .milliseconds(10), testClock: testClock) { _ in
+                    
+                    let elements = await elementContainer.elements
+                    XCTAssertEqual(elements, [1])
+                    
+                    continuation.yield(2)
+                    continuation.yield(3)
+                }
+                .delayThenHandleOutput(for: .milliseconds(10), testClock: testClock) { _ in
+                    
+                    let elements = await elementContainer.elements
+                    XCTAssertEqual(elements, [1, 3])
+                    
+                    continuation.yield(with: .failure(TestError.upstreamError))
+                    continuation.yield(4)
+                }
+                .delayThenHandleOutput(for: .milliseconds(10), testClock: testClock) { _ in
+                    let elements = await elementContainer.elements
+                    XCTAssertEqual(elements, [1, 3])
+                    
+                    continuation.finish()
+                }
+                .run()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
+            
+            let task = Task {
+                do {
+                    for try await element in stream {
+                        await elementContainer.append(element)
+                    }
+                } catch {
+                    XCTAssertNotNil(error as? TestError)
+                }
+            }
+            
+            _ = await task.result
+            
+            let elements = await elementContainer.elements
+            XCTAssertEqual(elements, [1, 3])
+        }
+    }
+    
+    func testThrottleReturnsFirstElementInIntervalBeforeErrorInStreamWithDelay_whenLatestIsFalse() async {
+        await withMainSerialExecutor {
+            let testClock = TestClock()
+            let elementContainer = ElementContainer()
+            
+            let stream = AsyncThrowingStream { continuation in
+                DeferredTask {
+                    continuation.yield(1)
+                }
+                .delayThenHandleOutput(for: .milliseconds(10), testClock: testClock) { _ in
+                
+                    let elements = await elementContainer.elements
+                    XCTAssertEqual(elements, [1])
+                    
+                    continuation.yield(2)
+                    continuation.yield(3)
+                }
+                .delayThenHandleOutput(for: .milliseconds(10), testClock: testClock) { _ in
+                    
+                    let elements = await elementContainer.elements
+                    XCTAssertEqual(elements, [1, 2])
+                    
+                    continuation.yield(with: .failure(TestError.upstreamError))
+                    continuation.yield(4)
+                }
+                .delayThenHandleOutput(for: .milliseconds(10), testClock: testClock) { _ in
+                    let elements = await elementContainer.elements
+                    XCTAssertEqual(elements, [1, 2])
+                    
+                    continuation.finish()
+                }
+                .run()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
+            
+            let task = Task {
+                do {
+                    for try await element in stream {
+                        await elementContainer.append(element)
+                    }
+                } catch {
+                    XCTAssertNotNil(error as? TestError)
+                }
+            }
+            
+            _ = await task.result
+            
+            let elements = await elementContainer.elements
+            XCTAssertEqual(elements, [1, 2])
+        }
+    }
+    
     func testThrottleReturnsLatestElementInIntervalThatCompletesThrowingError_whenLatestIsTrue() async {
         await withMainSerialExecutor {
             let testClock = TestClock()

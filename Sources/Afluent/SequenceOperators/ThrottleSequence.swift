@@ -15,128 +15,45 @@ extension AsyncSequences {
         let interval: C.Duration
         let clock: C
         let latest: Bool
-        
-        class State {
-            var hasSeenFirstElement: Bool {
-                get {
-                    lock.protect {
-                        _hasSeenFirstElement
-                    }
-                }
-                set {
-                    lock.protect {
-                        _hasSeenFirstElement = newValue
-                    }
-                }
-            }
-            var hasStartedInterval: Bool {
-                get {
-                    lock.protect {
-                        _hasStartedInterval
-                    }
-                }
-                set {
-                    lock.protect {
-                        _hasStartedInterval = newValue
-                    }
-                }
-            }
-            var firstElement: Element? {
-                get {
-                    lock.protect {
-                        _firstElement
-                    }
-                }
-                set {
-                    lock.protect {
-                        _firstElement = newValue
-                    }
-                }
-            }
-            var latestElement: Element? {
-                get {
-                    lock.protect {
-                        _latestElement
-                    }
-                }
-                set {
-                    lock.protect {
-                        _latestElement = newValue
-                    }
-                }
-            }
-            var startInstant: C.Instant? {
-                get {
-                    lock.protect {
-                        _startInstant
-                    }
-                }
-                set {
-                    lock.protect {
-                        _startInstant = newValue
-                    }
-                }
-            }
-            
-            private var _hasSeenFirstElement: Bool
-            private var _hasStartedInterval: Bool
-            private var _firstElement: Element?
-            private var _latestElement: Element?
-            private var _startInstant: C.Instant?
-            
-            private let lock = NSRecursiveLock()
-            
-            init(hasSeenFirstElement: Bool = false,
-                 hasStartedInterval: Bool = false,
-                 firstElement: Element? = nil,
-                 latestElement: Element? = nil,
-                 startInstant: C.Instant? = nil) {
-                self._hasSeenFirstElement = hasSeenFirstElement
-                self._hasStartedInterval = hasStartedInterval
-                self._firstElement = firstElement
-                self._latestElement = latestElement
-                self._startInstant = startInstant
-            }
-        }
-        
+
         public struct AsyncIterator: AsyncIteratorProtocol {
             typealias Instant = C.Instant
-            
+
             var upstream: Upstream
             let interval: C.Duration
             let clock: C
             let latest: Bool
-            
+
             var iterator: AsyncThrowingStream<(Element?, Element?), Error>.Iterator?
             let state = State()
-            
+
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
-                
+
                 let clock = self.clock
                 let interval = self.interval
                 let upstream = self.upstream
                 let state = self.state
-                
+
                 if iterator == nil {
-                    self.iterator = AsyncThrowingStream<(Element?, Element?), Error> { continuation in
-                        
+                    iterator = AsyncThrowingStream<(Element?, Element?), Error> { continuation in
+
                         let intervalTask = DeferredTask {
                             guard let intervalStartInstant = state.startInstant else { return }
                             state.hasStartedInterval = true
-                            
+
                             let intervalEndInstant = intervalStartInstant.advanced(by: interval)
                             try await clock.sleep(until: intervalEndInstant, tolerance: nil)
-                            
+
                             let firstElement = state.firstElement
                             let latestElement = state.latestElement
-                            
+
                             continuation.yield((firstElement, latestElement))
-                            
+
                             state.firstElement = nil
                             state.hasStartedInterval = false
                         }
-                        
+
                         let iterationTask = Task {
                             do {
                                 for try await el in upstream {
@@ -163,23 +80,23 @@ extension AsyncSequences {
                                 continuation.finish(throwing: error)
                             }
                         }
-                        
+
                         continuation.onTermination = { _ in
                             intervalTask.cancel()
                             iterationTask.cancel()
                         }
-                        
+
                     }.makeAsyncIterator()
                 }
-                
-                while let (firstElement, latestElement) = try await self.iterator?.next() {
+
+                while let (firstElement, latestElement) = try await iterator?.next() {
                     return latest ? latestElement : firstElement
                 }
-                
+
                 return nil
             }
         }
-        
+
         public func makeAsyncIterator() -> AsyncIterator {
             AsyncIterator(upstream: upstream, interval: interval, clock: clock, latest: latest)
         }
@@ -194,5 +111,41 @@ extension AsyncSequence {
     /// - Note: The first element in upstream will always be returned immediately.  Once a second element is received, then the clock will begin for the given time interval and return the first or latest element once completed.
     public func throttle<C: Clock>(for interval: C.Duration, clock: C, latest: Bool) -> AsyncSequences.Throttle<Self, C> {
         AsyncSequences.Throttle(upstream: self, interval: interval, clock: clock, latest: latest)
+    }
+}
+
+extension AsyncSequences.Throttle {
+    class State {
+        private var _hasSeenFirstElement: Bool = false
+        var hasSeenFirstElement: Bool {
+            get { lock.protect { _hasSeenFirstElement } }
+            set { lock.protect { _hasSeenFirstElement = newValue } }
+        }
+
+        private var _hasStartedInterval: Bool = false
+        var hasStartedInterval: Bool {
+            get { lock.protect { _hasStartedInterval } }
+            set { lock.protect { _hasStartedInterval = newValue } }
+        }
+
+        private var _firstElement: Element?
+        var firstElement: Element? {
+            get { lock.protect { _firstElement } }
+            set { lock.protect { _firstElement = newValue } }
+        }
+
+        private var _latestElement: Element?
+        var latestElement: Element? {
+            get { lock.protect { _latestElement } }
+            set { lock.protect { _latestElement = newValue } }
+        }
+
+        private var _startInstant: C.Instant?
+        var startInstant: C.Instant? {
+            get { lock.protect { _startInstant } }
+            set { lock.protect { _startInstant = newValue } }
+        }
+
+        private let lock = NSRecursiveLock()
     }
 }

@@ -30,13 +30,8 @@ extension AsyncSequences {
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
 
-                let clock = self.clock
-                let interval = self.interval
-                let upstream = self.upstream
-                let state = self.state
-
                 if iterator == nil {
-                    iterator = AsyncThrowingStream<(Element?, Element?), Error> { continuation in
+                    iterator = AsyncThrowingStream<(Element?, Element?), Error> { [clock, interval, upstream, state] continuation in
 
                         let intervalTask = DeferredTask {
                             guard let intervalStartInstant = state.startInstant else { return }

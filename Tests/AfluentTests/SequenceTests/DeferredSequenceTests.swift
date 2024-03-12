@@ -6,6 +6,7 @@
 //
 
 import Afluent
+import ConcurrencyExtras
 import Foundation
 import XCTest
 
@@ -95,23 +96,25 @@ class DeferredTests: XCTestCase {
     }
 
     func testChecksForCancellation() async throws {
-        let sequence = Deferred<AsyncStream<Int>> { AsyncStream { _ in } }
+        try await withMainSerialExecutor {
+            let sequence = Deferred<AsyncStream<Int>> { AsyncStream { _ in } }
 
-        let task = Task {
-            for try await _ in sequence { }
-        }
-        task.cancel()
-
-        let result: Result<Void, Error> = await {
-            do {
-                return try .success(await task.value)
-            } catch {
-                return .failure(error)
+            let task = Task {
+                for try await _ in sequence { }
             }
-        }()
+            task.cancel()
 
-        XCTAssertThrowsError(try result.get()) { error in
-            XCTAssertNotNil(error as? CancellationError)
+            let result: Result<Void, Error> = await {
+                do {
+                    return try .success(await task.value)
+                } catch {
+                    return .failure(error)
+                }
+            }()
+
+            XCTAssertThrowsError(try result.get()) { error in
+                XCTAssertNotNil(error as? CancellationError)
+            }
         }
     }
 }

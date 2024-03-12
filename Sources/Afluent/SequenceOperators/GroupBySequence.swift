@@ -59,17 +59,24 @@ extension AsyncSequences {
                         let keyedSequences = self.keyedSequences
                         
                         Task {
-                            for try await el in upstream {
-                                let key = await keySelector(el)
-                                if keyedSequences.sequences[key] != nil {
-                                    keyedSequences.sequences[key]?.elements.append(el)
-                                } else {
-                                    let keyedAsyncSequence = KeyedAsyncSequence(upstream: upstream, elements: [el], key: key)
-                                    keyedSequences.sequences[key] = keyedAsyncSequence
-                                    continuation.yield(keyedAsyncSequence)
+                            do {
+                                for try await el in upstream {
+                                    let key = await keySelector(el)
+                                    if keyedSequences.sequences[key] != nil {
+                                        let existingSequence = keyedSequences.sequences[key]
+                                        existingSequence?.elements.append(el)
+                                        keyedSequences.sequences[key] = existingSequence
+                                    } else {
+                                        let keyedAsyncSequence = KeyedAsyncSequence(upstream: upstream, elements: [el], key: key)
+                                        keyedSequences.sequences[key] = keyedAsyncSequence
+                                        continuation.yield(keyedAsyncSequence)
+                                    }
                                 }
+                                
+                                continuation.finish()
+                            } catch {
+                                continuation.finish(throwing: error)
                             }
-                            continuation.finish()
                         }
                     }.makeAsyncIterator()
                 }
@@ -87,7 +94,7 @@ extension AsyncSequences {
         }
     }
     
-    public struct KeyedAsyncSequence<Key: Hashable, Upstream: AsyncSequence>: AsyncSequence {
+    public class KeyedAsyncSequence<Key: Hashable, Upstream: AsyncSequence>: AsyncSequence {
         public typealias Element = Upstream.Element
         var upstream: Upstream
         var elements: [Element]
@@ -106,12 +113,13 @@ extension AsyncSequences {
             
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
-                
-                if iterator == nil {
-                    iterator = elements.makeIterator()
+                return try await withCheckedThrowingContinuation { continuation in
+                    if iterator == nil {
+                        iterator = elements.makeIterator()
+                    }
+                    
+                    return continuation.resume(returning: iterator?.next())
                 }
-                
-                return iterator?.next()
             }
         }
         

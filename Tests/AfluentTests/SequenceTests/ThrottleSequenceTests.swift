@@ -27,6 +27,28 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
     
+    func testThrottleChecksForCancellation() async throws {
+        try await withMainSerialExecutor {
+            let testClock = TestClock()
+            
+            let stream = AsyncStream<Int> { continuation in
+                continuation.finish()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
+            
+            let task = Task {
+                for try await _ in stream { }
+            }
+            
+            task.cancel()
+            
+            let result = await task.result
+            
+            XCTAssertThrowsError(try result.get()) { error in
+                XCTAssertNotNil(error as? CancellationError)
+            }
+        }
+    }
+    
     func testThrottleWithNoElements_returnsEmpty_andLatestIsTrue() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
@@ -330,7 +352,7 @@ final class ThrottleSequenceTests: XCTestCase {
                     continuation.yield(1)
                 }
                 .delayThenHandleOutput(for: .milliseconds(10), testClock: testClock) { _ in
-                
+                    
                     let elements = await elementContainer.elements
                     XCTAssertEqual(elements, [1])
                     

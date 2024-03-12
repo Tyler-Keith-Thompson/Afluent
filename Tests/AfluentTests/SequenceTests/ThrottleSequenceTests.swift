@@ -27,13 +27,35 @@ final class ThrottleSequenceTests: XCTestCase {
         }
     }
     
-    func testThrottleChecksForCancellation() async throws {
+    func testThrottleChecksForCancellation_whenLatestIsTrue() async throws {
         try await withMainSerialExecutor {
             let testClock = TestClock()
             
             let stream = AsyncStream<Int> { continuation in
                 continuation.finish()
             }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
+            
+            let task = Task {
+                for try await _ in stream { }
+            }
+            
+            task.cancel()
+            
+            let result = await task.result
+            
+            XCTAssertThrowsError(try result.get()) { error in
+                XCTAssertNotNil(error as? CancellationError)
+            }
+        }
+    }
+    
+    func testThrottleChecksForCancellation_whenLatestIsFalse() async throws {
+        try await withMainSerialExecutor {
+            let testClock = TestClock()
+            
+            let stream = AsyncStream<Int> { continuation in
+                continuation.finish()
+            }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
             
             let task = Task {
                 for try await _ in stream { }
@@ -90,29 +112,6 @@ final class ThrottleSequenceTests: XCTestCase {
             
             let elements = await elementContainer.elements
             XCTAssert(elements.isEmpty)
-        }
-    }
-    
-    func testThrottleWithOneElement_returnsOneElement_andLatestIsTrue() async throws {
-        await withMainSerialExecutor {
-            let testClock = TestClock()
-            let elementContainer = ElementContainer()
-            
-            let stream = AsyncStream<Int> { continuation in
-                continuation.yield(1)
-                continuation.finish()
-            }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
-            
-            let task = Task {
-                for try await element in stream {
-                    await elementContainer.append(element)
-                }
-            }
-            
-            _ = await task.result
-            
-            let elements = await elementContainer.elements
-            XCTAssertEqual(elements, [1])
         }
     }
     

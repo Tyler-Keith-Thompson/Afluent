@@ -73,7 +73,7 @@ extension AsyncSequence {
     /// - Returns: An `AsynchronousUnitOfWork` that performs the side-effects for the specified receiving events.
     ///
     /// - Note: The returned `AsynchronousUnitOfWork` forwards all receiving events from the upstream unit of work.
-    public func handleEvents(@_inheritActorContext @_implicitSelfCapture receiveMakeIterator: (() -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveNext: (() async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveOutput: ((Element) async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveError: ((Error) async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveComplete: (() async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveCancel: (() async throws -> Void)? = nil) -> AsyncSequences.HandleEvents<Self> {
+    public func handleEvents(receiveMakeIterator: (() -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveNext: (() async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveOutput: ((Element) async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveError: ((Error) async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveComplete: (() async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveCancel: (() async throws -> Void)? = nil) -> AsyncSequences.HandleEvents<Self> {
         AsyncSequences.HandleEvents(upstream: self, receiveMakeIterator: receiveMakeIterator, receiveNext: receiveNext, receiveOutput: receiveOutput, receiveError: receiveError, receiveComplete: receiveComplete, receiveCancel: receiveCancel)
     }
 }

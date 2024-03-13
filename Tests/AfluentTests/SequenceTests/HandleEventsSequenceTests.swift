@@ -21,14 +21,16 @@ final class HandleEventsSequenceTests: XCTestCase {
         let test = Test()
 
         _ = await Task {
+            var subtask: Task<Void, Never>?
             _ = DeferredTask { }
                 .toAsyncSequence()
                 .handleEvents(receiveMakeIterator: {
-                    Task {
+                    subtask = Task {
                         await test.makeIterator()
                     }
                 })
                 .makeAsyncIterator()
+            _ = await subtask?.result
         }.value
 
         let iteratorMade = await test.iteratorMade

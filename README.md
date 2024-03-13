@@ -64,7 +64,7 @@ There are times when you need sequence mechanics and Afluent is there to help! H
 let posts = try await DeferredTask {
     try await URLSession.shared.data(from: URL(string: "https://jsonplaceholder.typicode.com/posts")!)
 }
-.toAsyncSequence() // Convert this to an AsyncSequence, thus enabled Swift Async Algorithms and standard library methods
+.toAsyncSequence() // Convert this to an AsyncSequence, thus enabling Swift Async Algorithms and standard library methods
 .map(\.0) // Extract the data from the URLSession response
 .decode(type: [Post].self, decoder: JSONDecoder()) // Decode the JSON into an array of `Post` objects
 .retry() // Automatically retry the request if it fails

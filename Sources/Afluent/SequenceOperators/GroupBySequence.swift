@@ -13,29 +13,6 @@ extension AsyncSequences {
         let upstream: Upstream
         let keySelector: (Upstream.Element) async -> Key
         
-        class KeyedSequences {
-            var sequences: [Key: Element] {
-                get {
-                    lock.protect {
-                        _sequences
-                    }
-                }
-                set {
-                    lock.protect {
-                        _sequences = newValue
-                    }
-                }
-            }
-            
-            private var _sequences: [Key: Element]
-            
-            private let lock = NSRecursiveLock()
-            
-            init(sequences: [Key : Element] = [:]) {
-                self._sequences = sequences
-            }
-        }
-        
         init(upstream: Upstream, keySelector: @escaping (Upstream.Element) async -> Key) {
             self.upstream = upstream
             self.keySelector = keySelector
@@ -52,12 +29,7 @@ extension AsyncSequences {
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
                 if iterator == nil {
-                    iterator = AsyncThrowingStream<Element, Error> { continuation in
-                        
-                        let upstream = self.upstream
-                        let keySelector = self.keySelector
-                        let keyedSequences = self.keyedSequences
-                        
+                    iterator = AsyncThrowingStream<Element, Error> { [upstream, keySelector, keyedSequences] continuation in
                         Task {
                             do {
                                 for try await el in upstream {
@@ -132,5 +104,30 @@ extension AsyncSequences {
 extension AsyncSequence {
     public func groupBy<Key: Hashable>(keySelector: @escaping (Element) async -> Key) -> AsyncSequences.GroupBy<Self, Key> {
         AsyncSequences.GroupBy(upstream: self, keySelector: keySelector)
+    }
+}
+
+extension AsyncSequences.GroupBy {
+    class KeyedSequences {
+        var sequences: [Key: Element] {
+            get {
+                lock.protect {
+                    _sequences
+                }
+            }
+            set {
+                lock.protect {
+                    _sequences = newValue
+                }
+            }
+        }
+        
+        private var _sequences: [Key: Element]
+        
+        private let lock = NSRecursiveLock()
+        
+        init(sequences: [Key : Element] = [:]) {
+            self._sequences = sequences
+        }
     }
 }

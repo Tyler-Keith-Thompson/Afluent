@@ -77,6 +77,8 @@ extension AsyncSequences {
                         }
 
                         continuation.onTermination = { _ in
+                            // Clean up any running tasks if the upstream is terminated.  
+                            // We are unable to write a test to specifically target this behavior but it should be kept in place to ensure there are no breaking edge cases.
                             intervalTask.cancel()
                             iterationTask.cancel()
                         }

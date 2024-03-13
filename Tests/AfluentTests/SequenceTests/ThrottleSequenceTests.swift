@@ -2187,7 +2187,7 @@ final class ThrottleSequenceTests: XCTestCase {
 
 @available(iOS 16.0, *)
 extension AsynchronousUnitOfWork {
-    fileprivate func delayThenHandleOutput<D: DurationProtocol & Hashable>(for duration: Duration, testClock: TestClock<D>, handler: @escaping (Sendable) async -> Void) -> any AsynchronousUnitOfWork {
+    fileprivate func delayThenHandleOutput<D: DurationProtocol & Hashable>(for duration: Duration, testClock: TestClock<D>, handler: @escaping (Sendable) async -> Void) -> some AsynchronousUnitOfWork {
         delay(for: duration)
             .handleEvents(receiveOutput: { output in
                 Task {

@@ -30,15 +30,13 @@ extension AsyncSequences {
                                 Task { [transform] in
                                     do {
                                         try Task.checkCancellation()
-                                        for try await el in upstream {
-                                            Task { [transform] in
-                                                do {
+                                        try await withThrowingTaskGroup(of: Void.self) { group in
+                                            for try await el in upstream {
+                                                group.addTask {
                                                     try Task.checkCancellation()
                                                     for try await e in try await transform(el) {
                                                         continuation.yield(e)
                                                     }
-                                                } catch {
-                                                    continuation.finish(throwing: error)
                                                 }
                                             }
                                         }

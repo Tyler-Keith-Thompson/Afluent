@@ -5,67 +5,58 @@
 //  Created by Tyler Thompson on 3/17/24.
 //
 
+import Afluent
 import Foundation
 import XCTest
 
 final class FlatMapSequenceTests: XCTestCase {
     func testFlatMapUnlimitedSequence() async throws {
-        struct Seq<Element>: AsyncSequence {
-            let val: Element
+        let (seq1, cont1) = AsyncThrowingStream<Int, Error>.makeStream()
+        cont1.yield(1)
+        let (seq2, cont2) = AsyncThrowingStream<Int, Error>.makeStream()
 
-            struct Iterator: AsyncIteratorProtocol {
-                let val: Element
-                var sent = false
-                mutating func next() async throws -> Element? {
-                    if !sent {
-                        defer { sent.toggle() }
-                        return val
-                    } else {
-                        return nil
-                    }
-                }
-            }
-
-            func makeAsyncIterator() -> Iterator {
-                Iterator(val: val)
-            }
+        let results = try await AsyncThrowingStream {
+            $0.yield(seq1)
+            $0.yield(seq2)
+            $0.finish()
         }
+        .handleEvents(receiveComplete: {
+            cont1.finish()
+            cont2.finish()
+        })
+        .flatMap(maxSubscriptions: .unlimited) { $0 }
+        .collect()
+        .first()
 
-        struct SeqOfSeq<Element: AsyncSequence>: AsyncSequence {
-            let val1: Element
-            let val2: Element
+        XCTAssertEqual(try Set(XCTUnwrap(results)), [1])
+    }
 
-            struct Iterator: AsyncIteratorProtocol {
-                let val1: Element
-                let val2: Element
-                var sent1 = false
-                var sent2 = false
-                mutating func next() async throws -> Element? {
-                    if !sent1 {
-                        defer { sent1.toggle() }
-                        return val1
-                    } else if !sent2 {
-                        defer { sent2.toggle() }
-                        return val2
-                    } else {
-                        return nil
+    func testFlatMapCorrectlyCancels() async throws {
+        let (seq1, cont1) = AsyncThrowingStream<Int, Error>.makeStream()
+        cont1.yield(1)
+        let (seq2, _) = AsyncThrowingStream<Int, Error>.makeStream()
+
+        let cancellableTask = Task {
+            try await AsyncThrowingStream { continuation in
+                DeferredTask { continuation }
+                    .delay(for: .milliseconds(1))
+                    .map {
+                        continuation.yield(seq1)
+                        $0.yield(seq2)
+                        $0.finish()
                     }
-                }
+                    .run()
             }
-
-            func makeAsyncIterator() -> Iterator {
-                Iterator(val1: val1, val2: val2)
-            }
-        }
-
-        let seq1 = Seq(val: 1)
-        let seq2 = Seq(val: 2)
-
-        let results = try await SeqOfSeq(val1: seq1, val2: seq2)
-            .flatMap { $0 }
-            .collect()
+            .flatMap(maxSubscriptions: .unlimited) { $0 }
             .first()
+        }
 
-        XCTAssertEqual(try Set(XCTUnwrap(results)), [1, 2])
+        cancellableTask.cancel()
+
+        let result = await cancellableTask.result
+
+        XCTAssertThrowsError(try result.get()) { error in
+            XCTAssertNotNil(error as? CancellationError)
+        }
     }
 }

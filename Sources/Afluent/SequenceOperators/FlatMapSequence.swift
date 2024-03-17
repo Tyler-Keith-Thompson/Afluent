@@ -5,6 +5,7 @@
 //  Created by Tyler Thompson on 3/16/24.
 //
 
+import Atomics
 import Foundation
 
 extension AsyncSequences {
@@ -28,9 +29,11 @@ extension AsyncSequences {
                             iterator = AsyncThrowingStream<Element, Error> { [upstream, transform] continuation in
                                 Task { [transform] in
                                     do {
+                                        try Task.checkCancellation()
                                         for try await el in upstream {
                                             Task { [transform] in
                                                 do {
+                                                    try Task.checkCancellation()
                                                     for try await e in try await transform(el) {
                                                         continuation.yield(e)
                                                     }

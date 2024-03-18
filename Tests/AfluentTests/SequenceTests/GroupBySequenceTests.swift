@@ -17,6 +17,26 @@ final class GroupBySequenceTests: XCTestCase {
         case upstreamError
     }
     
+    func testGroupByChecksCancellation() async throws  {
+        try await withMainSerialExecutor {
+            let stream = AsyncStream<Int> { continuation in
+                continuation.finish()
+            }.groupBy(keySelector: { $0 })
+            
+            let task = Task {
+                for try await _ in stream { }
+            }
+            
+            task.cancel()
+            
+            let result = await task.result
+            
+            XCTAssertThrowsError(try result.get()) { error in
+                XCTAssertNotNil(error as? CancellationError)
+            }
+        }
+    }
+    
     func testGroupByWithEmptySequenceReturnsEmptyKeys() async throws {
         await withMainSerialExecutor {
             let stream = AsyncStream<String> { continuation in

@@ -143,10 +143,10 @@ final class GroupBySequenceTests: XCTestCase {
                 }
             
             let task = Task {
-                var results = [String: AsyncSequences.KeyedAsyncSequence<String, AsyncStream<String>>]()
+                var results = [String: AsyncThrowingStream<String, Error>]()
                 
                 for try await sequence in stream {
-                    results[sequence.key] = sequence
+                    results[sequence.key] = sequence.stream
                 }
                 
                 let a = try await results["a"]?.collect().first()
@@ -194,10 +194,10 @@ final class GroupBySequenceTests: XCTestCase {
                     }
                 
                 let task = Task {
-                    var results = [String: AsyncSequences.KeyedAsyncSequence<String, AsyncThrowingStream<String, Error>>]()
+                    var results = [String: AsyncThrowingStream<String, Error>]()
                     do {
                         for try await sequence in stream {
-                            results[sequence.key] = sequence
+                            results[sequence.key] = sequence.stream
                         }
                         
                         let a = try await results["a"]?.collect().first()

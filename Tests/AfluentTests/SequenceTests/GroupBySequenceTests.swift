@@ -149,6 +149,8 @@ final class GroupBySequenceTests: XCTestCase {
                     results[sequence.key] = sequence.stream
                 }
                 
+                XCTAssertEqual(results.keys.count, 7)
+                
                 let a = try await results["a"]?.collect().first()
                 XCTAssertEqual(a, ["a"])
                 
@@ -200,6 +202,8 @@ final class GroupBySequenceTests: XCTestCase {
                         results[sequence.key] = sequence.stream
                     }
                     
+                    XCTAssertEqual(results.keys.count, 5)
+                    
                     let a = try await results["a"]?.collect().first()
                     XCTAssertEqual(a, ["a"])
                     
@@ -219,7 +223,7 @@ final class GroupBySequenceTests: XCTestCase {
                     XCTAssertNotEqual(f, ["f"])
                     
                     let g = try await results["g"]?.collect().first()
-                    XCTAssertNotEqual(g,     ["g"])
+                    XCTAssertNotEqual(g, ["g"])
                 } catch  {
                     guard case TestError.upstreamError = error else {
                         XCTFail("No error thrown")
@@ -255,6 +259,8 @@ final class GroupBySequenceTests: XCTestCase {
                         for try await sequence in stream {
                             results[sequence.key] = sequence.stream
                         }
+                        
+                        XCTAssertEqual(results.keys.count, 5)
                         
                         let a = try await results["a"]?.collect().first()
                         XCTAssertEqual(a, ["a"])

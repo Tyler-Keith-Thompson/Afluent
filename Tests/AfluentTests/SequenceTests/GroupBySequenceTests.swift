@@ -175,7 +175,64 @@ final class GroupBySequenceTests: XCTestCase {
         }
     }
         
-        func testGroupByWithPopulatedSequenceGroupsByKeysWithSequences_throwingErrors() async throws {
+    func testGroupByWithPopulatedSequenceGroupsByKeysWithSequences_throwingError() async throws {
+        await withMainSerialExecutor {
+            let stream = AsyncThrowingStream<String, Error> { continuation in
+                continuation.yield("a")
+                continuation.yield("b")
+                continuation.yield("c")
+                continuation.yield("c")
+                continuation.yield("d")
+                continuation.yield("e")
+                continuation.yield(with: .failure(TestError.upstreamError))
+                continuation.yield("f")
+                continuation.yield("g")
+                continuation.finish()
+            }
+                .groupBy { element in
+                    return element
+                }
+            
+            let task = Task {
+                var results = [String: AsyncThrowingStream<String, Error>]()
+                do {
+                    for try await sequence in stream {
+                        results[sequence.key] = sequence.stream
+                    }
+                    
+                    let a = try await results["a"]?.collect().first()
+                    XCTAssertEqual(a, ["a"])
+                    
+                    let b = try await results["b"]?.collect().first()
+                    XCTAssertEqual(b, ["b"])
+                    
+                    let c = try await results["c"]?.collect().first()
+                    XCTAssertEqual(c, ["c", "c"])
+                    
+                    let d = try await results["d"]?.collect().first()
+                    XCTAssertEqual(d, ["d"])
+                    
+                    let e = try await results["e"]?.collect().first()
+                    XCTAssertEqual(e, ["e"])
+                    
+                    let f = try await results["f"]?.collect().first()
+                    XCTAssertNotEqual(f, ["f"])
+                    
+                    let g = try await results["g"]?.collect().first()
+                    XCTAssertNotEqual(g,     ["g"])
+                } catch  {
+                    guard case TestError.upstreamError = error else {
+                        XCTFail("No error thrown")
+                        return
+                    }
+                }
+            }
+            
+            _ = await task.result
+        }
+}
+    
+        func testGroupByWithPopulatedSequenceGroupsByKeysWithSequences_completingWithError() async throws {
             await withMainSerialExecutor {
                 let stream = AsyncThrowingStream<String, Error> { continuation in
                     continuation.yield("a")
@@ -187,7 +244,6 @@ final class GroupBySequenceTests: XCTestCase {
                     continuation.finish(throwing: TestError.upstreamError)
                     continuation.yield("f")
                     continuation.yield("g")
-                    continuation.finish()
                 }
                     .groupBy { element in
                         return element

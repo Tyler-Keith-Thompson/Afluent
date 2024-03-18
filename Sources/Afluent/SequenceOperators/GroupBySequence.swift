@@ -9,7 +9,7 @@ import Foundation
 
 extension AsyncSequences {
     public struct GroupBy<Upstream: AsyncSequence, Key: Hashable>: AsyncSequence {
-        public typealias Element = KeyedAsyncSequence<Key, Upstream>
+        public typealias Element = (key: Key, stream: AsyncThrowingStream<Upstream.Element, Error>)
         let upstream: Upstream
         let keySelector: (Upstream.Element) async -> Key
         
@@ -19,84 +19,37 @@ extension AsyncSequences {
         }
         
         public struct AsyncIterator: AsyncIteratorProtocol {
-            public typealias Element = KeyedAsyncSequence<Key, Upstream>
-            var upstream: Upstream
+            var upstream: Upstream.AsyncIterator
             let keySelector: (Upstream.Element) async -> Key
             
-            var keyedSequences = KeyedSequences()
-            var iterator: AsyncThrowingStream<Element, Error>.Iterator?
+            var keyedSequences = [Key: (stream: AsyncThrowingStream<Upstream.Element, Error>, continuation: AsyncThrowingStream<Upstream.Element, Error>.Continuation)]()
             
             public mutating func next() async throws -> Element? {
-                try Task.checkCancellation()
-                if iterator == nil {
-                    iterator = AsyncThrowingStream<Element, Error> { [upstream, keySelector, keyedSequences] continuation in
-                        Task {
-                            do {
-                                for try await el in upstream {
-                                    let key = await keySelector(el)
-                                    if keyedSequences.sequences[key] != nil {
-                                        let existingSequence = keyedSequences.sequences[key]
-                                        existingSequence?.elements.append(el)
-                                        keyedSequences.sequences[key] = existingSequence
-                                    } else {
-                                        let keyedAsyncSequence = KeyedAsyncSequence(upstream: upstream, elements: [el], key: key)
-                                        keyedSequences.sequences[key] = keyedAsyncSequence
-                                        continuation.yield(keyedAsyncSequence)
-                                    }
-                                }
-                                
-                                continuation.finish()
-                            } catch {
-                                continuation.finish(throwing: error)
-                            }
-                        }
-                    }.makeAsyncIterator()
-                }
-                
-                while let element = try await iterator?.next() {
-                    return element
-                }
-                
-                return nil
-            }
-        }
-        
-        public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstream: upstream, keySelector: keySelector)
-        }
-    }
-    
-    public class KeyedAsyncSequence<Key: Hashable, Upstream: AsyncSequence>: AsyncSequence {
-        public typealias Element = Upstream.Element
-        var upstream: Upstream
-        var elements: [Element]
-        let key: Key
-
-        init(upstream: Upstream, elements: [Element], key: Key) {
-            self.upstream = upstream
-            self.elements = elements
-            self.key = key
-        }
-        
-        public struct AsyncIterator: AsyncIteratorProtocol {
-            
-            var elements: [Element]
-            var iterator: Array<Element>.Iterator?
-            
-            public mutating func next() async throws -> Element? {
-                try Task.checkCancellation()
-                return try await withCheckedThrowingContinuation { continuation in
-                    if iterator == nil {
-                        iterator = elements.makeIterator()
+                do {
+                    try Task.checkCancellation()
+                    guard let element = try await upstream.next() else {
+                        keyedSequences.values.forEach { $0.continuation.finish() }
+                        return nil
                     }
-                    
-                    return continuation.resume(returning: iterator?.next())
+                    let key = await keySelector(element)
+                    if let existing = keyedSequences[key] {
+                        existing.continuation.yield(element)
+                        return try await next()
+                    } else {
+                        let (stream, continuation) = AsyncThrowingStream<Upstream.Element, Error>.makeStream()
+                        keyedSequences[key] = (stream: stream, continuation: continuation)
+                        defer { continuation.yield(element) }
+                        return (key: key, stream: stream)
+                    }
+                } catch {
+                    keyedSequences.values.forEach { $0.continuation.finish(throwing: error) }
+                    throw error
                 }
             }
         }
         
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(elements: elements)
+            AsyncIterator(upstream: upstream.makeAsyncIterator(), keySelector: keySelector)
         }
     }
 }
@@ -107,27 +60,3 @@ extension AsyncSequence {
     }
 }
 
-extension AsyncSequences.GroupBy {
-    class KeyedSequences {
-        var sequences: [Key: Element] {
-            get {
-                lock.protect {
-                    _sequences
-                }
-            }
-            set {
-                lock.protect {
-                    _sequences = newValue
-                }
-            }
-        }
-        
-        private var _sequences: [Key: Element]
-        
-        private let lock = NSRecursiveLock()
-        
-        init(sequences: [Key : Element] = [:]) {
-            self._sequences = sequences
-        }
-    }
-}

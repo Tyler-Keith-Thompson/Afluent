@@ -15,13 +15,16 @@ extension AsyncSequences {
         public struct AsyncIterator: AsyncIteratorProtocol {
             var upstreamIterator: Upstream.AsyncIterator
             var collected = Element()
+            var finished = false
 
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
+                guard !finished else { return nil }
                 while let next = try await upstreamIterator.next() {
                     try Task.checkCancellation()
                     collected.append(next)
                 }
+                defer { finished = true }
                 return collected
             }
         }

@@ -28,6 +28,12 @@ final class CollectSequenceTests: XCTestCase {
         XCTAssertEqual(collected, [42], "Collect should return an array with the single element")
     }
 
+    func testCollectWithSequenceFinishes() async throws {
+        let singleElementSequence = [42].async
+        let collected = try await singleElementSequence.collect().dropFirst().first()
+        XCTAssertNil(collected)
+    }
+
     func testCollectWithSequenceThrowingError() async throws {
         enum TestError: Error, Equatable {
             case someError

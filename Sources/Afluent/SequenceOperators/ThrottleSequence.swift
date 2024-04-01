@@ -9,7 +9,7 @@ import Foundation
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 extension AsyncSequences {
-    public struct Throttle<Upstream: AsyncSequence, C: Clock>: AsyncSequence {
+    public struct Throttle<Upstream: AsyncSequence & Sendable, C: Clock>: AsyncSequence {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         let interval: C.Duration
@@ -29,7 +29,7 @@ extension AsyncSequences {
 
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
-                
+
                 if iterator == nil {
                     iterator = AsyncThrowingStream<(Element?, Element?), Error> { [clock, interval, upstream, state] continuation in
 
@@ -77,7 +77,7 @@ extension AsyncSequences {
                         }
 
                         continuation.onTermination = { _ in
-                            // Clean up any running tasks if the upstream is terminated.  
+                            // Clean up any running tasks if the upstream is terminated.
                             // We are unable to write a test to specifically target this behavior but it should be kept in place to ensure there are no breaking edge cases.
                             intervalTask.cancel()
                             iterationTask.cancel()
@@ -101,7 +101,7 @@ extension AsyncSequences {
 }
 
 @available(iOS 16.0, *)
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Emits either the first or latest element received during a specified amount of time.
     /// - Parameter interval: The interval of time in which to observe and emit either the first or latest element.
     /// - Parameter latest: If `true`, emits the latest element in the time interval.  If `false`, emits the first element in the time interval.
@@ -113,7 +113,7 @@ extension AsyncSequence {
 
 @available(iOS 16.0, *)
 extension AsyncSequences.Throttle {
-    class State {
+    class State: @unchecked Sendable {
         private var _hasSeenFirstElement: Bool = false
         var hasSeenFirstElement: Bool {
             get { lock.protect { _hasSeenFirstElement } }

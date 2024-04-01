@@ -21,6 +21,9 @@ let package = Package(name: "Afluent",
                           .target(name: "Afluent",
                                   dependencies: [
                                       .product(name: "Atomics", package: "swift-atomics"),
+                                  ],
+                                  swiftSettings: [
+                                      .enableExperimentalFeature("StrictConcurrency=complete"),
                                   ]),
                           .testTarget(name: "AfluentTests",
                                       dependencies: testDependencies()),

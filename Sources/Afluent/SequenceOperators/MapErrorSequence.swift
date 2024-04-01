@@ -34,7 +34,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Transforms the error produced by the `AsyncSequence`.
     ///
     /// This function allows you to modify or replace the error produced by the current sequence. It's useful for converting between error types or adding additional context to errors.

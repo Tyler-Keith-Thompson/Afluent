@@ -38,7 +38,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` whose output is the decoded `T` type object.
     ///
     /// - Note: The generic constraint `Success == D.Input` ensures that the upstream unit of work emits a compatible type for the decoder.
-    public func decode<T: Decodable, D: TopLevelDecoder>(type _: T.Type, decoder: D) -> some AsynchronousUnitOfWork<T> where Success == D.Input {
+    public func decode<T: Decodable & Sendable, D: TopLevelDecoder & Sendable>(type _: T.Type, decoder: D) -> some AsynchronousUnitOfWork<T> where Success == D.Input {
         Workers.Decode(upstream: self, decoder: decoder)
     }
 }

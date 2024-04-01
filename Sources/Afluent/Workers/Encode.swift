@@ -36,7 +36,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` emitting the encoded values as output of type `E.Output`.
     ///
     /// - Note: The returned `AsynchronousUnitOfWork` will fail if the encoding process fails.
-    public func encode<E: TopLevelEncoder>(encoder: E) -> some AsynchronousUnitOfWork<E.Output> where Success: Encodable {
+    public func encode<E: TopLevelEncoder & Sendable>(encoder: E) -> some AsynchronousUnitOfWork<E.Output> where Success: Encodable, E.Output: Sendable {
         Workers.Encode(upstream: self, encoder: encoder)
     }
 }

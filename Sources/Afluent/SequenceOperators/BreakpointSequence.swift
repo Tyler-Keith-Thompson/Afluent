@@ -7,7 +7,7 @@
 
 import Foundation
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Introduces a breakpoint into the async sequence.
     ///
     /// This function allows you to introduce conditional breakpoints based on the output or error of the async sequence.

@@ -34,7 +34,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Transforms a sequence of `Event` values back into their original form in an `AsyncSequence`.
     ///
     /// This method is the inverse of `materialize`. It takes an `AsyncSequence` of `Event` values and transforms it back into an `AsyncSequence` of the original elements, propagating errors as thrown exceptions.

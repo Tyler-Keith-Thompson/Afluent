@@ -9,7 +9,7 @@ import Foundation
 
 /// Stores an erased unit of work and provides a mechanism to cancel it
 /// - NOTE: The unit of work will be cancelled when the AnyCancellable is deinitialized
-public final class AnyCancellable: Hashable {
+public final class AnyCancellable: Hashable, Sendable {
     public static func == (lhs: AnyCancellable, rhs: AnyCancellable) -> Bool {
         lhs === rhs
     }
@@ -51,15 +51,15 @@ extension AsynchronousUnitOfWork {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Executes the current async sequence and returns an AnyCancellable token to cancel the subscription.
     ///
     /// - Parameters:
     ///   - receiveCompletion: A function that is executed when the stream has completed normally with `nil` or an error.
     ///   - receiveOutput: A function that is executed when output is received from the sequence.
     ///   If this function throws an error, then the stream is completed.
-    public func sink(receiveCompletion: ((AsyncSequences.Completion<Error>) async -> Void)? = nil,
-                     receiveOutput: ((Element) async throws -> Void)? = nil) -> AnyCancellable {
+    public func sink(receiveCompletion: (@Sendable (AsyncSequences.Completion<Error>) async -> Void)? = nil,
+                     receiveOutput: (@Sendable (Element) async throws -> Void)? = nil) -> AnyCancellable {
         DeferredTask {
             do {
                 for try await output in self {

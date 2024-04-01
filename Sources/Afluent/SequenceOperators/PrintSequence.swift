@@ -7,7 +7,7 @@
 
 import Foundation
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Logs events from the upstream `AsyncSequence` to the console.
     ///
     /// - Parameters:

@@ -9,7 +9,7 @@ import Foundation
 
 extension AsyncSequences {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-    public struct Delay<Upstream: AsyncSequence, C: Clock>: AsyncSequence {
+    public struct Delay<Upstream: AsyncSequence & Sendable, C: Clock>: AsyncSequence {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         let interval: C.Duration
@@ -61,7 +61,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Delays delivery of all output to the downstream receiver by a specified amount of time
     /// - Parameter interval: The amount of time to delay.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)

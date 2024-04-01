@@ -32,7 +32,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Decodes the output from the upstream using a specified decoder.
     public func decode<T: Decodable, D: TopLevelDecoder>(type _: T.Type, decoder: D) -> AsyncSequences.Decode<Self, D, T> where Element == D.Input {
         AsyncSequences.Decode(upstream: self, decoder: decoder)

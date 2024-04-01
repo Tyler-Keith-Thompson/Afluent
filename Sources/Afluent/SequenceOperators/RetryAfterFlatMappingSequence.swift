@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    public final actor RetryAfterFlatMapping<Upstream: AsyncSequence, Downstream: AsyncSequence>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element {
+    public final actor RetryAfterFlatMapping<Upstream: AsyncSequence & Sendable, Downstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element, Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         var retries: UInt
@@ -22,19 +22,27 @@ extension AsyncSequences {
             self.transform = transform
         }
 
-        public func next() async throws -> Upstream.Element? {
+        private func setIterator(_ iterator: Upstream.AsyncIterator) {
+            self.iterator = iterator
+        }
+
+        private func decrementRetries() {
+            retries -= 1
+        }
+
+        public nonisolated func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                var copy = iterator
+                var copy = await iterator
                 let next = try await copy.next()
-                iterator = copy
+                await setIterator(copy)
                 return next
             } catch {
                 guard !(error is CancellationError) else { throw error }
 
-                if retries > 0 {
-                    retries -= 1
-                    iterator = upstream.makeAsyncIterator()
+                if await retries > 0 {
+                    await decrementRetries()
+                    await setIterator(upstream.makeAsyncIterator())
                     for try await _ in try await transform(error) { }
                     return try await next()
                 } else {
@@ -46,7 +54,7 @@ extension AsyncSequences {
         public nonisolated func makeAsyncIterator() -> RetryAfterFlatMapping<Upstream, Downstream> { self }
     }
 
-    public final actor RetryOnAfterFlatMapping<Upstream: AsyncSequence, Failure: Error & Equatable, Downstream: AsyncSequence>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element {
+    public final actor RetryOnAfterFlatMapping<Upstream: AsyncSequence & Sendable, Failure: Error & Equatable, Downstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element, Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         var retries: UInt
@@ -61,12 +69,20 @@ extension AsyncSequences {
             self.transform = transform
         }
 
-        public func next() async throws -> Upstream.Element? {
+        private func setIterator(_ iterator: Upstream.AsyncIterator) {
+            self.iterator = iterator
+        }
+
+        private func decrementRetries() {
+            retries -= 1
+        }
+
+        public nonisolated func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                var copy = iterator
+                var copy = await iterator
                 let next = try await copy.next()
-                iterator = copy
+                await setIterator(copy)
                 return next
             } catch (let err) {
                 guard !(err is CancellationError) else { throw err }
@@ -75,9 +91,9 @@ extension AsyncSequences {
                       unwrappedError == error else {
                     throw err
                 }
-                if retries > 0 {
-                    retries -= 1
-                    iterator = upstream.makeAsyncIterator()
+                if await retries > 0 {
+                    await decrementRetries()
+                    await setIterator(upstream.makeAsyncIterator())
                     for try await _ in try await transform(unwrappedError) { }
                     return try await next()
                 } else {
@@ -90,7 +106,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Retries the upstream `AsyncSequence` up to a specified number of times while applying a transformation on error.
     ///
     /// - Parameters:

@@ -33,7 +33,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Raises a fatal error when its upstream sequence fails, and otherwise republishes all received input.
     public func assertNoFailure() -> AsyncSequences.AssertNoFailure<Self> {
         AsyncSequences.AssertNoFailure(upstream: self)

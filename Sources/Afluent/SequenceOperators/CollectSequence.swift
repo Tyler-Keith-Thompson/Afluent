@@ -35,7 +35,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Collects all received elements, and emits a single array of the collection when the upstream sequence finishes.
     /// ### Discussion:
     /// Use `collect()` to gather elements into an array that the operator emits after the upstream sequence finishes.

@@ -50,7 +50,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Transforms the elements, completion, and errors of the current `AsyncSequence` into `Event` values.
     ///
     /// This method wraps the `AsyncSequence` and emits each of its elements, errors, and completion as distinct `Event` cases. It's useful for uniformly handling all aspects of the sequence's lifecycle.

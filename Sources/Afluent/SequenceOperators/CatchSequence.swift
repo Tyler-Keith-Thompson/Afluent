@@ -46,7 +46,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Catches any errors emitted by the upstream `AsyncSequence` and handles them using the provided closure.
     ///
     /// - Parameters:

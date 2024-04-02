@@ -32,7 +32,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Encodes the output from upstream using a specified encoder.
     public func encode<E: TopLevelEncoder>(encoder: E) -> AsyncSequences.Encode<Self, E> where Element: Encodable {
         AsyncSequences.Encode(upstream: self, encoder: encoder)

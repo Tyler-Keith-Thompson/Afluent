@@ -35,7 +35,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Replaces any errors from the upstream `AsyncSequence` with the provided value.
     ///
     /// - Parameter value: The value to emit upon encountering an error.

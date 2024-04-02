@@ -37,7 +37,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Type erases the current sequence, useful when you need a concrete type that's easy to predict.
     public func eraseToAnyAsyncSequence() -> AsyncSequences.AnyAsyncSequence<Element> {
         AsyncSequences.AnyAsyncSequence(erasing: self)

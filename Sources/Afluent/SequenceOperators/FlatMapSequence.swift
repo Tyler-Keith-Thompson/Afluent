@@ -9,16 +9,16 @@ import Atomics
 import Foundation
 
 extension AsyncSequences {
-    public struct FlatMap<Upstream: AsyncSequence, SegmentOfResult: AsyncSequence>: AsyncSequence {
+    public struct FlatMap<Upstream: AsyncSequence & Sendable, SegmentOfResult: AsyncSequence & Sendable>: AsyncSequence where Upstream.Element: Sendable {
         public typealias Element = SegmentOfResult.Element
         let upstream: Upstream
         let maxSubscriptons: SubscriptionDemand
-        let transform: (Upstream.Element) async throws -> SegmentOfResult
+        let transform: @Sendable (Upstream.Element) async throws -> SegmentOfResult
 
         public struct AsyncIterator: AsyncIteratorProtocol {
             var upstream: Upstream
             let maxSubscriptons: SubscriptionDemand
-            let transform: (Upstream.Element) async throws -> SegmentOfResult
+            let transform: @Sendable (Upstream.Element) async throws -> SegmentOfResult
             var iterator: AsyncThrowingStream<Element, Error>.Iterator?
 
             public mutating func next() async throws -> SegmentOfResult.Element? {
@@ -65,7 +65,7 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence {
-    public func flatMap<SegmentOfResult: AsyncSequence>(maxSubscriptions: SubscriptionDemand, _ transform: @escaping (Self.Element) async throws -> SegmentOfResult) -> AsyncSequences.FlatMap<Self, SegmentOfResult> {
+    public func flatMap<SegmentOfResult: AsyncSequence>(maxSubscriptions: SubscriptionDemand, _ transform: @escaping @Sendable (Self.Element) async throws -> SegmentOfResult) -> AsyncSequences.FlatMap<Self, SegmentOfResult> {
         AsyncSequences.FlatMap(upstream: self, maxSubscriptons: maxSubscriptions, transform: transform)
     }
 }

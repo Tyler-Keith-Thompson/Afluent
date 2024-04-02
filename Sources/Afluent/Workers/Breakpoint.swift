@@ -18,7 +18,7 @@ extension AsynchronousUnitOfWork {
     ///   - receiveError: A closure that takes any error produced by the operation. If this closure returns `true`, a breakpoint is triggered. Default is `nil`.
     ///
     /// - Returns: An asynchronous unit of work with the breakpoint conditions applied.
-    @_transparent @_alwaysEmitIntoClient @inlinable public func breakpoint(receiveOutput: ((Success) async throws -> Bool)? = nil, receiveError: ((Error) async throws -> Bool)? = nil) -> some AsynchronousUnitOfWork<Success> {
+    @_transparent @_alwaysEmitIntoClient @inlinable public func breakpoint(receiveOutput: (@Sendable (Success) async throws -> Bool)? = nil, receiveError: (@Sendable (Error) async throws -> Bool)? = nil) -> some AsynchronousUnitOfWork<Success> {
         handleEvents(receiveOutput: { output in
             if try await receiveOutput?(output) == true {
                 raise(SIGTRAP)

@@ -60,7 +60,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Adds side-effects to the receiving events of the upstream `AsyncSequence`.
     ///
     /// - Parameters:

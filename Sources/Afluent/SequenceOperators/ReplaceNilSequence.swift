@@ -34,7 +34,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence {
+extension AsyncSequence where Self: Sendable {
     /// Replaces any `nil` values from the upstream `AsyncSequence` with the provided non-nil value.
     ///
     /// - Parameter value: The value to emit when the upstream emits `nil`.

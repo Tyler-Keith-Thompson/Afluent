@@ -22,27 +22,27 @@ extension AsyncSequences {
             self.transform = transform
         }
 
+        private nonisolated func advanceAndSet(iterator: Upstream.AsyncIterator) async throws -> Upstream.Element? {
+            var copy = iterator
+            let next = try await copy.next()
+            await setIterator(copy)
+            return next
+        }
+
         private func setIterator(_ iterator: Upstream.AsyncIterator) {
             self.iterator = iterator
         }
 
-        private func decrementRetries() {
-            retries -= 1
-        }
-
-        public nonisolated func next() async throws -> Upstream.Element? {
+        public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                var copy = await iterator
-                let next = try await copy.next()
-                await setIterator(copy)
-                return next
+                return try await advanceAndSet(iterator: iterator)
             } catch {
                 guard !(error is CancellationError) else { throw error }
 
-                if await retries > 0 {
-                    await decrementRetries()
-                    await setIterator(upstream.makeAsyncIterator())
+                if retries > 0 {
+                    retries -= 1
+                    iterator = upstream.makeAsyncIterator()
                     for try await _ in try await transform(error) { }
                     return try await next()
                 } else {
@@ -69,21 +69,21 @@ extension AsyncSequences {
             self.transform = transform
         }
 
+        private nonisolated func advanceAndSet(iterator: Upstream.AsyncIterator) async throws -> Upstream.Element? {
+            var copy = iterator
+            let next = try await copy.next()
+            await setIterator(copy)
+            return next
+        }
+
         private func setIterator(_ iterator: Upstream.AsyncIterator) {
             self.iterator = iterator
         }
 
-        private func decrementRetries() {
-            retries -= 1
-        }
-
-        public nonisolated func next() async throws -> Upstream.Element? {
+        public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                var copy = await iterator
-                let next = try await copy.next()
-                await setIterator(copy)
-                return next
+                return try await advanceAndSet(iterator: iterator)
             } catch (let err) {
                 guard !(err is CancellationError) else { throw err }
 
@@ -91,9 +91,9 @@ extension AsyncSequences {
                       unwrappedError == error else {
                     throw err
                 }
-                if await retries > 0 {
-                    await decrementRetries()
-                    await setIterator(upstream.makeAsyncIterator())
+                if retries > 0 {
+                    retries -= 1
+                    iterator = upstream.makeAsyncIterator()
                     for try await _ in try await transform(unwrappedError) { }
                     return try await next()
                 } else {

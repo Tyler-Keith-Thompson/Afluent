@@ -7,29 +7,29 @@
 import Afluent
 
 import Foundation
-import XCTest
+import Testing
 
-final class WithUnretainedTests: XCTestCase {
+struct WithUnretainedTests {
     class MyType { }
 
-    func testWithUnretainedHolds() async throws {
+    @Test func withUnretainedHolds() async throws {
         let myTypeInstance = MyType()
 
         try await DeferredTask { 1 }
             .withUnretained(myTypeInstance, resultSelector: { myType, _ in
-                XCTAssertNotNil(myType)
+                #expect(myType != nil)
             })
             .execute()
     }
 
-    func testWithUnretainedThrows() async throws {
+    @Test func withUnretainedThrows() async throws {
         do {
             try await DeferredTask { 1 }
                 .withUnretained(MyType(), resultSelector: { _, _ in })
                 .execute()
-            XCTFail("Should throw if failed to retain")
+            Issue.record("Should throw if failed to retain")
         } catch {
-            XCTAssertEqual(error as? UnretainedError, UnretainedError.failedRetaining)
+            #expect(error as? UnretainedError == UnretainedError.failedRetaining)
         }
     }
 }

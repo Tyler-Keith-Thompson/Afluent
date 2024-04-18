@@ -8,11 +8,11 @@
 import Afluent
 import ConcurrencyExtras
 import Foundation
-import XCTest
+import Testing
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-final class HandleEventsTests: XCTestCase {
-    func testHandleOperation() async throws {
+struct HandleEventsTests {
+    @Test func handleOperation() async throws {
         actor Test {
             var operationCalled = false
 
@@ -20,22 +20,21 @@ final class HandleEventsTests: XCTestCase {
         }
         let test = Test()
 
-        let exp = expectation(description: "thing happened")
-        DeferredTask { }
-            .handleEvents(receiveOperation: {
-                await test.operation()
-                exp.fulfill()
-            })
-            .run()
+        try await confirmation { exp in
+            try await DeferredTask { }
+                .handleEvents(receiveOperation: {
+                    await test.operation()
+                    exp()
+                })
+                .execute()
 
-        await fulfillment(of: [exp], timeout: 1)
+            let operationCalled = await test.operationCalled
 
-        let operationCalled = await test.operationCalled
-
-        XCTAssert(operationCalled)
+            #expect(operationCalled)
+        }
     }
 
-    func testHandleOutput() async throws {
+    @Test func handleOutput() async throws {
         actor Test {
             var output: Any?
 
@@ -43,22 +42,21 @@ final class HandleEventsTests: XCTestCase {
         }
         let test = Test()
 
-        let exp = expectation(description: "thing happened")
-        DeferredTask {
-            1
-        }.handleEvents(receiveOutput: {
-            await test.output($0)
-            exp.fulfill()
-        }).run()
+        try await confirmation { exp in
+            try await DeferredTask {
+                1
+            }.handleEvents(receiveOutput: {
+                await test.output($0)
+                exp()
+            }).execute()
 
-        await fulfillment(of: [exp], timeout: 1)
+            let output = await test.output
 
-        let output = await test.output
-
-        XCTAssertEqual(output as? Int, 1)
+            #expect(output as? Int == 1)
+        }
     }
 
-    func testHandleError() async throws {
+    @Test func handleError() async throws {
         actor Test {
             var error: Error?
 
@@ -66,22 +64,21 @@ final class HandleEventsTests: XCTestCase {
         }
         let test = Test()
 
-        let exp = expectation(description: "thing happened")
-        DeferredTask {
-            throw URLError(.badURL)
-        }.handleEvents(receiveError: {
-            await test.error($0)
-            exp.fulfill()
-        }).run()
+        try await confirmation { exp in
+            try await DeferredTask {
+                throw URLError(.badURL)
+            }.handleEvents(receiveError: {
+                await test.error($0)
+                exp()
+            }).replaceError(with: ()).execute()
 
-        await fulfillment(of: [exp], timeout: 1)
+            let error = await test.error
 
-        let error = await test.error
-
-        XCTAssertEqual(error as? URLError, URLError(.badURL))
+            #expect(error as? URLError == URLError(.badURL))
+        }
     }
 
-    func testHandleCancel() async throws {
+    @Test(.timeLimit(.milliseconds(10))) func handleCancel() async throws {
         await withMainSerialExecutor {
             actor Test {
                 var canceled = false
@@ -90,20 +87,19 @@ final class HandleEventsTests: XCTestCase {
             }
             let test = Test()
 
-            let exp = expectation(description: "thing happened")
-            var task: AnyCancellable?
-            task = DeferredTask { task?.cancel() }
-                .handleEvents(receiveCancel: {
-                    await test.cancel()
-                    exp.fulfill()
-                })
-                .subscribe()
-
-            await fulfillment(of: [exp], timeout: 0.1)
+            await withCheckedContinuation { continuation in
+                var task: AnyCancellable?
+                task = DeferredTask { task?.cancel() }
+                    .handleEvents(receiveCancel: {
+                        await test.cancel()
+                        continuation.resume()
+                    })
+                    .subscribe()
+            }
 
             let canceled = await test.canceled
 
-            XCTAssert(canceled)
+            #expect(canceled)
         }
     }
 }

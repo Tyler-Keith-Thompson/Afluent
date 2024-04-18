@@ -7,10 +7,10 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class RetainTests: XCTestCase {
-    func testLazyCachesResult() async throws {
+struct RetainTests {
+    @Test func lazyCachesResult() async throws {
         actor Test {
             var callCount = 0
             func increment() { callCount += 1 }
@@ -28,10 +28,10 @@ final class RetainTests: XCTestCase {
         .execute()
 
         let callCount = await test.callCount
-        XCTAssertEqual(callCount, 1)
+        #expect(callCount == 1)
     }
 
-    func testLazyDoesNotAffectFullChain() async throws {
+    @Test func lazyDoesNotAffectFullChain() async throws {
         actor Test {
             var callCount = 0
             func increment() { callCount += 1 }
@@ -52,10 +52,10 @@ final class RetainTests: XCTestCase {
         .execute()
 
         let callCount = await test.callCount
-        XCTAssertEqual(callCount, 3)
+        #expect(callCount == 3)
     }
 
-    func testLazyDoesNotCacheError() async throws {
+    @Test func lazyDoesNotCacheError() async throws {
         actor Test {
             var callCount = 0
             func increment() { callCount += 1 }
@@ -71,6 +71,6 @@ final class RetainTests: XCTestCase {
         .execute()
 
         let callCount = await test.callCount
-        XCTAssertEqual(callCount, 2)
+        #expect(callCount == 2)
     }
 }

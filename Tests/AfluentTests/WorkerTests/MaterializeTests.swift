@@ -8,33 +8,33 @@
 import Afluent
 import ConcurrencyExtras
 import Foundation
-import XCTest
+import Testing
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-final class MaterializeTests: XCTestCase {
-    func testMaterializeCapturesSuccesses() async throws {
+struct MaterializeTests {
+    @Test func materializeCapturesSuccesses() async throws {
         let result = try await DeferredTask {
             1
         }
         .materialize()
         .execute()
 
-        XCTAssertEqual(try result.get(), 1)
+        try #expect(result.get() == 1)
     }
 
-    func testMaterializeCapturesNonCancelErrors() async throws {
+    @Test func materializeCapturesNonCancelErrors() async throws {
         let result = try await DeferredTask {
             throw URLError(.badURL)
         }
         .materialize()
         .execute()
 
-        XCTAssertThrowsError(try result.get()) { error in
-            XCTAssertEqual(error as? URLError, URLError(.badURL))
+        #expect { try result.get() } throws: { error in
+            error as? URLError == URLError(.badURL)
         }
     }
 
-    func testDematerializeWithError() async throws {
+    @Test func dematerializeWithError() async throws {
         let result = try await DeferredTask {
             throw URLError(.badURL)
         }
@@ -42,12 +42,12 @@ final class MaterializeTests: XCTestCase {
         .dematerialize()
         .result
 
-        XCTAssertThrowsError(try result.get()) { error in
-            XCTAssertEqual(error as? URLError, URLError(.badURL))
+        #expect { try result.get() } throws: { error in
+            error as? URLError == URLError(.badURL)
         }
     }
 
-    func testDematerializeWithoutError() async throws {
+    @Test func dematerializeWithoutError() async throws {
         let result = try await DeferredTask {
             1
         }
@@ -55,11 +55,11 @@ final class MaterializeTests: XCTestCase {
         .dematerialize()
         .execute()
 
-        XCTAssertEqual(result, 1)
+        #expect(result == 1)
     }
 
-    func testMaterializeDoesNotInterfereWithCancellation() async throws {
-        await withMainSerialExecutor {
+    @Test func materializeDoesNotInterfereWithCancellation() async throws {
+        try await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
@@ -68,15 +68,15 @@ final class MaterializeTests: XCTestCase {
                 func end() { ended = true }
             }
             let test = Test()
+            let sub = SingleValueSubject<Void>()
 
-            let exp = expectation(description: "thing happened")
             var task: AnyCancellable?
             task = DeferredTask {
                 await test.start()
                 task?.cancel()
             }
             .handleEvents(receiveCancel: {
-                exp.fulfill()
+                try? sub.send()
             })
             .map {
                 await test.end()
@@ -84,13 +84,13 @@ final class MaterializeTests: XCTestCase {
             .materialize()
             .subscribe()
 
-            await fulfillment(of: [exp], timeout: 0.011)
+            try await sub.execute()
 
             let started = await test.started
             let ended = await test.ended
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
         }
     }
 }

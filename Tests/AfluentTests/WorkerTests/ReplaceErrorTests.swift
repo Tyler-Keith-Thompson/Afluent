@@ -7,22 +7,22 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class ReplaceErrorTests: XCTestCase {
-    func testReplaceErrorTransformsValue() async throws {
+struct ReplaceErrorTests {
+    @Test func replaceErrorTransformsValue() async throws {
         let val = try await DeferredTask { throw URLError(.badURL) }
             .replaceError(with: -1)
             .execute()
 
-        XCTAssertEqual(val, -1)
+        #expect(val == -1)
     }
 
-    func testReplaceNilDoesNotTransformValue_IfNoErrorThrown() async throws {
+    @Test func replaceNilDoesNotTransformValue_IfNoErrorThrown() async throws {
         let val = try await DeferredTask { 1 }
             .replaceError(with: -1)
             .execute()
 
-        XCTAssertEqual(val, 1)
+        #expect(val == 1)
     }
 }

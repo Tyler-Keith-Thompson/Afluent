@@ -7,10 +7,10 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class MapErrorTests: XCTestCase {
-    func testMapErrorChangesError() async throws {
+struct MapErrorTests {
+    @Test func mapErrorChangesError() async throws {
         enum Err: Error {
             case e1
         }
@@ -21,12 +21,12 @@ final class MapErrorTests: XCTestCase {
         .mapError { _ in Err.e1 }
         .result
 
-        XCTAssertThrowsError(try result.get()) { error in
-            XCTAssertEqual(error as? Err, .e1)
+        #expect { try result.get() } throws: { error in
+            error as? Err == .e1
         }
     }
 
-    func testMapSpecificErrorChangesError() async throws {
+    @Test func mapSpecificErrorChangesError() async throws {
         enum Err: Error {
             case e1
         }
@@ -37,12 +37,12 @@ final class MapErrorTests: XCTestCase {
         .mapError(URLError(.badURL)) { _ in Err.e1 }
         .result
 
-        XCTAssertThrowsError(try result.get()) { error in
-            XCTAssertEqual(error as? Err, .e1)
+        #expect { try result.get() } throws: { error in
+            error as? Err == .e1
         }
     }
 
-    func testMapErrorDoesNothingWithoutAnError() async throws {
+    @Test func mapErrorDoesNothingWithoutAnError() async throws {
         enum Err: Error {
             case e1
         }
@@ -53,10 +53,10 @@ final class MapErrorTests: XCTestCase {
         .mapError { _ in Err.e1 }
         .result
 
-        XCTAssertEqual(try result.get(), 1)
+        try #expect(result.get() == 1)
     }
 
-    func testMapSpecificErrorDoesNothingWithoutThatErrorBeingThrown() async throws {
+    @Test func mapSpecificErrorDoesNothingWithoutThatErrorBeingThrown() async throws {
         enum Err: Error {
             case e1
         }
@@ -67,8 +67,8 @@ final class MapErrorTests: XCTestCase {
         .mapError(URLError(.badURL)) { _ in Err.e1 }
         .result
 
-        XCTAssertThrowsError(try result.get()) { error in
-            XCTAssertEqual(error as? URLError, URLError(.badServerResponse))
+        #expect { try result.get() } throws: { error in
+            error as? URLError == URLError(.badServerResponse)
         }
     }
 }

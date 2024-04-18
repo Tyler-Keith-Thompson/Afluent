@@ -7,10 +7,10 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class RetryOnAfterFlatMappingSequenceTests: XCTestCase {
-    func testTaskCanRetryADefinedNumberOfTimes() async throws {
+struct RetryOnAfterFlatMappingSequenceTests {
+    @Test func taskCanRetryADefinedNumberOfTimes() async throws {
         enum Err: Error, Equatable {
             case e1
         }
@@ -42,10 +42,10 @@ final class RetryOnAfterFlatMappingSequenceTests: XCTestCase {
         _ = await t.result
 
         let copy = await test.arr
-        XCTAssertEqual(UInt(copy.count), (retryCount * 2) + 1)
+        #expect(UInt(copy.count) == (retryCount * 2) + 1)
     }
 
-    func testTaskCanRetryZero_DoesNothing() async throws {
+    @Test func taskCanRetryZero_DoesNothing() async throws {
         enum Err: Error, Equatable {
             case e1
         }
@@ -76,10 +76,10 @@ final class RetryOnAfterFlatMappingSequenceTests: XCTestCase {
         _ = await t.result
 
         let copy = await test.arr
-        XCTAssertEqual(UInt(copy.count), 1)
+        #expect(UInt(copy.count) == 1)
     }
 
-    func testTaskCanRetryDefaultsToOnce() async throws {
+    @Test func taskCanRetryDefaultsToOnce() async throws {
         enum Err: Error, Equatable {
             case e1
         }
@@ -110,10 +110,10 @@ final class RetryOnAfterFlatMappingSequenceTests: XCTestCase {
         _ = await t.result
 
         let copy = await test.arr
-        XCTAssertEqual(UInt(copy.count), 3)
+        #expect(UInt(copy.count) == 3)
     }
 
-    func testTaskCanRetryWithoutError_DoesNothing() async throws {
+    @Test func taskCanRetryWithoutError_DoesNothing() async throws {
         enum Err: Error, Equatable {
             case e1
         }
@@ -143,6 +143,6 @@ final class RetryOnAfterFlatMappingSequenceTests: XCTestCase {
         _ = await t.result
 
         let copy = await test.arr
-        XCTAssertEqual(UInt(copy.count), 1)
+        #expect(UInt(copy.count) == 1)
     }
 }

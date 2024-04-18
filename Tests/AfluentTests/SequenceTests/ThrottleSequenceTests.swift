@@ -62,149 +62,16 @@ struct ThrottleSequenceTests {
         #expect(throws: CancellationError.self) { try result.get() }
     }
 
-    @Test func throttleWithNoElements_returnsEmpty_andLatestIsTrue() async throws {
-        let testClock = TestClock()
-
-        let stream = AsyncStream<Int> { continuation in
-            continuation.finish()
-        }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
-
-        let elements = try await stream.collect().first()
-        try #expect(#require(elements).isEmpty)
-    }
-
-    @Test func throttleWithNoElements_returnsEmpty_andLatestIsFalse() async throws {
-        let testClock = TestClock()
-
-        let stream = AsyncStream<Int> { continuation in
-            continuation.finish()
-        }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
-
-        let elements = try await stream.collect().first()
-        try #expect(#require(elements).isEmpty)
-    }
-
-    @Test func throttleWithOneElement_returnsOneElement_andLatestIsTrue() async throws {
-        let testClock = TestClock()
-
-        let stream = AsyncStream<Int> { continuation in
-            continuation.yield(1)
-            continuation.finish()
-        }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
-
-        let elements = try await stream.collect().first()
-        #expect(elements == [1])
-    }
-
-    @Test func throttleWithOneElement_returnsOneElement_andLatestIsFalse() async throws {
-        let testClock = TestClock()
-
-        let stream = AsyncStream<Int> { continuation in
-            continuation.yield(1)
-            continuation.finish()
-        }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
-
-        let elements = try await stream.collect().first()
-        #expect(elements == [1])
-    }
-
-    @Test func throttleReturnsFirstAndLatestElementImmediately_whenReceivingMultipleElementsAtOnceAndStreamEnds_andLatestIsTrue() async throws {
-        try await withMainSerialExecutor {
-            let testClock = TestClock()
-
-            let stream = AsyncStream { continuation in
-                DeferredTask {
-                    continuation.yield(1)
-                    continuation.yield(2)
-                    continuation.yield(3)
-                    continuation.yield(4)
-                    continuation.yield(5)
-                    continuation.yield(6)
-                    continuation.yield(7)
-                    continuation.yield(8)
-                    continuation.yield(9)
-                    continuation.yield(10)
-                    continuation.finish()
-                }.run()
-            }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
-
-            let elements = try await stream.collect().first()
-            #expect(elements == [1, 10])
-        }
-    }
-
-    @Test func throttleReturnsFirstAndSecondElementImmediately_whenReceivingMultipleElementsAtOnceAndStreamEnds_andLatestIsFalse() async throws {
-        try await withMainSerialExecutor {
-            let testClock = TestClock()
-
-            let stream = AsyncStream { continuation in
-                DeferredTask {
-                    continuation.yield(1)
-                    continuation.yield(2)
-                    continuation.yield(3)
-                    continuation.yield(4)
-                    continuation.yield(5)
-                    continuation.yield(6)
-                    continuation.yield(7)
-                    continuation.yield(8)
-                    continuation.yield(9)
-                    continuation.yield(10)
-                    continuation.finish()
-                }.run()
-            }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
-
-            let elements = try await stream.collect().first()
-            #expect(elements == [1, 2])
-        }
-    }
-
-    @Test func throttleReturnsLatestElementInIntervalBeforeErrorInStream_whenLatestIsTrue() async throws {
-        try await withMainSerialExecutor {
-            let testClock = TestClock()
-
-            let stream = AsyncThrowingStream { continuation in
-                continuation.yield(1)
-                continuation.yield(2)
-                continuation.yield(3)
-                continuation.yield(with: .failure(TestError.upstreamError))
-                continuation.yield(4)
-                continuation.finish()
-            }
-            .throttle(for: .milliseconds(10), clock: testClock, latest: true)
-            .replaceError(with: -1)
-
-            let elements = try await stream.collect().first()?.filter { $0 >= 0 }
-            #expect(elements == [1, 3])
-        }
-    }
-
-    @Test func throttleReturnsFirstElementInIntervalBeforeErrorInStream_whenLatestIsFalse() async throws {
-        try await withMainSerialExecutor {
-            let testClock = TestClock()
-
-            let stream = AsyncThrowingStream { continuation in
-                continuation.yield(1)
-                continuation.yield(2)
-                continuation.yield(3)
-                continuation.yield(with: .failure(TestError.upstreamError))
-                continuation.yield(4)
-                continuation.finish()
-            }
-            .throttle(for: .milliseconds(10), clock: testClock, latest: false)
-            .replaceError(with: -1)
-
-            let elements = try await stream.collect().first()?.filter { $0 >= 0 }
-            #expect(elements == [1, 2])
-        }
-    }
-
     @Test(arguments: [
         // LEGEND:
         // * 1, 2, 3, 4, 5, 6, 7, 8, 9 | Emit the values 1 through 9
         // * - | Wait 10 milliseconds (the full throttle duration) and assert
         // * ` | Wait 5 milliseconds (half the throttle duration) and assert
         // * e | Emit an error
+        ("", ""),
+        ("1", "1"),
         ("123", "13"),
+        ("123e4", "13"),
         ("1-23", "1-3"),
         ("1-23-e4", "1-3"),
         ("123e", "13"),
@@ -243,7 +110,10 @@ struct ThrottleSequenceTests {
         // * - | Wait 10 milliseconds (the full throttle duration) and assert
         // * ` | Wait 5 milliseconds (half the throttle duration) and assert
         // * e | Emit an error
+        ("", ""),
+        ("1", "1"),
         ("123", "12"),
+        ("123e4", "12"),
         ("1-23", "1-2"),
         ("1-23-e4", "1-2"),
         ("123e", "12"),

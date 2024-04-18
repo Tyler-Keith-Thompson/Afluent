@@ -15,7 +15,7 @@ struct DiscardOutputTests {
             1
         }
         .discardOutput()
-        .map { #expect(true) }
+        .map { #expect(Bool(true)) }
         .execute()
     }
 }

@@ -130,7 +130,7 @@ struct HandleEventsSequenceTests {
     }
 
     @Test(.timeLimit(.milliseconds(10))) func handleCancel() async throws {
-        await withMainSerialExecutor { [self] in
+        await withMainSerialExecutor {
             actor Test {
                 var canceled = false
 

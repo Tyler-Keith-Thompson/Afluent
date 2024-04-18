@@ -7,37 +7,36 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class ShareTests: XCTestCase {
-    func testUnsharedTaskExecutesRepeatedly() async throws {
-        let exp = expectation(description: "called")
-        exp.expectedFulfillmentCount = 3
-
-        actor Test {
-            var arr = [String]()
-            func append(_ str: String) {
-                arr.append(str)
+struct ShareTests {
+    @Test func unsharedTaskExecutesRepeatedly() async throws {
+        try await confirmation(expectedCount: 4) { exp in
+            actor Test {
+                var arr = [String]()
+                func append(_ str: String) {
+                    arr.append(str)
+                }
             }
+
+            let test = Test()
+
+            let t = DeferredTask {
+                await test.append("called")
+                exp()
+            }
+
+            t.run()
+            t.run()
+            t.run()
+            try await t.execute()
+
+            let copy = await test.arr
+            #expect(copy == ["called", "called", "called", "called"])
         }
-
-        let test = Test()
-
-        let t = DeferredTask {
-            await test.append("called")
-            exp.fulfill()
-        }
-
-        t.run()
-        t.run()
-        t.run()
-
-        await fulfillment(of: [exp], timeout: 0.01)
-        let copy = await test.arr
-        XCTAssertEqual(copy, ["called", "called", "called"])
     }
 
-    func testUnsharedTaskExecutesRepeatedly_WithResult() async throws {
+    @Test func unsharedTaskExecutesRepeatedly_WithResult() async throws {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {
@@ -56,11 +55,36 @@ final class ShareTests: XCTestCase {
         try await t.execute()
 
         let copy = await test.arr
-        XCTAssertEqual(copy, ["called", "called", "called"])
+        #expect(copy == ["called", "called", "called"])
     }
 
-    func testSharedTaskExecutesOnce() async throws {
-        let exp = expectation(description: "called")
+    @Test func sharedTaskExecutesOnce() async throws {
+        try await confirmation(expectedCount: 1) { exp in
+            actor Test {
+                var arr = [String]()
+                func append(_ str: String) {
+                    arr.append(str)
+                }
+            }
+
+            let test = Test()
+
+            let t = DeferredTask {
+                await test.append("called")
+                exp()
+            }.share()
+
+            t.run()
+            t.run()
+            t.run()
+            try await t.execute()
+
+            let copy = await test.arr
+            #expect(copy == ["called"])
+        }
+    }
+
+    @Test func sharedTaskExecutesOnce_WithResult() async throws {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {
@@ -72,41 +96,17 @@ final class ShareTests: XCTestCase {
 
         let t = DeferredTask {
             await test.append("called")
-            exp.fulfill()
         }.share()
 
-        t.run()
-        t.run()
-        t.run()
-
-        await fulfillment(of: [exp], timeout: 0.01)
-        let copy = await test.arr
-        XCTAssertEqual(copy, ["called"])
-    }
-
-    func testSharedTaskExecutesOnce_WithResult() async throws {
-        actor Test {
-            var arr = [String]()
-            func append(_ str: String) {
-                arr.append(str)
-            }
-        }
-
-        let test = Test()
-
-        let t = DeferredTask {
-            await test.append("called")
-        }.share()
-
         try await t.execute()
         try await t.execute()
         try await t.execute()
 
         let copy = await test.arr
-        XCTAssertEqual(copy, ["called"])
+        #expect(copy == ["called"])
     }
 
-    func testSharedTaskExecutesOnce_WithResult_SharedToAllSubscribers() async throws {
+    @Test func sharedTaskExecutesOnce_WithResult_SharedToAllSubscribers() async throws {
         let t = DeferredTask {
             1
         }.share()
@@ -114,8 +114,8 @@ final class ShareTests: XCTestCase {
         let v1 = try await t.execute()
         let v2 = try await t.execute()
         let v3 = try await t.execute()
-        XCTAssertEqual(v1, 1)
-        XCTAssertEqual(v2, 1)
-        XCTAssertEqual(v3, 1)
+        #expect(v1 == 1)
+        #expect(v2 == 1)
+        #expect(v3 == 1)
     }
 }

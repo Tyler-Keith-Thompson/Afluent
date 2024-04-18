@@ -7,10 +7,10 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class UnwrapOrThrowTests: XCTestCase {
-    func testUnwrapThrowsErrorIfOptionalIsNone() async throws {
+struct UnwrapOrThrowTests {
+    @Test func unwrapThrowsErrorIfOptionalIsNone() async throws {
         enum Err: Error {
             case e1
         }
@@ -21,12 +21,12 @@ final class UnwrapOrThrowTests: XCTestCase {
         .unwrap(orThrow: Err.e1)
         .result
 
-        XCTAssertThrowsError(try result.get()) { error in
-            XCTAssertEqual(error as? Err, .e1)
+        #expect { try result.get() } throws: { error in
+            error as? Err == .e1
         }
     }
 
-    func testUnwrapThrowsErrorIfOptionalIsSome() async throws {
+    @Test func unwrapThrowsErrorIfOptionalIsSome() async throws {
         enum Err: Error {
             case e1
         }
@@ -37,6 +37,6 @@ final class UnwrapOrThrowTests: XCTestCase {
         .unwrap(orThrow: Err.e1)
         .result
 
-        XCTAssertEqual(try result.get(), 1)
+        try #expect(result.get() == 1)
     }
 }

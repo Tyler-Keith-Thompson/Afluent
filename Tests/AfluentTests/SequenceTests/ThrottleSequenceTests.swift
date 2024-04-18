@@ -218,17 +218,9 @@ struct ThrottleSequenceTests {
     ])
     func throttleWithLatestTrue(streamInput: String, expectedOutput: String) async throws {
         await withMainSerialExecutor {
-            actor Test {
-                var elements = [Int]()
-
-                func append(_ element: Int) {
-                    elements.append(element)
-                }
-            }
-
             let (stream, continuation) = AsyncThrowingStream<Int, any Error>.makeStream()
             let testClock = TestClock()
-            let test = Test()
+            let test = ElementContainer()
             let throttledStream = stream.throttle(for: .milliseconds(10), clock: testClock, latest: true)
             Task {
                 for try await el in throttledStream {
@@ -236,47 +228,12 @@ struct ThrottleSequenceTests {
                 }
             }
             let advancedDuration = ManagedAtomic<Int>(0)
-            for (i, step) in streamInput.enumerated() {
-                if step == "-" {
-                    await testClock.advance(by: .milliseconds(10))
-                    advancedDuration.wrappingIncrement(by: 10, ordering: .sequentiallyConsistent)
-                } else if step == "`" {
-                    await testClock.advance(by: .milliseconds(5))
-                    advancedDuration.wrappingIncrement(by: 5, ordering: .sequentiallyConsistent)
-                } else if let val = Int(String(step)) {
-                    continuation.yield(val)
-                } else if step.lowercased() == "e" {
-                    continuation.yield(with: .failure(TestError.upstreamError))
-                }
-
-                let last = i == streamInput.count - 1
-
-                if step == "-" || step == "`" || last {
-                    if last {
-                        await testClock.advance(by: .milliseconds(10))
-                        advancedDuration.wrappingIncrement(by: 10, ordering: .sequentiallyConsistent)
-                    }
-                    _ = await Task {
-                        let elements = await test.elements
-                        var total = 0
-                        var expected = expectedOutput.reduce(into: "") { partialResult, character in
-                            guard total < advancedDuration.load(ordering: .sequentiallyConsistent) else { return }
-                            if character == "-" {
-                                total += 10
-                            } else if character == "`" {
-                                total += 5
-                            }
-                            partialResult.append(character)
-                        }.compactMap { Int(String($0)) }
-                        // after the first interval you have to wait for the full interval to have elapsed
-                        if !(advancedDuration.load(ordering: .sequentiallyConsistent) % 10 == 0), advancedDuration.load(ordering: .sequentiallyConsistent) > 10, !last {
-                            expected = Array(expected.dropLast())
-                        }
-                        #expect(elements == expected, "\(i) \(advancedDuration.load(ordering: .sequentiallyConsistent)) \(total)")
-                    }.result
-                }
-            }
-            continuation.finish()
+            await parseThrottleDSL(streamInput: streamInput,
+                                   expectedOutput: expectedOutput,
+                                   testClock: testClock,
+                                   advancedDuration: advancedDuration,
+                                   continuation: continuation,
+                                   test: test)
         }
     }
 
@@ -300,17 +257,9 @@ struct ThrottleSequenceTests {
     ])
     func throttleWithLatestFalse(streamInput: String, expectedOutput: String) async throws {
         await withMainSerialExecutor {
-            actor Test {
-                var elements = [Int]()
-
-                func append(_ element: Int) {
-                    elements.append(element)
-                }
-            }
-
             let (stream, continuation) = AsyncThrowingStream<Int, any Error>.makeStream()
             let testClock = TestClock()
-            let test = Test()
+            let test = ElementContainer()
             let throttledStream = stream.throttle(for: .milliseconds(10), clock: testClock, latest: false)
             Task {
                 for try await el in throttledStream {
@@ -318,47 +267,58 @@ struct ThrottleSequenceTests {
                 }
             }
             let advancedDuration = ManagedAtomic<Int>(0)
-            for (i, step) in streamInput.enumerated() {
-                if step == "-" {
+            await parseThrottleDSL(streamInput: streamInput,
+                                   expectedOutput: expectedOutput,
+                                   testClock: testClock,
+                                   advancedDuration: advancedDuration,
+                                   continuation: continuation,
+                                   test: test)
+        }
+    }
+
+    fileprivate func parseThrottleDSL(streamInput: String, expectedOutput: String, testClock: TestClock<Duration>, advancedDuration: ManagedAtomic<Int>, continuation: AsyncThrowingStream<Int, any Error>.Continuation, test: ElementContainer) async {
+        for (i, step) in streamInput.enumerated() {
+            if step == "-" {
+                await testClock.advance(by: .milliseconds(10))
+                advancedDuration.wrappingIncrement(by: 10, ordering: .sequentiallyConsistent)
+            } else if step == "`" {
+                await testClock.advance(by: .milliseconds(5))
+                advancedDuration.wrappingIncrement(by: 5, ordering: .sequentiallyConsistent)
+            } else if let val = Int(String(step)) {
+                continuation.yield(val)
+            } else if step.lowercased() == "e" {
+                continuation.yield(with: .failure(TestError.upstreamError))
+            }
+
+            let last = i == streamInput.count - 1
+
+            // At every halt point, assert correct elements
+            if step == "-" || step == "`" || last {
+                if last {
                     await testClock.advance(by: .milliseconds(10))
                     advancedDuration.wrappingIncrement(by: 10, ordering: .sequentiallyConsistent)
-                } else if step == "`" {
-                    await testClock.advance(by: .milliseconds(5))
-                    advancedDuration.wrappingIncrement(by: 5, ordering: .sequentiallyConsistent)
-                } else if let val = Int(String(step)) {
-                    continuation.yield(val)
-                } else if step.lowercased() == "e" {
-                    continuation.yield(with: .failure(TestError.upstreamError))
                 }
-
-                let last = i == streamInput.count - 1
-
-                if step == "-" || step == "`" || last {
-                    if last {
-                        await testClock.advance(by: .milliseconds(10))
-                        advancedDuration.wrappingIncrement(by: 10, ordering: .sequentiallyConsistent)
-                    }
-                    _ = await Task {
-                        let elements = await test.elements
-                        var total = 0
-                        var expected = expectedOutput.reduce(into: "") { partialResult, character in
-                            guard total < advancedDuration.load(ordering: .sequentiallyConsistent) else { return }
-                            if character == "-" {
-                                total += 10
-                            } else if character == "`" {
-                                total += 5
-                            }
-                            partialResult.append(character)
-                        }.compactMap { Int(String($0)) }
-                        // after the first interval you have to wait for the full interval to have elapsed
-                        if !(advancedDuration.load(ordering: .sequentiallyConsistent) % 10 == 0), advancedDuration.load(ordering: .sequentiallyConsistent) > 10, !last {
-                            expected = Array(expected.dropLast())
+                _ = await Task {
+                    let elements = await test.elements
+                    var total = 0
+                    // Parse the expected DSL, this is tricky because you have to sort of calculate how far in time to go to understand what the expected result is
+                    var expected = expectedOutput.reduce(into: "") { partialResult, character in
+                        guard total < advancedDuration.load(ordering: .sequentiallyConsistent) else { return }
+                        if character == "-" {
+                            total += 10
+                        } else if character == "`" {
+                            total += 5
                         }
-                        #expect(elements == expected, "\(i) \(advancedDuration.load(ordering: .sequentiallyConsistent)) \(total)")
-                    }.result
-                }
+                        partialResult.append(character)
+                    }.compactMap { Int(String($0)) }
+                    // after the first interval you have to wait for the full interval to have elapsed
+                    if !(advancedDuration.load(ordering: .sequentiallyConsistent) % 10 == 0), advancedDuration.load(ordering: .sequentiallyConsistent) > 10, !last {
+                        expected = Array(expected.dropLast())
+                    }
+                    #expect(elements == expected, "\(i) \(advancedDuration.load(ordering: .sequentiallyConsistent)) \(total)")
+                }.result
             }
-            continuation.finish()
         }
+        continuation.finish()
     }
 }

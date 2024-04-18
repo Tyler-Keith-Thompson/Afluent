@@ -29,15 +29,15 @@ struct ThrottleSequenceTests {
     @Test func testThrottleChecksForCancellation_whenLatestIsTrue() async throws {
         let testClock = TestClock()
 
-        let stream = AsyncStream<Int> { continuation in
-            continuation.finish()
-        }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
+        let (stream, continuation) = AsyncStream<Int>.makeStream()
 
         let task = Task {
-            for try await _ in stream { }
+            for try await _ in stream.throttle(for: .milliseconds(10), clock: testClock, latest: true) { }
         }
 
         task.cancel()
+
+        continuation.finish()
 
         let result = await task.result
 
@@ -47,15 +47,15 @@ struct ThrottleSequenceTests {
     @Test func throttleChecksForCancellation_whenLatestIsFalse() async throws {
         let testClock = TestClock()
 
-        let stream = AsyncStream<Int> { continuation in
-            continuation.finish()
-        }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
+        let (stream, continuation) = AsyncStream<Int>.makeStream()
 
         let task = Task {
-            for try await _ in stream { }
+            for try await _ in stream.throttle(for: .milliseconds(10), clock: testClock, latest: false) { }
         }
 
         task.cancel()
+
+        continuation.finish()
 
         let result = await task.result
 

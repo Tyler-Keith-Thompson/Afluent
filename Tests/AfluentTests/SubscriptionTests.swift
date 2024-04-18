@@ -12,7 +12,7 @@ import Testing
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 struct SubscriptionTests {
-    @Test func deferredTaskCancelledBeforeItEnds() async throws {
+    @Test(.timeLimit(.milliseconds(20))) func deferredTaskCancelledBeforeItEnds() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -46,7 +46,7 @@ struct SubscriptionTests {
         }
     }
 
-    @Test func deferredTaskCancelledViaDeinitialization() async throws {
+    @Test(.timeLimit(.milliseconds(20))) func deferredTaskCancelledViaDeinitialization() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -83,7 +83,7 @@ struct SubscriptionTests {
         }
     }
 
-    @Test func deferredTaskCancelledViaDeinitialization_WhenStoredInSet() async throws {
+    @Test(.timeLimit(.milliseconds(20))) func deferredTaskCancelledViaDeinitialization_WhenStoredInSet() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -119,7 +119,7 @@ struct SubscriptionTests {
         }
     }
 
-    @Test func deferredTaskCancelledViaDeinitialization_WhenStoredInCollection() async throws {
+    @Test(.timeLimit(.milliseconds(20))) func deferredTaskCancelledViaDeinitialization_WhenStoredInCollection() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -157,7 +157,7 @@ struct SubscriptionTests {
 
     // MARK: AsyncSequence
 
-    @Test func asyncSequenceCancelledBeforeItEnds() async throws {
+    @Test(.timeLimit(.milliseconds(20))) func asyncSequenceCancelledBeforeItEnds() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -235,7 +235,7 @@ struct SubscriptionTests {
         }
     }
 
-    @Test func asyncSequenceCancelledViaDeinitialization_WhenStoredInSet() async throws {
+    @Test(.timeLimit(.milliseconds(10))) func asyncSequenceCancelledViaDeinitialization_WhenStoredInSet() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -313,7 +313,7 @@ struct SubscriptionTests {
         }
     }
 
-    @Test func asyncSequenceReceivesCompletionWhenCancelled() async throws {
+    @Test(.timeLimit(.milliseconds(20))) func asyncSequenceReceivesCompletionWhenCancelled() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -366,7 +366,7 @@ struct SubscriptionTests {
         }
     }
 
-    @Test func asyncSequenceReceivesCompletionWhenStreamCompletes() async throws {
+    @Test(.timeLimit(.milliseconds(20))) func asyncSequenceReceivesCompletionWhenStreamCompletes() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -415,7 +415,7 @@ struct SubscriptionTests {
         }
     }
 
-    @Test func asyncSequenceReceivesOutputThenCompletionWhenCancelled() async throws {
+    @Test(.timeLimit(.milliseconds(20))) func asyncSequenceReceivesOutputThenCompletionWhenCancelled() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -467,7 +467,7 @@ struct SubscriptionTests {
         }
     }
 
-    @Test func asyncSequenceReceivesErrorInCompletion() async throws {
+    @Test(.timeLimit(.milliseconds(20))) func asyncSequenceReceivesErrorInCompletion() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false

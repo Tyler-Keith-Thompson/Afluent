@@ -24,7 +24,7 @@ final class ThrottleSequenceTests: XCTestCase {
             elements.append(element)
         }
     }
-    
+
     func testThrottleChecksForCancellation_whenLatestIsTrue() async throws {
         try await withMainSerialExecutor {
             let testClock = TestClock()
@@ -46,7 +46,7 @@ final class ThrottleSequenceTests: XCTestCase {
             }
         }
     }
-    
+
     func testThrottleChecksForCancellation_whenLatestIsFalse() async throws {
         try await withMainSerialExecutor {
             let testClock = TestClock()
@@ -1343,6 +1343,7 @@ final class ThrottleSequenceTests: XCTestCase {
                     await testClock.advance(by: .milliseconds(5))
 
                     let elements = await elementContainer.elements
+                    #warning("Flaked, got event 9")
                     XCTAssertEqual(elements, [1, 2, 3, 4, 5, 6, 7, 8])
 
                     await testClock.advance(by: .milliseconds(5))

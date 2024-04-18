@@ -8,23 +8,19 @@
 import Afluent
 import ConcurrencyExtras
 import Foundation
-import XCTest
+import Testing
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-final class CancelTests: XCTestCase {
-    func testDeferredTaskCancelledBeforeItStarts() async throws {
-        let exp = expectation(description: "thing happened")
-        exp.isInverted = true
-        let task = DeferredTask { exp.fulfill() }
+struct CancelTests {
+    @Test func deferredTaskCancelledBeforeItStarts() async throws {
+        let task = DeferredTask { }
         task.cancel()
         let res = try await task.result
-        XCTAssertThrowsError(try res.get())
-
-        await fulfillment(of: [exp], timeout: 0.01)
+        #expect(throws: (any Error).self) { try res.get() }
     }
 
-    func testDeferredTaskCancelledBeforeItEnds() async throws {
-        await withMainSerialExecutor {
+    @Test(.timeLimit(.milliseconds(10))) func deferredTaskCancelledBeforeItEnds() async throws {
+        try await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
@@ -34,27 +30,27 @@ final class CancelTests: XCTestCase {
             }
             let test = Test()
 
-            let exp = expectation(description: "thing happened")
+            let sub = SingleValueSubject<Void>()
             var task: AnyCancellable?
             task = DeferredTask {
                 await test.start()
                 task?.cancel()
             }
             .handleEvents(receiveCancel: {
-                exp.fulfill()
+                try? sub.send()
             })
             .map {
                 await test.end()
             }
             .subscribe()
 
-            await fulfillment(of: [exp], timeout: 0.01)
+            try await sub.execute()
 
             let started = await test.started
             let ended = await test.ended
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
         }
     }
 }

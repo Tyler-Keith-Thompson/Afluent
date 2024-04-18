@@ -197,63 +197,20 @@ struct ThrottleSequenceTests {
         }
     }
 
-//    "1-2345`6789"
-//    func testThrottleOnlyReturnsLatestElement_whenMultipleElementsAreReceivedAfterMultipleThrottleIntervalsHavePassed_10ms_andLatestIsTrue() async throws {
-//    //        await withMainSerialExecutor {
-//    //            let testClock = TestClock()
-//    //            let elementContainer = ElementContainer()
-//    //
-//    //            let stream = AsyncStream { continuation in
-//    //                DeferredTask {
-//    //                    continuation.yield(1)
-//    //                }
-//    //                .delayThenHandleOutput(for: .milliseconds(100), testClock: testClock) { _ in
-//    //                    continuation.yield(2)
-//    //                    continuation.yield(3)
-//    //                    continuation.yield(4)
-//    //                    continuation.yield(6)
-//    //
-//    //                    await testClock.advance(by: .milliseconds(5))
-//    //
-//    //                    let elements = await elementContainer.elements
-//    //                    XCTAssertEqual(elements, [1])
-//    //
-//    //                    continuation.yield(7)
-//    //                    continuation.yield(8)
-//    //                    continuation.yield(9)
-//    //                    continuation.yield(10)
-//    //
-//    //                    await testClock.advance(by: .milliseconds(5))
-//    //
-//    //                    let elements2 = await elementContainer.elements
-//    //                    XCTAssertEqual(elements2, [1, 10])
-//    //
-//    //                    continuation.finish()
-//    //
-//    //                    let elements3 = await elementContainer.elements
-//    //                    XCTAssertEqual(elements3, [1, 10])
-//    //                }
-//    //                .run()
-//    //            }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
-//    //
-//    //            let task = Task {
-//    //                for try await element in stream {
-//    //                    await elementContainer.append(element)
-//    //                }
-//    //            }
-//    //
-//    //            _ = await task.result
-//    //
-//    //            let elements = await elementContainer.elements
-//    //            XCTAssertEqual(elements, [1, 10])
-//    //        }
-//    //    }
     @Test(arguments: [
+        // LEGEND:
+        // * 1, 2, 3, 4, 5, 6, 7, 8, 9 | Emit the values 1 through 9
+        // * - | Wait 10 milliseconds (the full throttle duration) and assert
+        // * ` | Wait 5 milliseconds (half the throttle duration) and assert
+        // * e | Emit an error
+        ("123", "13"),
+        ("1-23", "1-3"),
         ("1-23-e4", "1-3"),
         ("123e", "1-3"),
         ("1-23456789", "1-9"),
         ("1-2-3-4-5-6-7-8-9", "1-2-3-4-5-6-7-8-9"),
         ("123-45-67-89", "13-5-7-9"),
+        ("1-2345`6789", "1-9"),
     ])
     func throttleWithLatestTrue(streamInput: String, expectedOutput: String) async throws {
         await withMainSerialExecutor {
@@ -265,8 +222,6 @@ struct ThrottleSequenceTests {
                 }
             }
 
-            let streamSteps = streamInput.components(separatedBy: "-")
-            let outputSteps = expectedOutput.components(separatedBy: "-")
             let (stream, continuation) = AsyncThrowingStream<Int, any Error>.makeStream()
             let testClock = TestClock()
             let test = Test()
@@ -276,22 +231,24 @@ struct ThrottleSequenceTests {
                     await test.append(el)
                 }
             }
-            for (i, step) in streamSteps.enumerated() {
-                for item in step {
-                    if let val = Int(String(item)) {
-                        continuation.yield(val)
-                    } else if item.lowercased() == "e" {
-                        continuation.yield(with: .failure(TestError.upstreamError))
-                    }
+            for (i, step) in streamInput.enumerated() {
+                if step == "-" {
+                    await testClock.advance(by: .milliseconds(10))
+                } else if step == "`" {
+                    await testClock.advance(by: .milliseconds(5))
+                } else if let val = Int(String(step)) {
+                    continuation.yield(val)
+                } else if step.lowercased() == "e" {
+                    continuation.yield(with: .failure(TestError.upstreamError))
                 }
 
-                _ = await Task {
-                    let elements = await test.elements
-                    let expected = outputSteps.prefix(i).flatMap { $0.compactMap { Int(String($0)) } }
-                    #expect(elements == expected)
-                }.result
-
-                await testClock.advance(by: .milliseconds(10))
+                if step == "-", step == "`", i == streamInput.count - 1 {
+                    _ = await Task {
+                        let elements = await test.elements
+                        let expected = expectedOutput.compactMap { Int(String($0)) }
+                        #expect(elements == expected)
+                    }.result
+                }
             }
             continuation.finish()
         }

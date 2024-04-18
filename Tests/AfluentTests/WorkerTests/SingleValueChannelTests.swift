@@ -8,147 +8,199 @@
 import Afluent
 import ConcurrencyExtras
 import Foundation
-import XCTest
+import Testing
 
-final class SingleValueChannelTests: XCTestCase {
-    func testSingleValueSubjectEmittingValueBeforeTaskRuns() async throws {
-        let expected = Int.random(in: 1 ... 1000)
-        let exp = expectation(description: "task executed")
-        let subject = SingleValueChannel<Int>()
-        let unitOfWork = subject.map {
-            exp.fulfill()
-            return $0
+struct SingleValueChannelTests {
+    @Test func SingleValueChannelEmittingValueBeforeTaskRuns() async throws {
+        try await confirmation { confirmation in
+            let expected = Int.random(in: 1 ... 1000)
+            let subject = SingleValueChannel<Int>()
+            let unitOfWork = subject.map {
+                confirmation()
+                return $0
+            }
+
+            try await subject.send(expected)
+
+            let actual = try await unitOfWork.execute()
+            #expect(actual == expected)
         }
-
-        try await subject.send(expected)
-
-        let actual = try await unitOfWork.execute()
-        await fulfillment(of: [exp], timeout: 0)
-        XCTAssertEqual(actual, expected)
     }
 
-    func testSingleValueSubjectEmittingValueAfterTaskRuns() async throws {
-        let expected = Int.random(in: 1 ... 1000)
-        let exp = expectation(description: "task executed")
-        let subject = SingleValueChannel<Int>()
-        subject.map {
-            exp.fulfill()
-            XCTAssertEqual($0, expected)
-            return $0
-        }.run() // task started
+    @Test(.timeLimit(.milliseconds(10))) func SingleValueChannelEmittingValueAfterTaskRuns() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            let expected = Int.random(in: 1 ... 1000)
+            let subject = SingleValueChannel<Int>()
+            subject.map {
+                defer { continuation.resume() }
+                #expect($0 == expected)
+                return $0
+            }.run() // task started
 
-        try await subject.send(expected)
-
-        await fulfillment(of: [exp], timeout: 0.01)
+            Task {
+                do {
+                    try await subject.send(expected)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
     }
 
-    func testSingleValueSubjectEmittingErrorBeforeTaskRuns() async throws {
+    @Test func SingleValueChannelEmittingErrorBeforeTaskRuns() async throws {
         enum Err: Error { case e1 }
         let subject = SingleValueChannel<Int>()
 
         try await subject.send(error: Err.e1)
 
         let actualResult = try await subject.result
-        XCTAssertThrowsError(try actualResult.get()) { error in
-            XCTAssertEqual(error as? Err, .e1)
+        #expect { try actualResult.get() } throws: { error in
+            error as? Err == .e1
         }
     }
 
-    func testSingleValueSubjectEmittingErrorAfterTaskRuns() async throws {
+    @Test(.timeLimit(.milliseconds(10))) func SingleValueChannelEmittingErrorAfterTaskRuns() async throws {
         try await withMainSerialExecutor {
             enum Err: Error { case e1 }
-            let exp = expectation(description: "task executed")
-            let subject = SingleValueChannel<Int>()
-            let unitOfWork = subject
-                .materialize()
-                .map {
-                    defer { exp.fulfill() }
-                    return $0
+            try await withCheckedThrowingContinuation { continuation in
+                Task {
+                    let subject = SingleValueChannel<Int>()
+                    let unitOfWork = subject
+                        .materialize()
+                        .map {
+                            continuation.resume()
+                            return $0
+                        }
+
+                    Task {
+                        try await subject.send(error: Err.e1)
+                    }
+
+                    do {
+                        let actualResult = try await unitOfWork.execute()
+                        #expect { try actualResult.get() } throws: { error in
+                            error as? Err == .e1
+                        }
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
                 }
-
-            Task {
-                try await subject.send(error: Err.e1)
             }
-
-            let actualResult = try await unitOfWork.execute()
-            XCTAssertThrowsError(try actualResult.get()) { error in
-                XCTAssertEqual(error as? Err, .e1)
-            }
-
-            await fulfillment(of: [exp], timeout: 0.01)
         }
     }
 
-    func testSingleValueSubjectOnlyEmitsValueOnce() async throws {
+    @Test func SingleValueChannelOnlyEmitsValueOnce() async throws {
         let expected = Int.random(in: 1 ... 1000)
-        let exp = expectation(description: "task executed")
         let subject = SingleValueChannel<Int>()
         subject.map {
-            exp.fulfill()
-            XCTAssertEqual($0, expected)
+            #expect($0 == expected)
             return $0
         }.run() // task started
 
         try await subject.send(expected)
-        let result = await Task { try await subject.send(expected) }.result
-        XCTAssertThrowsError(try result.get())
-
-        await fulfillment(of: [exp], timeout: 0.01)
+        await #expect(throws: (any Error).self) { try await subject.send(expected) }
     }
 
-    func testSingleValueSubjectOnlyEmitsErrorOnce() async throws {
+    @Test func SingleValueChannelOnlyEmitsErrorOnce() async throws {
         try await withMainSerialExecutor {
             enum Err: Error { case e1 }
-            let exp = expectation(description: "task executed")
-            let exp1 = expectation(description: "Subject error sent")
+            try await confirmation { exp in
+                let subject = SingleValueChannel<Int>()
+                let unitOfWork = subject
+                    .materialize()
+                    .map {
+                        exp()
+                        return $0
+                    }
+
+                let task = Task {
+                    try await subject.send(error: Err.e1)
+                    await #expect(throws: (any Error).self) { try await subject.send(error: Err.e1) }
+                }
+
+                let actualResult = try await unitOfWork.execute()
+                _ = await task.result
+                #expect { try actualResult.get() } throws: { error in
+                    error as? Err == .e1
+                }
+            }
+        }
+    }
+
+    @Test func voidSingleValueChannelEmittingValueBeforeTaskRuns() async throws {
+        let subject = SingleValueChannel<Void>()
+        try await confirmation { exp in
+            let unitOfWork = subject.map {
+                exp()
+            }
+
+            try await subject.send()
+
+            try await unitOfWork.execute()
+        }
+    }
+
+    @Test(.timeLimit(.milliseconds(10))) func voidSingleValueChannelEmittingValueAfterTaskRuns() async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            let subject = SingleValueChannel<Void>()
+            subject.map {
+                continuation.resume()
+            }.run() // task started
+
+            Task {
+                do {
+                    try await subject.send()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    @Test func SingleValueChannelEmittingValueConcurrentlyWithExecute() async throws {
+        let expected = Int.random(in: 1 ... 1000)
+        try await confirmation { exp in
+            let subject = SingleValueChannel<Int>()
+            let unitOfWork = subject.map {
+                exp()
+                return $0
+            }
+
+            let sendUnitOfWork = DeferredTask {
+                try await subject.send(expected)
+            }
+
+            async let _actual = unitOfWork.execute()
+            sendUnitOfWork.run()
+
+            let actual = try await _actual
+
+            #expect(actual == expected)
+        }
+    }
+
+    @Test func SingleValueChannelEmittingErrorConcurrentlyWithExecute() async throws {
+        enum Err: Error { case e1 }
+        try await confirmation { exp in
             let subject = SingleValueChannel<Int>()
             let unitOfWork = subject
                 .materialize()
                 .map {
-                    exp.fulfill()
+                    exp()
                     return $0
                 }
 
-            Task {
+            let sendUnitOfWork = DeferredTask {
                 try await subject.send(error: Err.e1)
-
-                let result = await Task { try await subject.send(error: Err.e1) }.result
-                XCTAssertThrowsError(try result.get())
-                exp1.fulfill()
             }
 
-            let actualResult = try await unitOfWork.execute()
-            XCTAssertThrowsError(try actualResult.get()) { error in
-                XCTAssertEqual(error as? Err, .e1)
+            async let _actual = unitOfWork.execute()
+            sendUnitOfWork.run()
+
+            let actual = try await _actual
+            #expect { try actual.get() } throws: { error in
+                error as? Err == .e1
             }
-
-            await fulfillment(of: [exp, exp1], timeout: 0.01)
         }
-    }
-
-    func testVoidSingleValueSubjectEmittingValueBeforeTaskRuns() async throws {
-        let exp = expectation(description: "task executed")
-        let subject = SingleValueChannel<Void>()
-        let unitOfWork = subject.map {
-            exp.fulfill()
-        }
-
-        try await subject.send()
-
-        try await unitOfWork.execute()
-
-        await fulfillment(of: [exp], timeout: 0)
-    }
-
-    func testVoidSingleValueSubjectEmittingValueAfterTaskRuns() async throws {
-        let exp = expectation(description: "task executed")
-        let subject = SingleValueChannel<Void>()
-        subject.map {
-            exp.fulfill()
-        }.run() // task started
-
-        try await subject.send()
-
-        await fulfillment(of: [exp], timeout: 0.01)
     }
 }

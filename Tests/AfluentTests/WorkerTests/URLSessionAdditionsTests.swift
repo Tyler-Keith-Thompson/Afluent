@@ -1,32 +1,24 @@
 #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
-
-//
-    //  URLSessionAdditionsTests.swift
-//
-//
-    //  Created by Tyler Thompson on 10/29/23.
-//
-
     import Afluent
     import Foundation
     import OHHTTPStubs
     import OHHTTPStubsSwift
-    import XCTest
+    import Testing
 
-    final class URLSessionAdditionsTests: XCTestCase {
-        override func setUp() async throws {
+    final class URLSessionAdditionsTests {
+        init() async throws {
             stub(condition: { _ in true }) { req in
-                XCTFail("Unexpected request made: \(req)")
+                Issue.record("Unexpected request made: \(req)")
                 return HTTPStubsResponse(error: URLError(.badServerResponse))
             }
         }
 
-        override func tearDown() {
+        deinit {
             HTTPStubs.removeAllStubs()
         }
 
-        func testURLSessionDeferredTaskPerformsURLRequestWithURL() async throws {
-            let url = try XCTUnwrap(URL(string: "https://www.google.com"))
+        @Test func URLSessionDeferredTaskPerformsURLRequestWithURL() async throws {
+            let url = try #require(URL(string: "https://www.google.com"))
             let expectedData = withUnsafeBytes(of: UUID()) { Data($0) }
             stub(condition: isAbsoluteURLString(url.absoluteString)) { _ in
                 HTTPStubsResponse(data: expectedData, statusCode: 200, headers: nil)
@@ -36,15 +28,15 @@
                 .map(\.data)
                 .execute()
 
-            XCTAssertEqual(actualData, expectedData)
+            #expect(actualData == expectedData)
         }
 
-        func testURLSessionDeferredTaskPerformsURLRequestWithRequest() async throws {
-            let url = try XCTUnwrap(URL(string: "https://www.google.com"))
+        @Test func URLSessionDeferredTaskPerformsURLRequestWithRequest() async throws {
+            let url = try #require(URL(string: "https://www.google.com"))
             let expectedRequest = URLRequest(url: url)
             let expectedData = withUnsafeBytes(of: UUID()) { Data($0) }
             stub(condition: isAbsoluteURLString(url.absoluteString)) {
-                XCTAssertEqual(expectedRequest, $0)
+                #expect(expectedRequest == $0)
                 return HTTPStubsResponse(data: expectedData, statusCode: 200, headers: nil)
             }
 
@@ -52,7 +44,7 @@
                 .map(\.data)
                 .execute()
 
-            XCTAssertEqual(actualData, expectedData)
+            #expect(actualData == expectedData)
         }
     }
 #endif

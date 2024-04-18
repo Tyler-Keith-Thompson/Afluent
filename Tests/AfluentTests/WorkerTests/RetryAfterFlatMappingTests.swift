@@ -7,10 +7,10 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class RetryAfterFlatMappingTests: XCTestCase {
-    func testTaskCanRetryADefinedNumberOfTimes() async throws {
+struct RetryAfterFlatMappingTests {
+    @Test func taskCanRetryADefinedNumberOfTimes() async throws {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {
@@ -34,10 +34,10 @@ final class RetryAfterFlatMappingTests: XCTestCase {
         _ = try await t.result
 
         let copy = await test.arr
-        XCTAssertEqual(UInt(copy.count), (retryCount * 2) + 1)
+        #expect(UInt(copy.count) == (retryCount * 2) + 1)
     }
 
-    func testTaskCanRetryZero_DoesNothing() async throws {
+    @Test func taskCanRetryZero_DoesNothing() async throws {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {
@@ -60,10 +60,10 @@ final class RetryAfterFlatMappingTests: XCTestCase {
         _ = try await t.result
 
         let copy = await test.arr
-        XCTAssertEqual(UInt(copy.count), 1)
+        #expect(UInt(copy.count) == 1)
     }
 
-    func testTaskCanRetryDefaultsToOnce() async throws {
+    @Test func taskCanRetryDefaultsToOnce() async throws {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {
@@ -86,10 +86,10 @@ final class RetryAfterFlatMappingTests: XCTestCase {
         _ = try await t.result
 
         let copy = await test.arr
-        XCTAssertEqual(UInt(copy.count), 3)
+        #expect(UInt(copy.count) == 3)
     }
 
-    func testTaskCanRetryWithoutError_DoesNothing() async throws {
+    @Test func taskCanRetryWithoutError_DoesNothing() async throws {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {
@@ -111,6 +111,6 @@ final class RetryAfterFlatMappingTests: XCTestCase {
         _ = try await t.result
 
         let copy = await test.arr
-        XCTAssertEqual(UInt(copy.count), 1)
+        #expect(UInt(copy.count) == 1)
     }
 }

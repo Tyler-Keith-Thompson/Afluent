@@ -27,39 +27,39 @@ struct ThrottleSequenceTests {
     }
 
     @Test func testThrottleChecksForCancellation_whenLatestIsTrue() async throws {
-        let testClock = TestClock()
+        await withMainSerialExecutor {
+            let testClock = TestClock()
 
-        let (stream, continuation) = AsyncStream<Int>.makeStream()
+            let stream = AsyncStream<Int> { _ in }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
 
-        let task = Task {
-            for try await _ in stream.throttle(for: .milliseconds(10), clock: testClock, latest: true) { }
+            let task = Task {
+                for try await _ in stream { }
+            }
+
+            task.cancel()
+
+            let result = await task.result
+
+            #expect(throws: CancellationError.self) { try result.get() }
         }
-
-        task.cancel()
-
-        continuation.finish()
-
-        let result = await task.result
-
-        #expect(throws: CancellationError.self) { try result.get() }
     }
 
     @Test func throttleChecksForCancellation_whenLatestIsFalse() async throws {
-        let testClock = TestClock()
+        await withMainSerialExecutor {
+            let testClock = TestClock()
 
-        let (stream, continuation) = AsyncStream<Int>.makeStream()
+            let stream = AsyncStream<Int> { _ in }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
 
-        let task = Task {
-            for try await _ in stream.throttle(for: .milliseconds(10), clock: testClock, latest: false) { }
+            let task = Task {
+                for try await _ in stream { }
+            }
+
+            task.cancel()
+
+            let result = await task.result
+
+            #expect(throws: CancellationError.self) { try result.get() }
         }
-
-        task.cancel()
-
-        continuation.finish()
-
-        let result = await task.result
-
-        #expect(throws: CancellationError.self) { try result.get() }
     }
 
     @Test(arguments: [

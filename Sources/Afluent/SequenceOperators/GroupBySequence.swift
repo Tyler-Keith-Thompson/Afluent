@@ -28,6 +28,7 @@ extension AsyncSequences {
                 do {
                     try Task.checkCancellation()
                     guard let element = try await upstream.next() else {
+                        try Task.checkCancellation()
                         keyedSequences.values.forEach { $0.continuation.finish() }
                         return nil
                     }

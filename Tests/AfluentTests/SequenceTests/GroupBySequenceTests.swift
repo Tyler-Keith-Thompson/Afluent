@@ -17,19 +17,19 @@ struct GroupBySequenceTests {
     }
 
     @Test func groupByChecksCancellation() async throws {
-        let stream = AsyncStream<Int> { continuation in
-            continuation.finish()
-        }.groupBy { $0 }
+        await withMainSerialExecutor {
+            let stream = AsyncStream<Int> { _ in }.groupBy { $0 }
 
-        let task = Task {
-            for try await _ in stream { }
+            let task = Task {
+                for try await _ in stream { }
+            }
+
+            task.cancel()
+
+            let result = await task.result
+
+            #expect(throws: CancellationError.self) { try result.get() }
         }
-
-        task.cancel()
-
-        let result = await task.result
-
-        #expect(throws: CancellationError.self) { try result.get() }
     }
 
     @Test func groupByWithEmptySequenceReturnsEmptyKeys() async throws {

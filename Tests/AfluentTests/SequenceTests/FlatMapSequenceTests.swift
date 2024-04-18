@@ -6,6 +6,7 @@
 //
 
 import Afluent
+import ConcurrencyExtras
 import Foundation
 import Testing
 
@@ -32,29 +33,31 @@ struct FlatMapSequenceTests {
     }
 
     @Test func flatMapCorrectlyCancels() async throws {
-        let (seq1, cont1) = AsyncThrowingStream<Int, Error>.makeStream()
-        cont1.yield(1)
-        let (seq2, _) = AsyncThrowingStream<Int, Error>.makeStream()
+        await withMainSerialExecutor {
+            let (seq1, cont1) = AsyncThrowingStream<Int, Error>.makeStream()
+            cont1.yield(1)
+            let (seq2, _) = AsyncThrowingStream<Int, Error>.makeStream()
 
-        let cancellableTask = Task {
-            try await AsyncThrowingStream { continuation in
-                DeferredTask { continuation }
-                    .delay(for: .milliseconds(1))
-                    .map {
-                        continuation.yield(seq1)
-                        $0.yield(seq2)
-                        $0.finish()
-                    }
-                    .run()
+            let cancellableTask = Task {
+                try await AsyncThrowingStream { continuation in
+                    DeferredTask { continuation }
+                        .delay(for: .milliseconds(1))
+                        .map {
+                            continuation.yield(seq1)
+                            $0.yield(seq2)
+                            $0.finish()
+                        }
+                        .run()
+                }
+                .flatMap(maxSubscriptions: .unlimited) { $0 }
+                .first()
             }
-            .flatMap(maxSubscriptions: .unlimited) { $0 }
-            .first()
+
+            cancellableTask.cancel()
+
+            let result = await cancellableTask.result
+
+            #expect(throws: CancellationError.self) { try result.get() }
         }
-
-        cancellableTask.cancel()
-
-        let result = await cancellableTask.result
-
-        #expect(throws: CancellationError.self) { try result.get() }
     }
 }

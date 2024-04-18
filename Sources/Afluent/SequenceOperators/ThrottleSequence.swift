@@ -51,7 +51,9 @@ extension AsyncSequences {
 
                         let iterationTask = Task {
                             do {
+                                try Task.checkCancellation()
                                 for try await el in upstream {
+                                    try Task.checkCancellation()
                                     if !state.hasSeenFirstElement {
                                         continuation.yield((el, el))
                                         state.hasSeenFirstElement = true
@@ -87,6 +89,7 @@ extension AsyncSequences {
                 }
 
                 while let (firstElement, latestElement) = try await iterator?.next() {
+                    try Task.checkCancellation()
                     return latest ? latestElement : firstElement
                 }
 

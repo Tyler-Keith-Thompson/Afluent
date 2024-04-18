@@ -7,10 +7,10 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class FlatMapSequenceTests: XCTestCase {
-    func testFlatMapUnlimitedSequence() async throws {
+struct FlatMapSequenceTests {
+    @Test func flatMapUnlimitedSequence() async throws {
         let (seq1, cont1) = AsyncThrowingStream<Int, Error>.makeStream()
         cont1.yield(1)
         let (seq2, cont2) = AsyncThrowingStream<Int, Error>.makeStream()
@@ -28,10 +28,10 @@ final class FlatMapSequenceTests: XCTestCase {
         .collect()
         .first()
 
-        XCTAssertEqual(try Set(XCTUnwrap(results)), [1])
+        try #expect(Set(#require(results)) == [1])
     }
 
-    func testFlatMapCorrectlyCancels() async throws {
+    @Test func flatMapCorrectlyCancels() async throws {
         let (seq1, cont1) = AsyncThrowingStream<Int, Error>.makeStream()
         cont1.yield(1)
         let (seq2, _) = AsyncThrowingStream<Int, Error>.makeStream()
@@ -55,8 +55,6 @@ final class FlatMapSequenceTests: XCTestCase {
 
         let result = await cancellableTask.result
 
-        XCTAssertThrowsError(try result.get()) { error in
-            XCTAssertNotNil(error as? CancellationError)
-        }
+        #expect(throws: CancellationError.self) { try result.get() }
     }
 }

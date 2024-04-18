@@ -7,16 +7,16 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class DiscardOutputSequenceTests: XCTestCase {
-    func testDiscardingOutputChangesToVoid() async throws {
+struct DiscardOutputSequenceTests {
+    @Test func discardingOutputChangesToVoid() async throws {
         try await DeferredTask {
             1
         }
         .toAsyncSequence()
         .discardOutput()
-        .map { XCTAssert(true) }
+        .map { #expect(Bool(true)) }
         .first()
     }
 }

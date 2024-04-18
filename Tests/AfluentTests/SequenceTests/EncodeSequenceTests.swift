@@ -7,10 +7,10 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class EncodeSequenceTests: XCTestCase {
-    func testEncodingSuccess() async throws {
+struct EncodeSequenceTests {
+    @Test func encodingSuccess() async throws {
         struct MyType: Codable {
             let val: String
         }
@@ -23,6 +23,6 @@ final class EncodeSequenceTests: XCTestCase {
         .encode(encoder: JSONEncoder())
         .first()
 
-        XCTAssertEqual(try JSONDecoder().decode(MyType.self, from: XCTUnwrap(res)).val, random)
+        try #expect(JSONDecoder().decode(MyType.self, from: #require(res)).val == random)
     }
 }

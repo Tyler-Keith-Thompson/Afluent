@@ -7,10 +7,10 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class AnyAsyncSequenceTests: XCTestCase {
-    func testErasureOfAsyncSequence() async throws {
+struct AnyAsyncSequenceTests {
+    @Test func erasureOfAsyncSequence() async throws {
         let val = try await DeferredTask { true }.toAsyncSequence()
             .flatMap { branch -> AnyAsyncSequence<Int> in
                 if branch {
@@ -20,10 +20,10 @@ final class AnyAsyncSequenceTests: XCTestCase {
                 }
             }.first()
 
-        XCTAssertEqual(val, 1)
+        #expect(val == 1)
     }
 
-    func testErasureOfAsyncSequence_OtherBranch() async throws {
+    @Test func erasureOfAsyncSequence_OtherBranch() async throws {
         let val = try await DeferredTask { false }.toAsyncSequence()
             .flatMap { branch -> AnyAsyncSequence<Int> in
                 if branch {
@@ -33,6 +33,6 @@ final class AnyAsyncSequenceTests: XCTestCase {
                 }
             }.first()
 
-        XCTAssertEqual(val, 0)
+        #expect(val == 0)
     }
 }

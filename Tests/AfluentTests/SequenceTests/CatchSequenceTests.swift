@@ -7,32 +7,32 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class CatchSequenceTests: XCTestCase {
-    func testCatchDoesNotInterfereWithNoFailure() async throws {
+struct CatchSequenceTests {
+    @Test func testCatchDoesNotInterfereWithNoFailure() async throws {
         let val = try await DeferredTask { 1 }.toAsyncSequence()
             .catch { _ in DeferredTask { 2 }.toAsyncSequence() }
             .first()
 
-        XCTAssertEqual(val, 1)
+        #expect(val == 1)
     }
 
-    func testCatchDoesNotThrowError() async throws {
+    @Test func testCatchDoesNotThrowError() async throws {
         let val = await Task {
             try await DeferredTask { 1 }.toAsyncSequence()
                 .map { _ -> Int in throw URLError(.badURL) }
                 .catch { error in
-                    XCTAssertEqual(error as? URLError, URLError(.badURL))
+                    #expect(error as? URLError == URLError(.badURL))
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
                 .first()
         }.result
 
-        XCTAssertEqual(try val.get(), 2)
+        try #expect(val.get() == 2)
     }
 
-    func testCatchSpecificError() async throws {
+    @Test func testCatchSpecificError() async throws {
         enum Err: Error, Equatable {
             case e1
             case e2
@@ -42,16 +42,16 @@ final class CatchSequenceTests: XCTestCase {
             try await DeferredTask { 1 }.toAsyncSequence()
                 .map { _ -> Int in throw Err.e1 }
                 .catch(Err.e1) { error in
-                    XCTAssertEqual(error, .e1)
+                    #expect(error == .e1)
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
                 .first()
         }.result
 
-        XCTAssertEqual(try val.get(), 2)
+        try #expect(val.get() == 2)
     }
 
-    func testCatchSpecificError_DoesNotCatchWrongError() async throws {
+    @Test func testCatchSpecificError_DoesNotCatchWrongError() async throws {
         enum Err: Error, Equatable {
             case e1
             case e2
@@ -61,42 +61,42 @@ final class CatchSequenceTests: XCTestCase {
             try await DeferredTask { 1 }.toAsyncSequence()
                 .map { _ -> Int in throw Err.e2 }
                 .catch(Err.e1) { error in
-                    XCTAssertEqual(error, .e1)
+                    #expect(error == .e1)
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
                 .first()
         }
         .result
 
-        XCTAssertThrowsError(try val.get()) { error in
-            XCTAssertEqual(error as? Err, .e2)
+        #expect { try val.get() } throws: { error in
+            error as? Err == .e2
         }
     }
 
-    func testTryCatchDoesNotInterfereWithNoFailure() async throws {
+    @Test func testTryCatchDoesNotInterfereWithNoFailure() async throws {
         let val = try await DeferredTask { 1 }.toAsyncSequence()
             .tryCatch { _ in DeferredTask { 2 }.toAsyncSequence() }
             .first()
 
-        XCTAssertEqual(val, 1)
+        #expect(val == 1)
     }
 
-    func testTryCatchDoesNotThrowError() async throws {
+    @Test func testTryCatchDoesNotThrowError() async throws {
         let val = await Task {
             try await DeferredTask { 1 }.toAsyncSequence()
                 .map { _ -> Int in throw URLError(.badURL) }
                 .tryCatch { error in
-                    XCTAssertEqual(error as? URLError, URLError(.badURL))
+                    #expect(error as? URLError == URLError(.badURL))
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
                 .first()
         }
         .result
 
-        XCTAssertEqual(try val.get(), 2)
+        try #expect(val.get() == 2)
     }
 
-    func testTryCatchSpecificError() async throws {
+    @Test func testTryCatchSpecificError() async throws {
         enum Err: Error, Equatable {
             case e1
             case e2
@@ -106,17 +106,17 @@ final class CatchSequenceTests: XCTestCase {
             try await DeferredTask { 1 }.toAsyncSequence()
                 .map { _ -> Int in throw Err.e1 }
                 .tryCatch(Err.e1) { error in
-                    XCTAssertEqual(error, .e1)
+                    #expect(error == .e1)
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
                 .first()
         }
         .result
 
-        XCTAssertEqual(try val.get(), 2)
+        try #expect(val.get() == 2)
     }
 
-    func testTryCatchSpecificError_DoesNotCatchWrongError() async throws {
+    @Test func testTryCatchSpecificError_DoesNotCatchWrongError() async throws {
         enum Err: Error, Equatable {
             case e1
             case e2
@@ -126,15 +126,15 @@ final class CatchSequenceTests: XCTestCase {
             try await DeferredTask { 1 }.toAsyncSequence()
                 .map { _ -> Int in throw Err.e2 }
                 .tryCatch(Err.e1) { error in
-                    XCTAssertEqual(error, .e1)
+                    #expect(error == .e1)
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
                 .first()
         }
         .result
 
-        XCTAssertThrowsError(try val.get()) { error in
-            XCTAssertEqual(error as? Err, .e2)
+        #expect { try val.get() } throws: { error in
+            error as? Err == .e2
         }
     }
 }

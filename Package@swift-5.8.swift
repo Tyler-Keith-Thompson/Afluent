@@ -1,10 +1,10 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 5.8
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
 let package = Package(name: "Afluent",
-                      platforms: [.iOS(.v15), .macOS(.v13), .macCatalyst(.v15), .tvOS(.v16), .watchOS(.v9), .visionOS(.v1)],
+                      platforms: [.iOS(.v15), .macOS(.v13), .macCatalyst(.v15), .tvOS(.v16), .watchOS(.v9)],
                       products: [
                           .library(name: "Afluent",
                                    targets: ["Afluent"]),

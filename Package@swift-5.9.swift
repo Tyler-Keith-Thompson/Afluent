@@ -1,10 +1,10 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 5.9
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
 
 let package = Package(name: "Afluent",
-                      platforms: [.iOS(.v15), .macOS(.v13), .macCatalyst(.v15), .tvOS(.v16), .watchOS(.v9), .visionOS(.v1)],
+                      platforms: [.iOS(.v15), .macOS(.v13), .macCatalyst(.v15), .tvOS(.v16), .watchOS(.v9)],
                       products: [
                           .library(name: "Afluent",
                                    targets: ["Afluent"]),
@@ -16,7 +16,6 @@ let package = Package(name: "Afluent",
                           .package(url: "https://github.com/nicklockwood/SwiftFormat", from: "0.52.11"),
                           .package(url: "https://github.com/pointfreeco/swift-clocks.git", from: "1.0.2"),
                           .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.1.0"),
-                          .package(url: "https://github.com/apple/swift-testing.git", from: "0.7.0"),
                       ],
                       targets: [
                           .target(name: "Afluent",
@@ -38,14 +37,12 @@ func testDependencies() -> [PackageDescription.Target.Dependency] {
             .product(name: "OHHTTPStubsSwift", package: "OHHTTPStubs"),
             .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"),
             .product(name: "Clocks", package: "swift-clocks"),
-            .product(name: "Testing", package: "swift-testing"),
         ]
     #else
         [
             "Afluent",
             .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"),
             .product(name: "Clocks", package: "swift-clocks"),
-            .product(name: "Testing", package: "swift-testing"),
         ]
     #endif
 }

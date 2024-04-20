@@ -8,24 +8,24 @@
 import Afluent
 import ConcurrencyExtras
 import Foundation
-import XCTest
+import Testing
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-final class MaterializeSequenceTests: XCTestCase {
-    func testMaterializeCapturesSuccesses() async throws {
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+struct MaterializeSequenceTests {
+    @Test func materializeCapturesSuccesses() async throws {
         let result = try await DeferredTask { 1 }
             .toAsyncSequence()
             .materialize()
             .first()
 
         if case .element(let val) = result {
-            XCTAssertEqual(val, 1)
+            #expect(val == 1)
         } else {
-            XCTFail("Expected element, got: \(String(describing: result))")
+            Issue.record("Expected element, got: \(String(describing: result))")
         }
     }
 
-    func testMaterializeCapturesCompletion() async throws {
+    @Test func materializeCapturesCompletion() async throws {
         let result = try await DeferredTask { 1 }
             .toAsyncSequence()
             .materialize()
@@ -33,25 +33,25 @@ final class MaterializeSequenceTests: XCTestCase {
             .first()
 
         guard case .complete = result else {
-            XCTFail("Expected completion, got: \(String(describing: result))")
+            Issue.record("Expected completion, got: \(String(describing: result))")
             return
         }
     }
 
-    func testMaterializeCapturesNonCancelErrors() async throws {
+    @Test func materializeCapturesNonCancelErrors() async throws {
         let result = try await DeferredTask { throw URLError(.badURL) }
             .toAsyncSequence()
             .materialize()
             .first()
 
         if case .failure(let error) = result {
-            XCTAssertEqual(error as? URLError, URLError(.badURL))
+            #expect(error as? URLError == URLError(.badURL))
         } else {
-            XCTFail("Expected failure, got: \(String(describing: result))")
+            Issue.record("Expected failure, got: \(String(describing: result))")
         }
     }
 
-    func testDematerializeWithError() async throws {
+    @Test func dematerializeWithError() async throws {
         let result = await Task {
             try await DeferredTask { throw URLError(.badURL) }
                 .toAsyncSequence()
@@ -60,22 +60,22 @@ final class MaterializeSequenceTests: XCTestCase {
                 .first()
         }.result
 
-        XCTAssertThrowsError(try result.get()) { error in
-            XCTAssertEqual(error as? URLError, URLError(.badURL))
+        #expect { try result.get() } throws: { error in
+            error as? URLError == URLError(.badURL)
         }
     }
 
-    func testDematerializeWithoutError() async throws {
+    @Test func dematerializeWithoutError() async throws {
         let result = try await DeferredTask { 1 }
             .toAsyncSequence()
             .materialize()
             .dematerialize()
             .first()
 
-        XCTAssertEqual(result, 1)
+        #expect(result == 1)
     }
 
-    func testMaterializeDoesNotInterfereWithCancellation() async throws {
+    @Test(.timeLimit(.milliseconds(10))) func materializeDoesNotInterfereWithCancellation() async throws {
         await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -86,31 +86,30 @@ final class MaterializeSequenceTests: XCTestCase {
             }
             let test = Test()
 
-            let exp = expectation(description: "thing happened")
-            var task: Task<Void, Error>?
-            task = Task {
-                _ = try await DeferredTask {
-                    await test.start()
-                    task?.cancel()
+            await withCheckedContinuation { continuation in
+                var task: Task<Void, Error>?
+                task = Task {
+                    _ = try await DeferredTask {
+                        await test.start()
+                        task?.cancel()
+                    }
+                    .handleEvents(receiveCancel: {
+                        continuation.resume()
+                    })
+                    .map {
+                        await test.end()
+                    }
+                    .toAsyncSequence()
+                    .materialize()
+                    .first()
                 }
-                .handleEvents(receiveCancel: {
-                    exp.fulfill()
-                })
-                .map {
-                    await test.end()
-                }
-                .toAsyncSequence()
-                .materialize()
-                .first()
             }
-
-            await fulfillment(of: [exp], timeout: 0.01)
 
             let started = await test.started
             let ended = await test.ended
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
         }
     }
 }

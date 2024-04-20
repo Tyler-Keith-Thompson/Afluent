@@ -7,15 +7,15 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class DiscardOutputTests: XCTestCase {
-    func testDiscardingOutputChangesToVoid() async throws {
+struct DiscardOutputTests {
+    @Test func discardingOutputChangesToVoid() async throws {
         try await DeferredTask {
             1
         }
         .discardOutput()
-        .map { XCTAssert(true) }
+        .map { #expect(Bool(true)) }
         .execute()
     }
 }

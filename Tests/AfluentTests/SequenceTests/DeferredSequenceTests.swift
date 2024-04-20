@@ -6,22 +6,19 @@
 //
 
 import Afluent
+import Atomics
 import ConcurrencyExtras
 import Foundation
-import XCTest
+import Testing
 
-class DeferredTests: XCTestCase {
-    func testUpstreamSequenceDefersExecutionUntilIteration() async throws {
-        let shouldNotStartExpectation = expectation(description: "sequence not started")
-        shouldNotStartExpectation.isInverted = true
-        let shouldStartExpectation = expectation(description: "sequence started")
-
+struct DeferredTests {
+    @Test func upstreamSequenceDefersExecutionUntilIteration() async throws {
+        let started = ManagedAtomic<Bool>(false)
         let sent = Array(0 ... 9)
 
         let sequence = Deferred {
             defer {
-                shouldNotStartExpectation.fulfill()
-                shouldStartExpectation.fulfill()
+                started.store(true, ordering: .sequentiallyConsistent)
             }
             return AsyncStream(Int.self) { continuation in
                 sent.forEach { continuation.yield($0) }
@@ -31,20 +28,21 @@ class DeferredTests: XCTestCase {
 
         var iterator = sequence.makeAsyncIterator()
 
-        await fulfillment(of: [shouldNotStartExpectation], timeout: 0.01)
+        #expect(!started.load(ordering: .sequentiallyConsistent))
 
         var received = try [await iterator.next()]
 
-        await fulfillment(of: [shouldStartExpectation], timeout: 0)
+        let val = started.load(ordering: .sequentiallyConsistent)
+        #expect(val)
 
         while let i = try await iterator.next() {
             received.append(i)
         }
 
-        XCTAssertEqual(received, sent)
+        #expect(received == sent)
     }
 
-    func testReturnsANewIteratorEachTime() async throws {
+    @Test func returnsANewIteratorEachTime() async throws {
         let sent = Array(0 ... 9)
 
         let sequence = Deferred {
@@ -59,7 +57,7 @@ class DeferredTests: XCTestCase {
             for try await i in sequence {
                 received.append(i)
             }
-            XCTAssertEqual(received, sent)
+            #expect(received == sent)
         }
 
         try await withThrowingTaskGroup(of: Void.self) { group in
@@ -73,7 +71,7 @@ class DeferredTests: XCTestCase {
         }
     }
 
-    func testCanRetryUpstreamSequence() async throws {
+    @Test func canRetryUpstreamSequence() async throws {
         enum Err: Error {
             case e1
         }
@@ -92,11 +90,11 @@ class DeferredTests: XCTestCase {
 
         for try await _ in sequence.retry() { }
 
-        XCTAssertEqual(upstreamCount, 2)
+        #expect(upstreamCount == 2)
     }
 
-    func testChecksForCancellation() async throws {
-        try await withMainSerialExecutor {
+    @Test func checksForCancellation() async throws {
+        await withMainSerialExecutor {
             let sequence = Deferred<AsyncStream<Int>> { AsyncStream { _ in } }
 
             let task = Task {
@@ -112,9 +110,7 @@ class DeferredTests: XCTestCase {
                 }
             }()
 
-            XCTAssertThrowsError(try result.get()) { error in
-                XCTAssertNotNil(error as? CancellationError)
-            }
+            #expect(throws: CancellationError.self) { try result.get() }
         }
     }
 }

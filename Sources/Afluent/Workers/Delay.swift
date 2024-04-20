@@ -8,7 +8,7 @@
 import Foundation
 
 extension Workers {
-    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     struct Delay<Upstream: AsynchronousUnitOfWork, Success: Sendable, C: Clock>: AsynchronousUnitOfWork where Upstream.Success == Success {
         let state = TaskState<Success>()
         let upstream: Upstream
@@ -35,7 +35,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` that emits the upstream output after the specified delay.
     ///
     /// - Availability: macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0 and above.
-    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func delay(for duration: Duration) -> some AsynchronousUnitOfWork<Success> {
         Workers.Delay(upstream: self, clock: SuspendingClock(), duration: duration, tolerance: nil)
     }
@@ -50,7 +50,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` that emits the upstream output after the specified delay.
     ///
     /// - Availability: macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0 and above.
-    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func delay<C: Clock>(for duration: C.Duration, clock: C, tolerance: C.Duration?) -> some AsynchronousUnitOfWork<Success> {
         Workers.Delay(upstream: self, clock: clock, duration: duration, tolerance: tolerance)
     }

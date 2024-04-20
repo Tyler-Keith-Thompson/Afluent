@@ -7,10 +7,10 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class FlatMapTests: XCTestCase {
-    func testFlatMapTransformsValue() async throws {
+struct FlatMapTests {
+    @Test func flatMapTransformsValue() async throws {
         let val = try await DeferredTask { 1 }
             .flatMap { val in
                 DeferredTask { val }
@@ -18,10 +18,10 @@ final class FlatMapTests: XCTestCase {
             }
             .execute()
 
-        XCTAssertEqual(val, "1")
+        #expect(val == "1")
     }
 
-    func testFlatMapOrdersCorrectly() async throws {
+    @Test func flatMapOrdersCorrectly() async throws {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {
@@ -42,10 +42,10 @@ final class FlatMapTests: XCTestCase {
         .execute()
 
         let copy = await test.arr
-        XCTAssertEqual(copy, ["1", "2"])
+        #expect(copy == ["1", "2"])
     }
 
-    func testFlatMapOrdersCorrectly_No_Throwing() async throws {
+    @Test func flatMapOrdersCorrectly_No_Throwing() async throws {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {
@@ -66,10 +66,10 @@ final class FlatMapTests: XCTestCase {
         .execute()
 
         let copy = await test.arr
-        XCTAssertEqual(copy, ["1", "2"])
+        #expect(copy == ["1", "2"])
     }
 
-    func testFlatMapThrowsError() async throws {
+    @Test func flatMapThrowsError() async throws {
         let val = try await DeferredTask { 1 }
             .flatMap { _ in
                 DeferredTask {
@@ -78,8 +78,8 @@ final class FlatMapTests: XCTestCase {
             }
             .result
 
-        XCTAssertThrowsError(try val.get()) { error in
-            XCTAssertEqual(error as? URLError, URLError(.badURL))
+        #expect { try val.get() } throws: { error in
+            error as? URLError == URLError(.badURL)
         }
     }
 }

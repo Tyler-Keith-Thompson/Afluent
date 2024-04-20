@@ -9,11 +9,11 @@ import Afluent
 import Clocks
 import ConcurrencyExtras
 import Foundation
-import XCTest
+import Testing
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-final class DelaySequenceTests: XCTestCase {
-    func testDelay_DelaysAllOutputByExpectedTime() async throws {
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+struct DelaySequenceTests {
+    @Test func delay_DelaysAllOutputByExpectedTime() async throws {
         // Create a simple AsyncSequence of integers
         let clock = TestClock()
         let numbers = [1, 2, 3].async
@@ -34,7 +34,7 @@ final class DelaySequenceTests: XCTestCase {
                 let elapsedTime = startTime.duration(to: currentTime)
 
                 // Check if the elapsed time is approximately equal to the expected delay
-                XCTAssertGreaterThanOrEqual(elapsedTime, delayDuration, "Element \(count) was not delayed correctly.")
+                #expect(elapsedTime >= delayDuration, "Element \(count) was not delayed correctly.")
             }
             return count
         }
@@ -43,10 +43,10 @@ final class DelaySequenceTests: XCTestCase {
 
         let count = try await task.value
         // Ensure all elements were received
-        XCTAssertEqual(count, 3, "Not all elements were received.")
+        #expect(count == 3, "Not all elements were received.")
     }
 
-    func testDelay_DoesNotDelayEveryElement() async throws {
+    @Test func delay_DoesNotDelayEveryElement() async throws {
         // Create a simple AsyncSequence of integers
         let clock = TestClock()
         let numbers = [1, 2, 3].async
@@ -67,9 +67,9 @@ final class DelaySequenceTests: XCTestCase {
                 let elapsedTime = startTime.duration(to: currentTime)
 
                 if count == 1 {
-                    XCTAssertGreaterThanOrEqual(elapsedTime, delayDuration, "Element \(count) was not delayed correctly.")
+                    #expect(elapsedTime >= delayDuration, "Element \(count) was not delayed correctly.")
                 } else {
-                    XCTAssertLessThan(elapsedTime, delayDuration * count, "Element \(count) was not delayed correctly.")
+                    #expect(elapsedTime < delayDuration * count, "Element \(count) was not delayed correctly.")
                 }
             }
             return count
@@ -79,10 +79,10 @@ final class DelaySequenceTests: XCTestCase {
 
         let count = try await task.value
         // Ensure all elements were received
-        XCTAssertEqual(count, 3, "Not all elements were received.")
+        #expect(count == 3, "Not all elements were received.")
     }
 
-    func testDelay_DelaysCorrectlyEvenAfterIntervalHasPassed() async throws {
+    @Test func delay_DelaysCorrectlyEvenAfterIntervalHasPassed() async throws {
         await withMainSerialExecutor {
             let clock = TestClock()
             let delayDuration: Duration = .milliseconds(10)
@@ -103,12 +103,12 @@ final class DelaySequenceTests: XCTestCase {
                     let elapsedTime = startTime.duration(to: currentTime)
 
                     if count == 1 {
-                        XCTAssertGreaterThanOrEqual(elapsedTime, delayDuration, "Element \(count) was not delayed correctly.")
+                        #expect(elapsedTime >= delayDuration, "Element \(count) was not delayed correctly.")
                         await clock.advance(by: .milliseconds(15))
                         continuation.yield(2)
                         Task { await clock.advance(by: delayDuration) }
                     } else {
-                        XCTAssertGreaterThanOrEqual(elapsedTime, delayDuration + .milliseconds(15), "Element \(count) was not delayed correctly.")
+                        #expect(elapsedTime >= delayDuration + .milliseconds(15), "Element \(count) was not delayed correctly.")
                         continuation.finish()
                     }
                 }

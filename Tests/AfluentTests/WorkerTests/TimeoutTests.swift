@@ -9,22 +9,22 @@ import Afluent
 import Clocks
 import ConcurrencyExtras
 import Foundation
-import XCTest
+import Testing
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-final class TimeoutTests: XCTestCase {
-    func testTaskDoesNotTimeOutIfItCompletesInTime() async throws {
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+struct TimeoutTests {
+    @Test func taskDoesNotTimeOutIfItCompletesInTime() async throws {
         try await withMainSerialExecutor {
             let val = try await DeferredTask { "test" }
                 .timeout(.milliseconds(10))
                 .execute()
 
-            XCTAssertEqual(val, "test")
+            #expect(val == "test")
         }
     }
 
-    func testTaskTimesOutIfItTakesTooLong() async throws {
-        try await withMainSerialExecutor {
+    @Test func taskTimesOutIfItTakesTooLong() async throws {
+        await withMainSerialExecutor {
             let clock = TestClock()
 
             let task = Task {
@@ -37,12 +37,12 @@ final class TimeoutTests: XCTestCase {
             await clock.advance(by: .milliseconds(11))
 
             let res = await task.result
-            XCTAssertThrowsError(try res.get())
+            #expect(throws: (any Error).self) { try res.get() }
         }
     }
 
-    func testTaskTimesOutIfItTakesTooLong_WithCustomError() async throws {
-        try await withMainSerialExecutor {
+    @Test func taskTimesOutIfItTakesTooLong_WithCustomError() async throws {
+        await withMainSerialExecutor {
             let clock = TestClock()
 
             enum Err: Error {
@@ -60,8 +60,8 @@ final class TimeoutTests: XCTestCase {
 
             let res = await task.result
 
-            XCTAssertThrowsError(try res.get()) { error in
-                XCTAssertEqual(error as? Err, .e1)
+            #expect { try res.get() } throws: { error in
+                error as? Err == .e1
             }
         }
     }

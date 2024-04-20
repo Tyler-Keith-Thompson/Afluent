@@ -7,7 +7,7 @@
 
 import Foundation
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension AsyncSequences {
     public struct Throttle<Upstream: AsyncSequence & Sendable, C: Clock>: AsyncSequence {
         public typealias Element = Upstream.Element
@@ -51,7 +51,9 @@ extension AsyncSequences {
 
                         let iterationTask = Task {
                             do {
+                                try Task.checkCancellation()
                                 for try await el in upstream {
+                                    try Task.checkCancellation()
                                     if !state.hasSeenFirstElement {
                                         continuation.yield((el, el))
                                         state.hasSeenFirstElement = true
@@ -87,6 +89,7 @@ extension AsyncSequences {
                 }
 
                 while let (firstElement, latestElement) = try await iterator?.next() {
+                    try Task.checkCancellation()
                     return latest ? latestElement : firstElement
                 }
 
@@ -100,7 +103,7 @@ extension AsyncSequences {
     }
 }
 
-@available(iOS 16.0, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension AsyncSequence where Self: Sendable {
     /// Emits either the first or latest element received during a specified amount of time.
     /// - Parameter interval: The interval of time in which to observe and emit either the first or latest element.
@@ -111,7 +114,7 @@ extension AsyncSequence where Self: Sendable {
     }
 }
 
-@available(iOS 16.0, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension AsyncSequences.Throttle {
     class State: @unchecked Sendable {
         private var _hasSeenFirstElement: Bool = false

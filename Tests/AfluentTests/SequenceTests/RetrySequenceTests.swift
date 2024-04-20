@@ -7,10 +7,10 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class RetrySequenceTests: XCTestCase {
-    func testTaskCanRetryADefinedNumberOfTimes() async throws {
+struct RetrySequenceTests {
+    @Test func taskCanRetryADefinedNumberOfTimes() async throws {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {
@@ -33,10 +33,10 @@ final class RetrySequenceTests: XCTestCase {
         _ = await t.result
 
         let copy = await test.arr
-        XCTAssertEqual(UInt(copy.count), retryCount + 1)
+        #expect(UInt(copy.count) == retryCount + 1)
     }
 
-    func testTaskCanRetryZero_DoesNothing() async throws {
+    @Test func taskCanRetryZero_DoesNothing() async throws {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {
@@ -59,10 +59,10 @@ final class RetrySequenceTests: XCTestCase {
         _ = await t.result
 
         let copy = await test.arr
-        XCTAssertEqual(UInt(copy.count), 1)
+        #expect(UInt(copy.count) == 1)
     }
 
-    func testTaskCanRetryDefaultsToOnce() async throws {
+    @Test func taskCanRetryDefaultsToOnce() async throws {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {
@@ -85,10 +85,10 @@ final class RetrySequenceTests: XCTestCase {
         _ = await t.result
 
         let copy = await test.arr
-        XCTAssertEqual(UInt(copy.count), 2)
+        #expect(UInt(copy.count) == 2)
     }
 
-    func testTaskWithMultipleRetries_OnlyRetriesTheSpecifiedNumberOfTimes() async throws {
+    @Test func taskWithMultipleRetries_OnlyRetriesTheSpecifiedNumberOfTimes() async throws {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {
@@ -112,10 +112,10 @@ final class RetrySequenceTests: XCTestCase {
         _ = await t.result
 
         let copy = await test.arr
-        XCTAssertEqual(UInt(copy.count), 3)
+        #expect(UInt(copy.count) == 3)
     }
 
-    func testTaskCanRetryWithoutError_DoesNothing() async throws {
+    @Test func taskCanRetryWithoutError_DoesNothing() async throws {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {
@@ -133,6 +133,6 @@ final class RetrySequenceTests: XCTestCase {
         _ = try await t.result
 
         let copy = await test.arr
-        XCTAssertEqual(UInt(copy.count), 1)
+        #expect(UInt(copy.count) == 1)
     }
 }

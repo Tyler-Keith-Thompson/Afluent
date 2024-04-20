@@ -8,15 +8,12 @@
 import Afluent
 import ConcurrencyExtras
 import Foundation
-import XCTest
+import Testing
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-final class SubscriptionTests: XCTestCase {
-    var set = Set<AnyCancellable>()
-    var collection = [AnyCancellable]()
-
-    func testDeferredTaskCancelledBeforeItEnds() async throws {
-        await withMainSerialExecutor {
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+struct SubscriptionTests {
+    @Test(.timeLimit(.milliseconds(20))) func deferredTaskCancelledBeforeItEnds() async throws {
+        try await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
@@ -25,32 +22,32 @@ final class SubscriptionTests: XCTestCase {
                 func end() { ended = true }
             }
             let test = Test()
+            let sub = SingleValueSubject<Void>()
 
-            let exp = expectation(description: "thing happened")
             var subscription: AnyCancellable?
             subscription = DeferredTask {
                 await test.start()
                 subscription?.cancel()
             }
             .handleEvents(receiveCancel: {
-                exp.fulfill()
+                try sub.send()
             })
             .map {
                 await test.end()
             }.subscribe()
 
-            await fulfillment(of: [exp], timeout: 0.1)
+            try await sub.execute()
 
             let started = await test.started
             let ended = await test.ended
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
         }
     }
 
-    func testDeferredTaskCancelledViaDeinitialization() async throws {
-        await withMainSerialExecutor {
+    @Test(.timeLimit(.milliseconds(20))) func deferredTaskCancelledViaDeinitialization() async throws {
+        try await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
@@ -59,15 +56,15 @@ final class SubscriptionTests: XCTestCase {
                 func end() { ended = true }
             }
             let test = Test()
+            let sub = SingleValueSubject<Void>()
 
-            let exp = expectation(description: "thing happened")
             var subscription: AnyCancellable?
             subscription = DeferredTask {
                 await test.start()
                 subscription = nil
             }
             .handleEvents(receiveCancel: {
-                exp.fulfill()
+                try? sub.send()
             })
             .map {
                 await test.end()
@@ -76,18 +73,18 @@ final class SubscriptionTests: XCTestCase {
 
             noop(subscription)
 
-            await fulfillment(of: [exp], timeout: 0.1)
+            try await sub.execute()
 
             let started = await test.started
             let ended = await test.ended
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
         }
     }
 
-    func testDeferredTaskCancelledViaDeinitialization_WhenStoredInSet() async throws {
-        await withMainSerialExecutor {
+    @Test(.timeLimit(.milliseconds(20))) func deferredTaskCancelledViaDeinitialization_WhenStoredInSet() async throws {
+        try await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
@@ -96,34 +93,34 @@ final class SubscriptionTests: XCTestCase {
                 func end() { ended = true }
             }
             let test = Test()
+            let sub = SingleValueSubject<Void>()
+            var set = Set<AnyCancellable>()
 
-            let exp = expectation(description: "thing happened")
             DeferredTask {
                 await test.start()
                 set.removeAll()
             }
             .handleEvents(receiveCancel: {
-                exp.fulfill()
+                try? sub.send()
             })
             .map {
                 await test.end()
-                exp.fulfill()
             }
             .subscribe()
             .store(in: &set)
 
-            await fulfillment(of: [exp], timeout: 0.01)
+            try await sub.execute()
 
             let started = await test.started
             let ended = await test.ended
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
         }
     }
 
-    func testDeferredTaskCancelledViaDeinitialization_WhenStoredInCollection() async throws {
-        await withMainSerialExecutor {
+    @Test(.timeLimit(.milliseconds(20))) func deferredTaskCancelledViaDeinitialization_WhenStoredInCollection() async throws {
+        try await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
@@ -132,36 +129,36 @@ final class SubscriptionTests: XCTestCase {
                 func end() { ended = true }
             }
             let test = Test()
+            let sub = SingleValueSubject<Void>()
+            var collection = [AnyCancellable]()
 
-            let exp = expectation(description: "thing happened")
             DeferredTask {
                 await test.start()
                 collection.removeAll()
             }
             .handleEvents(receiveCancel: {
-                exp.fulfill()
+                try? sub.send()
             })
             .map {
                 await test.end()
-                exp.fulfill()
             }
             .subscribe()
             .store(in: &collection)
 
-            await fulfillment(of: [exp], timeout: 0.1)
+            try await sub.execute()
 
             let started = await test.started
             let ended = await test.ended
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
         }
     }
 
     // MARK: AsyncSequence
 
-    func testAsyncSequenceCancelledBeforeItEnds() async throws {
-        await withMainSerialExecutor {
+    @Test(.timeLimit(.milliseconds(20))) func asyncSequenceCancelledBeforeItEnds() async throws {
+        try await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
@@ -171,7 +168,7 @@ final class SubscriptionTests: XCTestCase {
             }
             let test = Test()
 
-            let exp = expectation(description: "thing happened")
+            let sub = SingleValueSubject<Void>()
             var subscription: AnyCancellable?
             subscription = AsyncStream<AnyCancellable?> { continuation in
                 Task {
@@ -181,7 +178,7 @@ final class SubscriptionTests: XCTestCase {
             }
             .map { $0?.cancel() }
             .handleEvents(receiveCancel: {
-                exp.fulfill()
+                try sub.send()
             })
             .map {
                 if !Task.isCancelled {
@@ -190,17 +187,17 @@ final class SubscriptionTests: XCTestCase {
             }
             .sink()
 
-            await fulfillment(of: [exp], timeout: 0.01)
+            try await sub.execute()
 
             let started = await test.started
             let ended = await test.ended
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
         }
     }
 
-    func testAsyncSequenceCancelledViaDeinitialization() async throws {
+    @Test func asyncSequenceCancelledViaDeinitialization() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -211,8 +208,6 @@ final class SubscriptionTests: XCTestCase {
             }
             let test = Test()
 
-            let exp = expectation(description: "thing happened")
-            exp.isInverted = true
             let sequence = AsyncStream<Void> { continuation in
                 Task {
                     await test.start()
@@ -221,7 +216,6 @@ final class SubscriptionTests: XCTestCase {
                 }
             }.map {
                 await test.end()
-                exp.fulfill()
             }
 
             var subscription: AnyCancellable? = sequence.sink()
@@ -231,17 +225,17 @@ final class SubscriptionTests: XCTestCase {
 
             subscription = nil
 
-            await fulfillment(of: [exp], timeout: 0.011)
+            try await Task.sleep(for: .milliseconds(9))
 
             let started = await test.started
             let ended = await test.ended
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
         }
     }
 
-    func testAsyncSequenceCancelledViaDeinitialization_WhenStoredInSet() async throws {
+    @Test(.timeLimit(.milliseconds(10))) func asyncSequenceCancelledViaDeinitialization_WhenStoredInSet() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -251,9 +245,8 @@ final class SubscriptionTests: XCTestCase {
                 func end() { ended = true }
             }
             let test = Test()
+            var set = Set<AnyCancellable>()
 
-            let exp = expectation(description: "thing happened")
-            exp.isInverted = true
             let sequence = AsyncStream<Void> { continuation in
                 Task {
                     await test.start()
@@ -262,7 +255,6 @@ final class SubscriptionTests: XCTestCase {
                 }
             }.map {
                 await test.end()
-                exp.fulfill()
             }
 
             sequence.sink()
@@ -272,17 +264,17 @@ final class SubscriptionTests: XCTestCase {
 
             set.removeAll()
 
-            await fulfillment(of: [exp], timeout: 0.011)
+            try await Task.sleep(for: .milliseconds(9))
 
             let started = await test.started
             let ended = await test.ended
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
         }
     }
 
-    func testAsyncSequenceCancelledViaDeinitialization_WhenStoredInCollection() async throws {
+    @Test func asyncSequenceCancelledViaDeinitialization_WhenStoredInCollection() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -292,9 +284,8 @@ final class SubscriptionTests: XCTestCase {
                 func end() { ended = true }
             }
             let test = Test()
+            var collection = [AnyCancellable]()
 
-            let exp = expectation(description: "thing happened")
-            exp.isInverted = true
             let sequence = AsyncStream<Void> { continuation in
                 Task {
                     await test.start()
@@ -303,7 +294,6 @@ final class SubscriptionTests: XCTestCase {
                 }
             }.map {
                 await test.end()
-                exp.fulfill()
             }
 
             sequence.sink()
@@ -313,29 +303,29 @@ final class SubscriptionTests: XCTestCase {
 
             collection.removeAll()
 
-            await fulfillment(of: [exp], timeout: 0.011)
+            try await Task.sleep(for: .milliseconds(9))
 
             let started = await test.started
             let ended = await test.ended
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
         }
     }
 
-    func testAsyncSequenceReceivesCompletionWhenCancelled() async throws {
+    @Test(.timeLimit(.milliseconds(20))) func asyncSequenceReceivesCompletionWhenCancelled() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
+                var output = false
 
                 func start() { started = true }
                 func end() { ended = true }
+                func receivedOutput() { output = true }
             }
             let test = Test()
 
-            let exp = expectation(description: "thing happened")
-            exp.isInverted = true
             let sequence = AsyncThrowingStream<Void, Error> { continuation in
                 Task {
                     await test.start()
@@ -344,21 +334,18 @@ final class SubscriptionTests: XCTestCase {
                 }
             }.map {
                 await test.end()
-                exp.fulfill()
             }
 
             let completedChannel = SingleValueChannel<Void>()
-            let outputExp = expectation(description: "output received")
-            outputExp.isInverted = true
 
             let subscription = sequence.sink { completion in
                 switch completion {
                     case .finished: break
-                    case .failure(let error): XCTFail("Unexpected error \(error)")
+                    case .failure(let error): Issue.record("Unexpected error \(error)")
                 }
                 try? await completedChannel.send()
             } receiveOutput: {
-                outputExp.fulfill()
+                await test.receivedOutput()
             }
 
             try await Task.sleep(for: .milliseconds(2))
@@ -367,29 +354,31 @@ final class SubscriptionTests: XCTestCase {
 
             try await completedChannel.execute()
 
-            await fulfillment(of: [exp, outputExp], timeout: 0.011)
+            try await Task.sleep(for: .milliseconds(9))
 
             let started = await test.started
             let ended = await test.ended
+            let output = await test.output
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
+            #expect(!output)
         }
     }
 
-    func testAsyncSequenceReceivesCompletionWhenStreamCompletes() async throws {
+    @Test(.timeLimit(.milliseconds(20))) func asyncSequenceReceivesCompletionWhenStreamCompletes() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
+                var output = false
 
                 func start() { started = true }
                 func end() { ended = true }
+                func receivedOutput() { output = true }
             }
             let test = Test()
 
-            let exp = expectation(description: "thing happened")
-            exp.isInverted = true
             let sequence = AsyncThrowingStream<Void, Error> { continuation in
                 Task {
                     await test.start()
@@ -397,37 +386,36 @@ final class SubscriptionTests: XCTestCase {
                 }
             }.map {
                 await test.end()
-                exp.fulfill()
             }
 
             let completedChannel = SingleValueChannel<Void>()
-            let outputExp = expectation(description: "output received")
-            outputExp.isInverted = true
 
             let subscription = sequence.sink { completion in
                 switch completion {
                     case .finished: break
-                    case .failure(let error): XCTFail("Unexpected error \(error)")
+                    case .failure(let error): Issue.record("Unexpected error \(error)")
                 }
                 try? await completedChannel.send()
             } receiveOutput: {
-                outputExp.fulfill()
+                await test.receivedOutput()
             }
             noop(subscription)
 
             try await completedChannel.execute()
 
-            await fulfillment(of: [exp, outputExp], timeout: 0.011)
+            try await Task.sleep(for: .milliseconds(10))
 
             let started = await test.started
             let ended = await test.ended
+            let output = await test.output
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
+            #expect(!output)
         }
     }
 
-    func testAsyncSequenceReceivesOutputThenCompletionWhenCancelled() async throws {
+    @Test(.timeLimit(.milliseconds(20))) func asyncSequenceReceivesOutputThenCompletionWhenCancelled() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
@@ -438,7 +426,7 @@ final class SubscriptionTests: XCTestCase {
             }
             let test = Test()
 
-            let exp = expectation(description: "thing happened")
+            let exp = SingleValueSubject<Void>()
             let sequence = AsyncStream<Void> { continuation in
                 Task {
                     await test.start()
@@ -446,20 +434,20 @@ final class SubscriptionTests: XCTestCase {
                 }
             }.map {
                 await test.end()
-                exp.fulfill()
+                try? exp.send()
             }
 
             let completedChannel = SingleValueChannel<Void>()
-            let outputExp = expectation(description: "output received")
+            let outputExp = SingleValueSubject<Void>()
 
             let subscription = sequence.sink { completion in
                 switch completion {
                     case .finished: break
-                    case .failure(let error): XCTFail("Unexpected error \(error)")
+                    case .failure(let error): Issue.record("Unexpected error \(error)")
                 }
                 try? await completedChannel.send()
             } receiveOutput: {
-                outputExp.fulfill()
+                try? outputExp.send()
             }
 
             try await Task.sleep(for: .milliseconds(2))
@@ -468,31 +456,32 @@ final class SubscriptionTests: XCTestCase {
 
             try await completedChannel.execute()
 
-            await fulfillment(of: [exp, outputExp], timeout: 0.011)
+            try await exp.execute()
+            try await outputExp.execute()
 
             let started = await test.started
             let ended = await test.ended
 
-            XCTAssert(started)
-            XCTAssert(ended)
+            #expect(started)
+            #expect(ended)
         }
     }
 
-    func testAsyncSequenceReceivesErrorInCompletion() async throws {
+    @Test(.timeLimit(.milliseconds(20))) func asyncSequenceReceivesErrorInCompletion() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var started = false
                 var ended = false
+                var output = false
 
                 func start() { started = true }
                 func end() { ended = true }
+                func receivedOutput() { output = true }
             }
             let test = Test()
 
             enum Err: Error, Equatable { case e1 }
 
-            let exp = expectation(description: "thing happened")
-            exp.isInverted = true
             let sequence = AsyncThrowingStream<Void, Error> { continuation in
                 Task {
                     await test.start()
@@ -500,21 +489,18 @@ final class SubscriptionTests: XCTestCase {
                 }
             }.map {
                 await test.end()
-                exp.fulfill()
             }
 
             let completedChannel = SingleValueChannel<Void>()
-            let outputExp = expectation(description: "output received")
-            outputExp.isInverted = true
 
             let subscription = sequence.sink { completion in
                 switch completion {
-                    case .finished: XCTFail("Unexpected normal finish")
-                    case .failure(let error): XCTAssertEqual(error as? Err, .e1)
+                    case .finished: Issue.record("Unexpected normal finish")
+                    case .failure(let error): #expect(error as? Err == .e1)
                 }
                 try? await completedChannel.send()
             } receiveOutput: {
-                outputExp.fulfill()
+                await test.receivedOutput()
             }
 
             try await Task.sleep(for: .milliseconds(2))
@@ -523,18 +509,20 @@ final class SubscriptionTests: XCTestCase {
 
             try await completedChannel.execute()
 
-            await fulfillment(of: [exp, outputExp], timeout: 0.011)
+            try await Task.sleep(for: .milliseconds(9))
 
             let started = await test.started
             let ended = await test.ended
+            let output = await test.output
 
-            XCTAssert(started)
-            XCTAssertFalse(ended)
+            #expect(started)
+            #expect(!ended)
+            #expect(!output)
         }
     }
 }
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension SubscriptionTests {
     func noop(_: Any?) { }
 }

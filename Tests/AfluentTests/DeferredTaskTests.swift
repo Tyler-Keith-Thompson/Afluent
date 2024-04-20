@@ -1,25 +1,29 @@
-import XCTest
+import Testing
 @testable import Afluent
 
-final class AfluentTests: XCTestCase {
-    func testDeferredTaskDoesNotExecuteImmediately() async throws {
-        let notFiredExpectation = expectation(description: "did not fire")
-        notFiredExpectation.isInverted = true
+struct AfluentTests {
+    @Test func deferredTaskDoesNotExecuteImmediately() async throws {
+        actor Test {
+            var fired = false
+            func fire() { fired = true }
+        }
+        let test = Test()
 
         _ = DeferredTask {
-            notFiredExpectation.fulfill()
+            await test.fire()
         }
 
-        await fulfillment(of: [notFiredExpectation], timeout: 0.01)
+        try await Task.sleep(for: .milliseconds(1))
+        let fired = await test.fired
+
+        #expect(!fired)
     }
 
-    func testDeferredTaskExecutesWhenAskedTo() async throws {
-        let firedExpectation = expectation(description: "did not fire")
-
-        DeferredTask {
-            firedExpectation.fulfill()
-        }.run()
-
-        await fulfillment(of: [firedExpectation], timeout: 0.01)
+    @Test func deferredTaskExecutesWhenAskedTo() async throws {
+        await withCheckedContinuation { continuation in
+            DeferredTask {
+                continuation.resume()
+            }.run()
+        }
     }
 }

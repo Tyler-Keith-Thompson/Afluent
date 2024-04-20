@@ -7,18 +7,18 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class MapTests: XCTestCase {
-    func testMapTransformsValue() async throws {
+struct MapTests {
+    @Test func mapTransformsValue() async throws {
         let val = try await DeferredTask { 1 }
             .map { String(describing: $0) }
             .execute()
 
-        XCTAssertEqual(val, "1")
+        #expect(val == "1")
     }
 
-    func testMapTransformsWithKeypath() async throws {
+    @Test func mapTransformsWithKeypath() async throws {
         struct Obj {
             let val = 0
             let other = 1
@@ -28,24 +28,24 @@ final class MapTests: XCTestCase {
             .map(\.val)
             .execute()
 
-        XCTAssertEqual(val, 0)
+        #expect(val == 0)
     }
 
-    func testTryMapTransformsValue() async throws {
+    @Test func tryMapTransformsValue() async throws {
         let val = try await DeferredTask { 1 }
             .tryMap { String(describing: $0) }
             .execute()
 
-        XCTAssertEqual(val, "1")
+        #expect(val == "1")
     }
 
-    func testTryMapThrowsError() async throws {
+    @Test func tryMapThrowsError() async throws {
         let val = try await DeferredTask { 1 }
             .tryMap { _ in throw URLError(.badURL) }
             .result
 
-        XCTAssertThrowsError(try val.get()) { error in
-            XCTAssertEqual(error as? URLError, URLError(.badURL))
+        #expect { try val.get() } throws: { error in
+            error as? URLError == URLError(.badURL)
         }
     }
 }

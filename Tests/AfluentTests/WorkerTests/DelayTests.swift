@@ -8,11 +8,11 @@
 import Afluent
 import Clocks
 import Foundation
-import XCTest
+import Testing
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-final class DelayTests: XCTestCase {
-    func testDeferredTaskCanDelayForAnExpectedDuration() async throws {
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+struct DelayTests {
+    @Test func deferredTaskCanDelayForAnExpectedDuration() async throws {
         actor Test {
             var finished = false
             func setFinished(_ val: Bool) {
@@ -28,9 +28,9 @@ final class DelayTests: XCTestCase {
 
         await clock.advance(by: .milliseconds(1))
         let finished1 = await test.finished
-        XCTAssertFalse(finished1)
+        #expect(!finished1)
         await clock.advance(by: .milliseconds(9))
         let finished2 = await test.finished
-        XCTAssert(finished2)
+        #expect(finished2)
     }
 }

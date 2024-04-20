@@ -7,10 +7,10 @@
 
 import Afluent
 import Foundation
-import XCTest
+import Testing
 
-final class AssignTests: XCTestCase {
-    func testAssignToProperty() async throws {
+struct AssignTests {
+    @Test func assignToProperty() async throws {
         class Test {
             var val = ""
         }
@@ -20,6 +20,6 @@ final class AssignTests: XCTestCase {
         try await DeferredTask { "test" }
             .assign(to: \.val, on: test)
 
-        XCTAssertEqual(test.val, "test")
+        #expect(test.val == "test")
     }
 }

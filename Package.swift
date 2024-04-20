@@ -16,6 +16,7 @@ let package = Package(name: "Afluent",
                           .package(url: "https://github.com/nicklockwood/SwiftFormat", from: "0.52.11"),
                           .package(url: "https://github.com/pointfreeco/swift-clocks.git", from: "1.0.2"),
                           .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.1.0"),
+                          .package(url: "https://github.com/apple/swift-testing.git", from: "0.7.0"),
                       ],
                       targets: [
                           .target(name: "Afluent",
@@ -37,12 +38,14 @@ func testDependencies() -> [PackageDescription.Target.Dependency] {
             .product(name: "OHHTTPStubsSwift", package: "OHHTTPStubs"),
             .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"),
             .product(name: "Clocks", package: "swift-clocks"),
+            .product(name: "Testing", package: "swift-testing"),
         ]
     #else
         [
             "Afluent",
             .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"),
             .product(name: "Clocks", package: "swift-clocks"),
+            .product(name: "Testing", package: "swift-testing"),
         ]
     #endif
 }

@@ -10,7 +10,7 @@ import Foundation
 import Testing
 @testable import Afluent
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 struct ShareFromCacheTests {
     @Test func sharingFromCacheWithNoKey() async throws {
         try await withMainSerialExecutor {

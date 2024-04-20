@@ -12,7 +12,7 @@ import ConcurrencyExtras
 import Foundation
 import Testing
 
-@available(iOS 16.0, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 struct ThrottleSequenceTests {
     enum TestError: Error {
         case upstreamError

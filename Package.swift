@@ -31,7 +31,7 @@ let package = Package(name: "Afluent",
                       ])
 
 func testDependencies() -> [PackageDescription.Target.Dependency] {
-    #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+    #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
         [
             "Afluent",
             .product(name: "OHHTTPStubs", package: "OHHTTPStubs"),

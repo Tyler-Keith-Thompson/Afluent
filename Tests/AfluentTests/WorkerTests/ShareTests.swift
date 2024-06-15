@@ -11,34 +11,33 @@ import Foundation
 import Testing
 
 struct ShareTests {
-    #warning("Revisit")
-//    @Test func unsharedTaskExecutesRepeatedly() async throws {
-//        try await withMainSerialExecutor {
-//            try await confirmation(expectedCount: 4) { exp in
-//                actor Test {
-//                    var arr = [String]()
-//                    func append(_ str: String) {
-//                        arr.append(str)
-//                    }
-//                }
-//
-//                let test = Test()
-//
-//                let t = DeferredTask {
-//                    await test.append("called")
-//                    exp()
-//                }
-//
-//                t.run()
-//                t.run()
-//                t.run()
-//                try await t.execute()
-//
-//                let copy = await test.arr
-//                #expect(copy == ["called", "called", "called", "called"])
-//            }
-//        }
-//    }
+    @Test func unsharedTaskExecutesRepeatedly() async throws {
+        try await confirmation(expectedCount: 4) { exp in
+            try await withMainSerialExecutor {
+                actor Test {
+                    var arr = [String]()
+                    func append(_ str: String) {
+                        arr.append(str)
+                    }
+                }
+
+                let test = Test()
+
+                let t = DeferredTask {
+                    await test.append("called")
+                    exp()
+                }
+
+                t.run()
+                t.run()
+                t.run()
+                try await t.execute()
+
+                let copy = await test.arr
+                #expect(copy == ["called", "called", "called", "called"])
+            }
+        }
+    }
 
     @Test func unsharedTaskExecutesRepeatedly_WithResult() async throws {
         actor Test {

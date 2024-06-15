@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct Encode<Upstream: AsyncSequence, Encoder: TopLevelEncoder>: AsyncSequence where Upstream.Element: Encodable {
+    public struct Encode<Upstream: AsyncSequence & Sendable, Encoder: TopLevelEncoder & Sendable>: AsyncSequence, Sendable where Upstream.Element: Encodable {
         public typealias Element = Encoder.Output
         let upstream: Upstream
         let encoder: Encoder

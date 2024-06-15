@@ -8,4 +8,4 @@
 import Foundation
 
 // https://forums.swift.org/t/sendablekeypath/67195
-extension KeyPath: @unchecked Sendable where Value: Sendable { }
+extension KeyPath: @unchecked @retroactive Sendable where Value: Sendable { }

@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct ReplaceNil<Upstream: AsyncSequence, Output>: AsyncSequence where Upstream.Element == Output? {
+    public struct ReplaceNil<Upstream: AsyncSequence & Sendable, Output: Sendable>: AsyncSequence, Sendable where Upstream.Element == Output? {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         let newOutput: Output

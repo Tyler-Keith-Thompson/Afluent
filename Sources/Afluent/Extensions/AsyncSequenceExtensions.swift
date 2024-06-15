@@ -7,7 +7,7 @@
 
 import Foundation
 
-extension AsyncSequence {
+extension AsyncSequence where Element: Sendable {
     /// Returns the first element of the sequence
     @_disfavoredOverload public func first() async rethrows -> Self.Element? {
         try await first { _ in true }

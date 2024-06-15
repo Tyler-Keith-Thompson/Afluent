@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct Catch<Upstream: AsyncSequence, Downstream: AsyncSequence>: AsyncSequence where Upstream.Element == Downstream.Element {
+    public struct Catch<Upstream: AsyncSequence & Sendable, Downstream: AsyncSequence & Sendable>: AsyncSequence, Sendable where Upstream.Element == Downstream.Element {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         let handler: @Sendable (Error) async throws -> Downstream

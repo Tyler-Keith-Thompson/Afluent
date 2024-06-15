@@ -8,12 +8,12 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct GroupBy<Upstream: AsyncSequence, Key: Hashable>: AsyncSequence {
+    public struct GroupBy<Upstream: AsyncSequence & Sendable, Key: Hashable>: AsyncSequence, Sendable {
         public typealias Element = (key: Key, stream: AsyncThrowingStream<Upstream.Element, Error>)
         let upstream: Upstream
-        let keySelector: (Upstream.Element) async -> Key
+        let keySelector: @Sendable (Upstream.Element) async -> Key
 
-        init(upstream: Upstream, keySelector: @escaping (Upstream.Element) async -> Key) {
+        init(upstream: Upstream, keySelector: @escaping @Sendable (Upstream.Element) async -> Key) {
             self.upstream = upstream
             self.keySelector = keySelector
         }
@@ -56,7 +56,7 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence where Self: Sendable {
-    public func groupBy<Key: Hashable>(keySelector: @escaping (Element) async -> Key) -> AsyncSequences.GroupBy<Self, Key> {
+    public func groupBy<Key: Hashable>(keySelector: @Sendable @escaping (Element) async -> Key) -> AsyncSequences.GroupBy<Self, Key> {
         AsyncSequences.GroupBy(upstream: self, keySelector: keySelector)
     }
 }

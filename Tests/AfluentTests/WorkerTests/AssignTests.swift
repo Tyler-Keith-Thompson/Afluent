@@ -11,8 +11,21 @@ import Testing
 
 struct AssignTests {
     @Test func assignToProperty() async throws {
-        class Test {
-            var val = ""
+        final class Test: @unchecked Sendable {
+            let lock = NSRecursiveLock()
+
+            var _val = ""
+            var val: String {
+                get {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    return _val
+                } set {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    _val = newValue
+                }
+            }
         }
 
         let test = Test()

@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    public final actor RetryAfterFlatMapping<Upstream: AsyncSequence & Sendable, Downstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element, Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
+    public final actor RetryAfterFlatMapping<Upstream: AsyncSequence & Sendable, Downstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol, Sendable where Upstream.Element == Downstream.Element, Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         var retries: UInt
@@ -54,7 +54,7 @@ extension AsyncSequences {
         public nonisolated func makeAsyncIterator() -> RetryAfterFlatMapping<Upstream, Downstream> { self }
     }
 
-    public final actor RetryOnAfterFlatMapping<Upstream: AsyncSequence & Sendable, Failure: Error & Equatable, Downstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element, Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
+    public final actor RetryOnAfterFlatMapping<Upstream: AsyncSequence & Sendable, Failure: Error & Equatable, Downstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol, Sendable where Upstream.Element == Downstream.Element, Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         var retries: UInt

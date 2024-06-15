@@ -10,7 +10,7 @@ import Foundation
 import Testing
 
 struct WithUnretainedTests {
-    class MyType { }
+    final class MyType: Sendable { }
 
     @Test func withUnretainedHolds() async throws {
         let myTypeInstance = MyType()

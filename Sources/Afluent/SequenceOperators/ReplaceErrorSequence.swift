@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct ReplaceError<Upstream: AsyncSequence, Output>: AsyncSequence where Upstream.Element == Output {
+    public struct ReplaceError<Upstream: AsyncSequence & Sendable, Output: Sendable>: AsyncSequence, Sendable where Upstream.Element == Output {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         let newOutput: Output
@@ -41,7 +41,7 @@ extension AsyncSequence where Self: Sendable {
     /// - Parameter value: The value to emit upon encountering an error.
     ///
     /// - Returns: An `AsyncSequence` that emits the specified value instead of failing when the upstream fails.
-    public func replaceError(with value: Element) -> AsyncSequences.ReplaceError<Self, Element> {
+    public func replaceError(with value: Element) -> AsyncSequences.ReplaceError<Self, Element> where Element: Sendable {
         AsyncSequences.ReplaceError(upstream: self, newOutput: value)
     }
 }

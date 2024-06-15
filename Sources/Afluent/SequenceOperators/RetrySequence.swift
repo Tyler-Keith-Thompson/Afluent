@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    public final actor Retry<Upstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
+    public final actor Retry<Upstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol, Sendable where Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         var retries: UInt
@@ -50,7 +50,7 @@ extension AsyncSequences {
         public nonisolated func makeAsyncIterator() -> Retry<Upstream> { self }
     }
 
-    public final actor RetryOn<Upstream: AsyncSequence & Sendable, Failure: Error & Equatable>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
+    public final actor RetryOn<Upstream: AsyncSequence & Sendable, Failure: Error & Equatable>: AsyncSequence, AsyncIteratorProtocol, Sendable where Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         var retries: UInt

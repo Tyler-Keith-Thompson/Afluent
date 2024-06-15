@@ -9,7 +9,7 @@ import Foundation
 
 extension AsyncSequences {
     /// Represents the different kinds of events that can be emitted by `Materialize`.
-    public enum Event<Element> {
+    public enum Event<Element: Sendable>: Sendable {
         /// An element from the upstream sequence.
         case element(Element)
         /// An error encountered in the upstream sequence.
@@ -18,7 +18,7 @@ extension AsyncSequences {
         case complete
     }
 
-    public struct Materialize<Upstream: AsyncSequence>: AsyncSequence {
+    public struct Materialize<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable where Upstream.Element: Sendable {
         public typealias Element = Event<Upstream.Element>
 
         let upstream: Upstream
@@ -56,7 +56,7 @@ extension AsyncSequence where Self: Sendable {
     /// This method wraps the `AsyncSequence` and emits each of its elements, errors, and completion as distinct `Event` cases. It's useful for uniformly handling all aspects of the sequence's lifecycle.
     ///
     /// - Returns: An `AsyncSequences.Materialize` instance that represents the transformed sequence.
-    public func materialize() -> AsyncSequences.Materialize<Self> {
+    public func materialize() -> AsyncSequences.Materialize<Self> where Element: Sendable {
         AsyncSequences.Materialize(upstream: self)
     }
 }

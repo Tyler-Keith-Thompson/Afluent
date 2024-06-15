@@ -12,7 +12,6 @@ import ConcurrencyExtras
 import Foundation
 import Testing
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 struct ThrottleSequenceTests {
     enum TestError: Error {
         case upstreamError
@@ -26,6 +25,7 @@ struct ThrottleSequenceTests {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func testThrottleChecksForCancellation_whenLatestIsTrue() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
@@ -44,6 +44,7 @@ struct ThrottleSequenceTests {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func throttleChecksForCancellation_whenLatestIsFalse() async throws {
         await withMainSerialExecutor {
             let testClock = TestClock()
@@ -62,6 +63,7 @@ struct ThrottleSequenceTests {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(arguments: [
         // LEGEND:
         // * 1, 2, 3, 4, 5, 6, 7, 8, 9 | Emit the values 1 through 9
@@ -104,6 +106,7 @@ struct ThrottleSequenceTests {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(arguments: [
         // LEGEND:
         // * 1, 2, 3, 4, 5, 6, 7, 8, 9 | Emit the values 1 through 9
@@ -146,6 +149,7 @@ struct ThrottleSequenceTests {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     fileprivate func parseThrottleDSL(streamInput: String, expectedOutput: String, testClock: TestClock<Duration>, advancedDuration: ManagedAtomic<Int>, continuation: AsyncThrowingStream<Int, any Error>.Continuation, test: ElementContainer) async {
         for (i, step) in streamInput.enumerated() {
             if step == "-" {

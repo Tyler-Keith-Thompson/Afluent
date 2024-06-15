@@ -9,10 +9,10 @@ import Foundation
 
 public typealias AnyAsyncSequence = AsyncSequences.AnyAsyncSequence
 extension AsyncSequences {
-    public struct AnyAsyncSequence<Element>: AsyncSequence {
-        let makeIterator: () -> AnyAsyncIterator<Element>
+    public struct AnyAsyncSequence<Element: Sendable>: AsyncSequence, Sendable {
+        let makeIterator: @Sendable () -> AnyAsyncIterator<Element>
 
-        public init<S: AsyncSequence>(erasing sequence: S) where S.Element == Element {
+        public init<S: AsyncSequence & Sendable>(erasing sequence: S) where S.Element == Element, S.AsyncIterator: Sendable, S.Element: Sendable {
             makeIterator = { AnyAsyncIterator(erasing: sequence.makeAsyncIterator()) }
         }
 
@@ -21,10 +21,10 @@ extension AsyncSequences {
         }
     }
 
-    public struct AnyAsyncIterator<Element>: AsyncIteratorProtocol {
-        private var iterator: any AsyncIteratorProtocol
+    public struct AnyAsyncIterator<Element: Sendable>: AsyncIteratorProtocol, Sendable {
+        private var iterator: any (AsyncIteratorProtocol & Sendable)
 
-        init<I: AsyncIteratorProtocol>(erasing iterator: I) where I.Element == Element {
+        init<I: AsyncIteratorProtocol & Sendable>(erasing iterator: I) where I.Element == Element {
             self.iterator = iterator
         }
 
@@ -37,7 +37,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence where Self: Sendable {
+extension AsyncSequence where Self: Sendable, Element: Sendable, Self.AsyncIterator: Sendable {
     /// Type erases the current sequence, useful when you need a concrete type that's easy to predict.
     public func eraseToAnyAsyncSequence() -> AsyncSequences.AnyAsyncSequence<Element> {
         AsyncSequences.AnyAsyncSequence(erasing: self)

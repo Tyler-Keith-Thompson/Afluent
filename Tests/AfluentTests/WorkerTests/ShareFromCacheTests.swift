@@ -10,9 +10,9 @@ import Foundation
 import Testing
 @testable import Afluent
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 struct ShareFromCacheTests {
-    @Test func sharingFromCacheWithNoKey() async throws {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(.disabled(if: XcodeVersion.current == .v16)) func sharingFromCacheWithNoKey() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var callCount = 0
@@ -54,7 +54,8 @@ struct ShareFromCacheTests {
         }
     }
 
-    @Test func sharingFromCacheAfterCompletion() async throws {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(.disabled(if: XcodeVersion.current == .v16)) func sharingFromCacheAfterCompletion() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var callCount = 0
@@ -91,7 +92,8 @@ struct ShareFromCacheTests {
         }
     }
 
-    @Test func sharingFromCacheAfterError() async throws {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(.disabled(if: XcodeVersion.current == .v16)) func sharingFromCacheAfterError() async throws {
         await withMainSerialExecutor {
             actor Test {
                 var callCount = 0
@@ -144,7 +146,8 @@ struct ShareFromCacheTests {
         }
     }
 
-    @Test func sharingFromCacheWithKey() async throws {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(.disabled(if: XcodeVersion.current == .v16)) func sharingFromCacheWithKey() async throws {
         try await withMainSerialExecutor {
             actor Test {
                 var callCount = 0

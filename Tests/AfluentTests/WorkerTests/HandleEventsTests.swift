@@ -10,8 +10,8 @@ import ConcurrencyExtras
 import Foundation
 import Testing
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 struct HandleEventsTests {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func handleOperation() async throws {
         actor Test {
             var operationCalled = false
@@ -34,11 +34,12 @@ struct HandleEventsTests {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func handleOutput() async throws {
         actor Test {
-            var output: Any?
+            var output: Int?
 
-            func output(_ any: Any?) { output = any }
+            func output(_ val: Int?) { output = val }
         }
         let test = Test()
 
@@ -52,10 +53,11 @@ struct HandleEventsTests {
 
             let output = await test.output
 
-            #expect(output as? Int == 1)
+            #expect(output == 1)
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func handleError() async throws {
         actor Test {
             var error: Error?
@@ -78,6 +80,7 @@ struct HandleEventsTests {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(.timeLimit(.milliseconds(10))) func handleCancel() async throws {
         await withMainSerialExecutor {
             actor Test {

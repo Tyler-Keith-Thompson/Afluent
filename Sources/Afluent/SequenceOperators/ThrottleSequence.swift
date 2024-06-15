@@ -9,7 +9,7 @@ import Foundation
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension AsyncSequences {
-    public struct Throttle<Upstream: AsyncSequence & Sendable, C: Clock>: AsyncSequence {
+    public struct Throttle<Upstream: AsyncSequence & Sendable, C: Clock>: AsyncSequence, Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         let interval: C.Duration

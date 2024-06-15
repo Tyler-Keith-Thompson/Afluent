@@ -1,4 +1,4 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 6.0
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -16,7 +16,7 @@ let package = Package(name: "Afluent",
                           .package(url: "https://github.com/nicklockwood/SwiftFormat", from: "0.52.11"),
                           .package(url: "https://github.com/pointfreeco/swift-clocks.git", from: "1.0.2"),
                           .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.1.0"),
-                          .package(url: "https://github.com/apple/swift-testing.git", from: "0.7.0"),
+                          .package(url: "https://github.com/apple/swift-testing.git", from: "0.10.0"),
                       ],
                       targets: [
                           .target(name: "Afluent",
@@ -28,7 +28,8 @@ let package = Package(name: "Afluent",
                                   ]),
                           .testTarget(name: "AfluentTests",
                                       dependencies: testDependencies()),
-                      ])
+                      ],
+                      swiftLanguageVersions: [.version("5.10"), .version("6")])
 
 func testDependencies() -> [PackageDescription.Target.Dependency] {
     #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)

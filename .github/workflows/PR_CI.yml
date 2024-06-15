@@ -12,7 +12,7 @@ jobs:
         run: swift test
   test_future:
     runs-on: ubuntu-latest
-    container: swift:nightly-6.0
+    container: swiftlang/swift:nightly-6.0
     steps:
       - uses: actions/checkout@v4
       - name: Run TESTS on Swift 6

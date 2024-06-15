@@ -101,32 +101,32 @@ struct SingleValueChannelTests {
         await #expect(throws: (any Error).self) { try await subject.send(expected) }
     }
 
-    #warning("Revisit")
-//    @Test func SingleValueChannelOnlyEmitsErrorOnce() async throws {
-//        try await withMainSerialExecutor {
-//            enum Err: Error { case e1 }
-//            try await confirmation { exp in
-//                let subject = SingleValueChannel<Int>()
-//                let unitOfWork = subject
-//                    .materialize()
-//                    .map {
-//                        exp()
-//                        return $0
-//                    }
-//
-//                let task = Task {
-//                    try await subject.send(error: Err.e1)
-//                    await #expect(throws: (any Error).self) { try await subject.send(error: Err.e1) }
-//                }
-//
-//                let actualResult = try await unitOfWork.execute()
-//                _ = await task.result
-//                #expect { try actualResult.get() } throws: { error in
-//                    error as? Err == .e1
-//                }
-//            }
-//        }
-//    }
+    @Test func SingleValueChannelOnlyEmitsErrorOnce() async throws {
+        enum Err: Error { case e1 }
+        try await confirmation { exp in
+            try await withMainSerialExecutor {
+                let subject = SingleValueChannel<Int>()
+                let unitOfWork = subject
+                    .materialize()
+                    .map {
+                        exp()
+                        return $0
+                    }
+
+                let task = Task {
+                    try await subject.send(error: Err.e1)
+                    let result = await Task { try await subject.send(error: Err.e1) }.result
+                    #expect(throws: (any Error).self) { try result.get() }
+                }
+
+                let actualResult = try await unitOfWork.execute()
+                _ = await task.result
+                #expect { try actualResult.get() } throws: { error in
+                    error as? Err == .e1
+                }
+            }
+        }
+    }
 
     @Test func voidSingleValueChannelEmittingValueBeforeTaskRuns() async throws {
         let subject = SingleValueChannel<Void>()

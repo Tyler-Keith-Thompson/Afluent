@@ -35,7 +35,7 @@ extension AsyncSequences {
                 }
             }
 
-            init(upstream: Upstream, retries: UInt, transform: @escaping @Sendable (Error) async throws -> Downstream) {
+            init(upstream: Upstream, retries: UInt, transform: @Sendable @escaping (Error) async throws -> Downstream) {
                 self.upstream = upstream
                 self.retries = ManagedAtomic(retries)
                 self.transform = transform
@@ -44,7 +44,7 @@ extension AsyncSequences {
 
         private let state: State
 
-        init(upstream: Upstream, retries: UInt, transform: @escaping @Sendable (Error) async throws -> Downstream) {
+        init(upstream: Upstream, retries: UInt, transform: @Sendable @escaping (Error) async throws -> Downstream) {
             state = State(upstream: upstream,
                           retries: retries,
                           transform: transform)
@@ -105,7 +105,7 @@ extension AsyncSequences {
                 }
             }
 
-            init(upstream: Upstream, retries: UInt, error: Failure, transform: @escaping @Sendable (Failure) async throws -> Downstream) {
+            init(upstream: Upstream, retries: UInt, error: Failure, transform: @Sendable @escaping (Failure) async throws -> Downstream) {
                 self.upstream = upstream
                 self.retries = ManagedAtomic(retries)
                 self.error = error
@@ -115,7 +115,7 @@ extension AsyncSequences {
 
         private let state: State
 
-        init(upstream: Upstream, retries: UInt, error: Failure, transform: @escaping @Sendable (Failure) async throws -> Downstream) {
+        init(upstream: Upstream, retries: UInt, error: Failure, transform: @Sendable @escaping (Failure) async throws -> Downstream) {
             state = State(upstream: upstream,
                           retries: retries,
                           error: error,
@@ -163,7 +163,7 @@ extension AsyncSequence where Self: Sendable {
     ///   - transform: An async closure that takes the error from the upstream and returns a new `AsyncSequence`.
     ///
     /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on failure up to the specified number of times, with the applied transformation.
-    public func retry<D: AsyncSequence>(_ retries: UInt = 1, _ transform: @escaping @Sendable (Error) async throws -> D) -> AsyncSequences.RetryAfterFlatMapping<Self, D> {
+    public func retry<D: AsyncSequence>(_ retries: UInt = 1, _ transform: @Sendable @escaping (Error) async throws -> D) -> AsyncSequences.RetryAfterFlatMapping<Self, D> {
         AsyncSequences.RetryAfterFlatMapping(upstream: self, retries: retries, transform: transform)
     }
 
@@ -175,7 +175,7 @@ extension AsyncSequence where Self: Sendable {
     ///   - transform: An async closure that takes the error from the upstream and returns a new `AsyncSequence`.
     ///
     /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on the specified error up to the specified number of times, with the applied transformation.
-    public func retry<D: AsyncSequence, E: Error & Equatable>(_ retries: UInt = 1, on error: E, _ transform: @escaping @Sendable (E) async throws -> D) -> AsyncSequences.RetryOnAfterFlatMapping<Self, E, D> {
+    public func retry<D: AsyncSequence, E: Error & Equatable>(_ retries: UInt = 1, on error: E, _ transform: @Sendable @escaping (E) async throws -> D) -> AsyncSequences.RetryOnAfterFlatMapping<Self, E, D> {
         AsyncSequences.RetryOnAfterFlatMapping(upstream: self, retries: retries, error: error, transform: transform)
     }
 }

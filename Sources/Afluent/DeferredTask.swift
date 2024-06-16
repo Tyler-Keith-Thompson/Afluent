@@ -22,7 +22,7 @@ public actor DeferredTask<Success: Sendable>: AsynchronousUnitOfWork {
     ///
     /// - Parameters:
     ///   - operation: The asynchronous operation that this task will execute. The operation should be a throwing, async closure that returns a value of type `Success`.
-    public init(@_inheritActorContext @_implicitSelfCapture operation: @escaping @Sendable () async throws -> Success) {
+    public init(@_inheritActorContext @_implicitSelfCapture operation: @Sendable @escaping () async throws -> Success) {
         self.operation = operation
     }
 

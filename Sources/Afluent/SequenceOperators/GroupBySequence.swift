@@ -13,7 +13,7 @@ extension AsyncSequences {
         let upstream: Upstream
         let keySelector: @Sendable (Upstream.Element) async -> Key
 
-        init(upstream: Upstream, keySelector: @escaping @Sendable (Upstream.Element) async -> Key) {
+        init(upstream: Upstream, keySelector: @Sendable @escaping (Upstream.Element) async -> Key) {
             self.upstream = upstream
             self.keySelector = keySelector
         }

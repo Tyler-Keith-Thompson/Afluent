@@ -58,7 +58,7 @@ extension AsynchronousUnitOfWork {
 /// Reference to an operation that an operator would execute
 public actor AsynchronousOperation<Success: Sendable> {
     private let operation: @Sendable () async throws -> Success
-    public init(operation: @escaping @Sendable () async throws -> Success) {
+    public init(operation: @Sendable @escaping () async throws -> Success) {
         self.operation = operation
     }
 
@@ -79,7 +79,7 @@ public final class TaskState<Success: Sendable>: @unchecked Sendable {
 
     public init() { }
 
-    @discardableResult func createTask(operation: @escaping @Sendable () async throws -> Success) -> Task<Success, Error> {
+    @discardableResult func createTask(operation: @Sendable @escaping () async throws -> Success) -> Task<Success, Error> {
         guard !isCancelled else {
             let task = Task<Success, Error> { throw CancellationError() }
             task.cancel()

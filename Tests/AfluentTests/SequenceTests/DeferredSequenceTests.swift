@@ -72,39 +72,38 @@ struct DeferredTests {
         }
     }
 
-    #warning("Revisit")
-//    @Test func canRetryUpstreamSequence() async throws {
-//        enum Err: Error {
-//            case e1
-//        }
-//
-//        actor Test {
-//            var upstreamCount = 0
-//
-//            func increment() {
-//                upstreamCount += 1
-//            }
-//        }
-//
-//        let test = Test()
-//        let sequence = Deferred {
-//            AsyncThrowingStream(Int.self) { continuation in
-//                Task {
-//                    guard await test.upstreamCount > 0 else {
-//                        continuation.yield(with: .failure(Err.e1))
-//                        await test.increment()
-//                        return
-//                    }
-//                    await test.increment()
-//                    continuation.finish()
-//                }
-//            }
-//        }
-//
-//        for try await _ in sequence.retry() { }
-//
-//        #expect(await test.upstreamCount == 2)
-//    }
+    @Test func canRetryUpstreamSequence() async throws {
+        enum Err: Error {
+            case e1
+        }
+
+        actor Test {
+            var upstreamCount = 0
+
+            func increment() {
+                upstreamCount += 1
+            }
+        }
+
+        let test = Test()
+        let sequence = Deferred {
+            AsyncThrowingStream(Int.self) { continuation in
+                Task {
+                    guard await test.upstreamCount > 0 else {
+                        continuation.yield(with: .failure(Err.e1))
+                        await test.increment()
+                        return
+                    }
+                    await test.increment()
+                    continuation.finish()
+                }
+            }
+        }
+
+        for try await _ in sequence.retry() { }
+
+        #expect(await test.upstreamCount == 2)
+    }
 
     @Test func checksForCancellation() async throws {
         await withMainSerialExecutor {

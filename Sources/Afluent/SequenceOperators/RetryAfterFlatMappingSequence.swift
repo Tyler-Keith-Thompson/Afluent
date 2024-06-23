@@ -5,45 +5,69 @@
 //  Created by Tyler Thompson on 11/28/23.
 //
 
+import Atomics
 import Foundation
 
 extension AsyncSequences {
-    public final actor RetryAfterFlatMapping<Upstream: AsyncSequence & Sendable, Downstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element, Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
+    public final actor RetryAfterFlatMapping<Upstream: AsyncSequence & Sendable, Downstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol, Sendable where Upstream.Element == Downstream.Element, Upstream.Element: Sendable {
         public typealias Element = Upstream.Element
-        let upstream: Upstream
-        var retries: UInt
+        private final class State: @unchecked Sendable {
+            let lock = NSRecursiveLock()
+            let upstream: Upstream
+            let transform: @Sendable (Error) async throws -> Downstream
+            var retries: ManagedAtomic<UInt>
 
-        let transform: @Sendable (Error) async throws -> Downstream
-        lazy var iterator = upstream.makeAsyncIterator()
+            private var _iterator: Upstream.AsyncIterator?
+            var iterator: Upstream.AsyncIterator {
+                get {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    guard let _iterator else {
+                        let val = upstream.makeAsyncIterator()
+                        self._iterator = val
+                        return val
+                    }
+                    return _iterator
+                } set {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    _iterator = newValue
+                }
+            }
 
-        init(upstream: Upstream, retries: UInt, transform: @escaping @Sendable (Error) async throws -> Downstream) {
-            self.upstream = upstream
-            self.retries = retries
-            self.transform = transform
+            init(upstream: Upstream, retries: UInt, transform: @Sendable @escaping (Error) async throws -> Downstream) {
+                self.upstream = upstream
+                self.retries = ManagedAtomic(retries)
+                self.transform = transform
+            }
+        }
+
+        private let state: State
+
+        init(upstream: Upstream, retries: UInt, transform: @Sendable @escaping (Error) async throws -> Downstream) {
+            state = State(upstream: upstream,
+                          retries: retries,
+                          transform: transform)
         }
 
         private nonisolated func advanceAndSet(iterator: Upstream.AsyncIterator) async throws -> Upstream.Element? {
             var copy = iterator
             let next = try await copy.next()
-            await setIterator(copy)
+            state.iterator = copy
             return next
-        }
-
-        private func setIterator(_ iterator: Upstream.AsyncIterator) {
-            self.iterator = iterator
         }
 
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                return try await advanceAndSet(iterator: iterator)
+                return try await advanceAndSet(iterator: state.iterator)
             } catch {
                 guard !(error is CancellationError) else { throw error }
 
-                if retries > 0 {
-                    retries -= 1
-                    iterator = upstream.makeAsyncIterator()
-                    for try await _ in try await transform(error) { }
+                if state.retries.load(ordering: .sequentiallyConsistent) > 0 {
+                    state.retries.wrappingDecrement(ordering: .sequentiallyConsistent)
+                    state.iterator = state.upstream.makeAsyncIterator()
+                    for try await _ in try await state.transform(error) { }
                     return try await next()
                 } else {
                     throw error
@@ -54,50 +78,75 @@ extension AsyncSequences {
         public nonisolated func makeAsyncIterator() -> RetryAfterFlatMapping<Upstream, Downstream> { self }
     }
 
-    public final actor RetryOnAfterFlatMapping<Upstream: AsyncSequence & Sendable, Failure: Error & Equatable, Downstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element == Downstream.Element, Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
+    public final actor RetryOnAfterFlatMapping<Upstream: AsyncSequence & Sendable, Failure: Error & Equatable, Downstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol, Sendable where Upstream.Element == Downstream.Element, Upstream.Element: Sendable {
         public typealias Element = Upstream.Element
-        let upstream: Upstream
-        var retries: UInt
-        let error: Failure
-        let transform: @Sendable (Failure) async throws -> Downstream
-        lazy var iterator = upstream.makeAsyncIterator()
+        private final class State: @unchecked Sendable {
+            let lock = NSRecursiveLock()
+            let upstream: Upstream
+            let error: Failure
+            let transform: @Sendable (Failure) async throws -> Downstream
+            var retries: ManagedAtomic<UInt>
 
-        init(upstream: Upstream, retries: UInt, error: Failure, transform: @escaping @Sendable (Failure) async throws -> Downstream) {
-            self.upstream = upstream
-            self.retries = retries
-            self.error = error
-            self.transform = transform
+            private var _iterator: Upstream.AsyncIterator?
+            var iterator: Upstream.AsyncIterator {
+                get {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    guard let _iterator else {
+                        let val = upstream.makeAsyncIterator()
+                        self._iterator = val
+                        return val
+                    }
+                    return _iterator
+                } set {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    _iterator = newValue
+                }
+            }
+
+            init(upstream: Upstream, retries: UInt, error: Failure, transform: @Sendable @escaping (Failure) async throws -> Downstream) {
+                self.upstream = upstream
+                self.retries = ManagedAtomic(retries)
+                self.error = error
+                self.transform = transform
+            }
+        }
+
+        private let state: State
+
+        init(upstream: Upstream, retries: UInt, error: Failure, transform: @Sendable @escaping (Failure) async throws -> Downstream) {
+            state = State(upstream: upstream,
+                          retries: retries,
+                          error: error,
+                          transform: transform)
         }
 
         private nonisolated func advanceAndSet(iterator: Upstream.AsyncIterator) async throws -> Upstream.Element? {
             var copy = iterator
             let next = try await copy.next()
-            await setIterator(copy)
+            state.iterator = copy
             return next
-        }
-
-        private func setIterator(_ iterator: Upstream.AsyncIterator) {
-            self.iterator = iterator
         }
 
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                return try await advanceAndSet(iterator: iterator)
+                return try await advanceAndSet(iterator: state.iterator)
             } catch (let err) {
                 guard !(err is CancellationError) else { throw err }
 
                 guard let unwrappedError = (err as? Failure),
-                      unwrappedError == error else {
+                      unwrappedError == state.error else {
                     throw err
                 }
-                if retries > 0 {
-                    retries -= 1
-                    iterator = upstream.makeAsyncIterator()
-                    for try await _ in try await transform(unwrappedError) { }
+                if state.retries.load(ordering: .sequentiallyConsistent) > 0 {
+                    state.retries.wrappingDecrement(ordering: .sequentiallyConsistent)
+                    state.iterator = state.upstream.makeAsyncIterator()
+                    for try await _ in try await state.transform(unwrappedError) { }
                     return try await next()
                 } else {
-                    throw error
+                    throw state.error
                 }
             }
         }
@@ -114,7 +163,7 @@ extension AsyncSequence where Self: Sendable {
     ///   - transform: An async closure that takes the error from the upstream and returns a new `AsyncSequence`.
     ///
     /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on failure up to the specified number of times, with the applied transformation.
-    public func retry<D: AsyncSequence>(_ retries: UInt = 1, _ transform: @escaping @Sendable (Error) async throws -> D) -> AsyncSequences.RetryAfterFlatMapping<Self, D> {
+    public func retry<D: AsyncSequence>(_ retries: UInt = 1, _ transform: @Sendable @escaping (Error) async throws -> D) -> AsyncSequences.RetryAfterFlatMapping<Self, D> {
         AsyncSequences.RetryAfterFlatMapping(upstream: self, retries: retries, transform: transform)
     }
 
@@ -126,7 +175,7 @@ extension AsyncSequence where Self: Sendable {
     ///   - transform: An async closure that takes the error from the upstream and returns a new `AsyncSequence`.
     ///
     /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on the specified error up to the specified number of times, with the applied transformation.
-    public func retry<D: AsyncSequence, E: Error & Equatable>(_ retries: UInt = 1, on error: E, _ transform: @escaping @Sendable (E) async throws -> D) -> AsyncSequences.RetryOnAfterFlatMapping<Self, E, D> {
+    public func retry<D: AsyncSequence, E: Error & Equatable>(_ retries: UInt = 1, on error: E, _ transform: @Sendable @escaping (E) async throws -> D) -> AsyncSequences.RetryOnAfterFlatMapping<Self, E, D> {
         AsyncSequences.RetryOnAfterFlatMapping(upstream: self, retries: retries, error: error, transform: transform)
     }
 }

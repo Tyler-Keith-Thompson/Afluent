@@ -102,9 +102,9 @@ struct SingleValueChannelTests {
     }
 
     @Test func SingleValueChannelOnlyEmitsErrorOnce() async throws {
-        try await withMainSerialExecutor {
-            enum Err: Error { case e1 }
-            try await confirmation { exp in
+        enum Err: Error { case e1 }
+        try await confirmation { exp in
+            try await withMainSerialExecutor {
                 let subject = SingleValueChannel<Int>()
                 let unitOfWork = subject
                     .materialize()
@@ -115,7 +115,8 @@ struct SingleValueChannelTests {
 
                 let task = Task {
                     try await subject.send(error: Err.e1)
-                    await #expect(throws: (any Error).self) { try await subject.send(error: Err.e1) }
+                    let result = await Task { try await subject.send(error: Err.e1) }.result
+                    #expect(throws: (any Error).self) { try result.get() }
                 }
 
                 let actualResult = try await unitOfWork.execute()

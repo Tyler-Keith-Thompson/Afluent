@@ -28,7 +28,8 @@ struct DeferredTests {
 
         var iterator = sequence.makeAsyncIterator()
 
-        #expect(!started.load(ordering: .sequentiallyConsistent))
+        let exp = started.load(ordering: .sequentiallyConsistent)
+        #expect(!exp)
 
         var received = try [await iterator.next()]
 
@@ -76,21 +77,32 @@ struct DeferredTests {
             case e1
         }
 
-        var upstreamCount = 0
+        actor Test {
+            var upstreamCount = 0
+
+            func increment() {
+                upstreamCount += 1
+            }
+        }
+
+        let test = Test()
         let sequence = Deferred {
             AsyncThrowingStream(Int.self) { continuation in
-                defer { upstreamCount += 1 }
-                guard upstreamCount > 0 else {
-                    continuation.yield(with: .failure(Err.e1))
-                    return
+                Task {
+                    guard await test.upstreamCount > 0 else {
+                        continuation.yield(with: .failure(Err.e1))
+                        await test.increment()
+                        return
+                    }
+                    await test.increment()
+                    continuation.finish()
                 }
-                continuation.finish()
             }
         }
 
         for try await _ in sequence.retry() { }
 
-        #expect(upstreamCount == 2)
+        #expect(await test.upstreamCount == 2)
     }
 
     @Test func checksForCancellation() async throws {

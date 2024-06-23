@@ -18,7 +18,7 @@ extension AsyncSequence where Self: Sendable {
     ///   - receiveError: A closure that takes any error produced by the sequence. If this closure returns `true`, a breakpoint is triggered. Default is `nil`.
     ///
     /// - Returns: An asynchronous unit of work with the breakpoint conditions applied.
-    @_transparent @_alwaysEmitIntoClient @inlinable public func breakpoint(receiveOutput: ((Element) async throws -> Bool)? = nil, receiveError: ((Error) async throws -> Bool)? = nil) -> AsyncSequences.HandleEvents<Self> {
+    @_transparent @_alwaysEmitIntoClient @inlinable public func breakpoint(receiveOutput: (@Sendable (Element) async throws -> Bool)? = nil, receiveError: (@Sendable (Error) async throws -> Bool)? = nil) -> AsyncSequences.HandleEvents<Self> {
         handleEvents(receiveOutput: { output in
             if try await receiveOutput?(output) == true {
                 raise(SIGTRAP)

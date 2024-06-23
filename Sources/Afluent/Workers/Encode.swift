@@ -15,14 +15,33 @@ public protocol TopLevelEncoder<Output> {
 extension JSONEncoder: TopLevelEncoder { }
 
 extension Workers {
-    struct Encode<Upstream: AsynchronousUnitOfWork, Encoder: TopLevelEncoder & Sendable, Success: Sendable>: AsynchronousUnitOfWork where Success == Encoder.Output, Upstream.Success: Encodable {
+    struct Encode<Upstream: AsynchronousUnitOfWork, Encoder: TopLevelEncoder, Success: Sendable>: AsynchronousUnitOfWork where Success == Encoder.Output, Upstream.Success: Encodable {
+        final class State: @unchecked Sendable {
+            let lock = NSRecursiveLock()
+            private let encoder: Encoder
+            init(encoder: Encoder) {
+                self.encoder = encoder
+            }
+
+            func encode<T: Encodable>(_ value: T) throws -> Encoder.Output {
+                try lock.protect {
+                    try encoder.encode(value)
+                }
+            }
+        }
+
         let state = TaskState<Success>()
         let upstream: Upstream
-        let encoder: Encoder
+        let encoderState: State
+
+        init(upstream: Upstream, encoder: Encoder) {
+            self.upstream = upstream
+            encoderState = State(encoder: encoder)
+        }
 
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
-                try encoder.encode(await upstream.operation())
+                try encoderState.encode(await upstream.operation())
             }
         }
     }
@@ -36,7 +55,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` emitting the encoded values as output of type `E.Output`.
     ///
     /// - Note: The returned `AsynchronousUnitOfWork` will fail if the encoding process fails.
-    public func encode<E: TopLevelEncoder & Sendable>(encoder: E) -> some AsynchronousUnitOfWork<E.Output> where Success: Encodable, E.Output: Sendable {
+    public func encode<E: TopLevelEncoder>(encoder: E) -> some AsynchronousUnitOfWork<E.Output> where Success: Encodable, E.Output: Sendable {
         Workers.Encode(upstream: self, encoder: encoder)
     }
 }

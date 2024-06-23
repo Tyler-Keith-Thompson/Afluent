@@ -10,8 +10,8 @@ import ConcurrencyExtras
 import Foundation
 import Testing
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 struct CancelTests {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func deferredTaskCancelledBeforeItStarts() async throws {
         let task = DeferredTask { }
         task.cancel()
@@ -19,6 +19,7 @@ struct CancelTests {
         #expect(throws: (any Error).self) { try res.get() }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(.timeLimit(.milliseconds(10))) func deferredTaskCancelledBeforeItEnds() async throws {
         try await withMainSerialExecutor {
             actor Test {

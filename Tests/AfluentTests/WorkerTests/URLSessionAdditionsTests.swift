@@ -3,8 +3,9 @@
     import Foundation
     import OHHTTPStubs
     import OHHTTPStubsSwift
-    import Testing
+    @_spi(Experimental) import Testing
 
+    @Suite(.serialized)
     final class URLSessionAdditionsTests {
         init() async throws {
             stub(condition: { _ in true }) { req in

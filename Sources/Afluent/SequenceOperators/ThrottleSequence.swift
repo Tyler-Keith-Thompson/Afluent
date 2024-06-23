@@ -9,7 +9,7 @@ import Foundation
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension AsyncSequences {
-    public struct Throttle<Upstream: AsyncSequence & Sendable, C: Clock>: AsyncSequence {
+    public struct Throttle<Upstream: AsyncSequence & Sendable, C: Clock>: AsyncSequence, Sendable where Upstream.Element: Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         let interval: C.Duration
@@ -104,7 +104,7 @@ extension AsyncSequences {
 }
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-extension AsyncSequence where Self: Sendable {
+extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// Emits either the first or latest element received during a specified amount of time.
     /// - Parameter interval: The interval of time in which to observe and emit either the first or latest element.
     /// - Parameter latest: If `true`, emits the latest element in the time interval.  If `false`, emits the first element in the time interval.

@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct Collect<Upstream: AsyncSequence>: AsyncSequence {
+    public struct Collect<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable {
         public typealias Element = [Upstream.Element]
         let upstream: Upstream
 

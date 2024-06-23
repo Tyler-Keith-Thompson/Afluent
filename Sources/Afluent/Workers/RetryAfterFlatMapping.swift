@@ -14,7 +14,7 @@ extension Workers {
         var retryCount: UInt
         let transform: @Sendable (Error) async throws -> Downstream
 
-        init(upstream: Upstream, retries: UInt, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (Error) async throws -> Downstream) {
+        init(upstream: Upstream, retries: UInt, @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (Error) async throws -> Downstream) {
             self.upstream = upstream
             retryCount = retries
             self.transform = transform
@@ -57,7 +57,7 @@ extension Workers {
         let error: Failure
         let transform: @Sendable (Failure) async throws -> Downstream
 
-        init(upstream: Upstream, retries: UInt, error: Failure, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable (Failure) async throws -> Downstream) {
+        init(upstream: Upstream, retries: UInt, error: Failure, @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (Failure) async throws -> Downstream) {
             self.upstream = upstream
             retryCount = retries
             self.error = error
@@ -104,7 +104,7 @@ extension AsynchronousUnitOfWork {
     ///   - transform: An async closure that takes the error from the upstream and returns a new `AsynchronousUnitOfWork`.
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that emits the same output as the upstream but retries on failure up to the specified number of times, with the applied transformation.
-    public func retry<D: AsynchronousUnitOfWork>(_ retries: UInt = 1, @_inheritActorContext @_implicitSelfCapture _ transform: @escaping @Sendable (Error) async throws -> D) -> some AsynchronousUnitOfWork<Success> {
+    public func retry<D: AsynchronousUnitOfWork>(_ retries: UInt = 1, @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (Error) async throws -> D) -> some AsynchronousUnitOfWork<Success> {
         Workers.RetryAfterFlatMapping(upstream: self, retries: retries, transform: transform)
     }
 
@@ -116,7 +116,7 @@ extension AsynchronousUnitOfWork {
     ///   - transform: An async closure that takes the error from the upstream and returns a new `AsynchronousUnitOfWork`.
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that emits the same output as the upstream but retries on the specified error up to the specified number of times, with the applied transformation.
-    public func retry<D: AsynchronousUnitOfWork, E: Error & Equatable>(_ retries: UInt = 1, on error: E, @_inheritActorContext @_implicitSelfCapture _ transform: @escaping @Sendable (E) async throws -> D) -> some AsynchronousUnitOfWork<Success> {
+    public func retry<D: AsynchronousUnitOfWork, E: Error & Equatable>(_ retries: UInt = 1, on error: E, @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (E) async throws -> D) -> some AsynchronousUnitOfWork<Success> {
         Workers.RetryOnAfterFlatMapping(upstream: self, retries: retries, error: error, transform: transform)
     }
 }

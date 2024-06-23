@@ -9,7 +9,7 @@ import Atomics
 import Foundation
 
 extension AsyncSequences {
-    public struct FlatMap<Upstream: AsyncSequence & Sendable, SegmentOfResult: AsyncSequence & Sendable>: AsyncSequence where Upstream.Element: Sendable {
+    public struct FlatMap<Upstream: AsyncSequence & Sendable, SegmentOfResult: AsyncSequence & Sendable>: AsyncSequence, Sendable where Upstream.Element: Sendable, SegmentOfResult.Element: Sendable {
         public typealias Element = SegmentOfResult.Element
         let upstream: Upstream
         let maxSubscriptons: SubscriptionDemand
@@ -65,11 +65,11 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence {
-    public func flatMap<SegmentOfResult: AsyncSequence>(maxSubscriptions: SubscriptionDemand, _ transform: @escaping @Sendable (Self.Element) async throws -> SegmentOfResult) -> AsyncSequences.FlatMap<Self, SegmentOfResult> {
+    public func flatMap<SegmentOfResult: AsyncSequence>(maxSubscriptions: SubscriptionDemand, _ transform: @Sendable @escaping (Self.Element) async throws -> SegmentOfResult) -> AsyncSequences.FlatMap<Self, SegmentOfResult> {
         AsyncSequences.FlatMap(upstream: self, maxSubscriptons: maxSubscriptions, transform: transform)
     }
 }
 
-public enum SubscriptionDemand {
+public enum SubscriptionDemand: Sendable {
     case unlimited
 }

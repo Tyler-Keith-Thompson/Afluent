@@ -15,14 +15,33 @@ public protocol TopLevelDecoder<Input> {
 extension JSONDecoder: TopLevelDecoder { }
 
 extension Workers {
-    struct Decode<Upstream: AsynchronousUnitOfWork, Decoder: TopLevelDecoder & Sendable, Success: Sendable & Decodable>: AsynchronousUnitOfWork where Upstream.Success == Decoder.Input {
+    struct Decode<Upstream: AsynchronousUnitOfWork, Decoder: TopLevelDecoder, Success: Sendable & Decodable>: AsynchronousUnitOfWork where Upstream.Success == Decoder.Input {
         let state = TaskState<Success>()
+        final class State: @unchecked Sendable {
+            let lock = NSRecursiveLock()
+            private let decoder: Decoder
+            init(decoder: Decoder) {
+                self.decoder = decoder
+            }
+
+            func decode<T: Decodable>(_: T.Type, from input: Decoder.Input) throws -> T {
+                try lock.protect {
+                    try decoder.decode(T.self, from: input)
+                }
+            }
+        }
+
         let upstream: Upstream
-        let decoder: Decoder
+        let decoderState: State
+
+        init(upstream: Upstream, decoder: Decoder) {
+            self.upstream = upstream
+            decoderState = State(decoder: decoder)
+        }
 
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
-                try decoder.decode(Success.self, from: await upstream.operation())
+                try decoderState.decode(Success.self, from: await upstream.operation())
             }
         }
     }
@@ -38,7 +57,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` whose output is the decoded `T` type object.
     ///
     /// - Note: The generic constraint `Success == D.Input` ensures that the upstream unit of work emits a compatible type for the decoder.
-    public func decode<T: Decodable & Sendable, D: TopLevelDecoder & Sendable>(type _: T.Type, decoder: D) -> some AsynchronousUnitOfWork<T> where Success == D.Input {
+    public func decode<T: Decodable & Sendable, D: TopLevelDecoder>(type _: T.Type, decoder: D) -> some AsynchronousUnitOfWork<T> where Success == D.Input {
         Workers.Decode(upstream: self, decoder: decoder)
     }
 }

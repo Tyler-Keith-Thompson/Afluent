@@ -8,26 +8,46 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct Decode<Upstream: AsyncSequence, Decoder: TopLevelDecoder, DecodedType: Decodable>: AsyncSequence where Upstream.Element == Decoder.Input {
+    public struct Decode<Upstream: AsyncSequence & Sendable, Decoder: TopLevelDecoder, DecodedType: Decodable & Sendable>: AsyncSequence, Sendable where Upstream.Element == Decoder.Input {
         public typealias Element = DecodedType
+
+        final class State: @unchecked Sendable {
+            let lock = NSRecursiveLock()
+            private let decoder: Decoder
+            init(decoder: Decoder) {
+                self.decoder = decoder
+            }
+
+            func decode<T: Decodable>(_: T.Type, from input: Decoder.Input) throws -> T {
+                try lock.protect {
+                    try decoder.decode(T.self, from: input)
+                }
+            }
+        }
+
         let upstream: Upstream
-        let decoder: Decoder
+        private let state: State
+
+        init(upstream: Upstream, decoder: Decoder) {
+            self.upstream = upstream
+            state = State(decoder: decoder)
+        }
 
         public struct AsyncIterator: AsyncIteratorProtocol {
             var upstreamIterator: Upstream.AsyncIterator
-            let decoder: Decoder
+            let state: State
 
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
                 return try await upstreamIterator.next().flatMap {
-                    try decoder.decode(DecodedType.self, from: $0)
+                    try state.decode(DecodedType.self, from: $0)
                 }
             }
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
             AsyncIterator(upstreamIterator: upstream.makeAsyncIterator(),
-                          decoder: decoder)
+                          state: state)
         }
     }
 }

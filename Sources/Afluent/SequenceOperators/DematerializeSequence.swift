@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct Dematerialize<Upstream: AsyncSequence, Element>: AsyncSequence where Upstream.Element == AsyncSequences.Event<Element> {
+    public struct Dematerialize<Upstream: AsyncSequence & Sendable, Element: Sendable>: AsyncSequence, Sendable where Upstream.Element == AsyncSequences.Event<Element> {
         let upstream: Upstream
 
         public struct AsyncIterator: AsyncIteratorProtocol {

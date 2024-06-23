@@ -13,7 +13,7 @@ extension Workers {
         let upstream: Upstream
         let transform: @Sendable (Error) -> Error
 
-        init(upstream: Upstream, transform: @escaping @Sendable (Error) -> Error) {
+        init(upstream: Upstream, transform: @Sendable @escaping (Error) -> Error) {
             self.upstream = upstream
             self.transform = transform
         }
@@ -42,7 +42,7 @@ extension AsynchronousUnitOfWork {
     /// - Parameter transform: A closure that takes the original error and returns a transformed error.
     ///
     /// - Returns: An asynchronous unit of work that produces the transformed error.
-    public func mapError(_ transform: @escaping @Sendable (Error) -> Error) -> some AsynchronousUnitOfWork<Success> {
+    public func mapError(_ transform: @Sendable @escaping (Error) -> Error) -> some AsynchronousUnitOfWork<Success> {
         Workers.MapError(upstream: self, transform: transform)
     }
 
@@ -55,7 +55,7 @@ extension AsynchronousUnitOfWork {
     ///   - transform: A closure that takes the matched error and returns a transformed error.
     ///
     /// - Returns: An asynchronous unit of work that produces either the transformed error (if a match was found) or the original error.
-    public func mapError<E: Error & Equatable>(_ error: E, _ transform: @escaping @Sendable (Error) -> Error) -> some AsynchronousUnitOfWork<Success> {
+    public func mapError<E: Error & Equatable>(_ error: E, _ transform: @Sendable @escaping (Error) -> Error) -> some AsynchronousUnitOfWork<Success> {
         mapError {
             if let e = $0 as? E, e == error { return transform(e) }
             return $0

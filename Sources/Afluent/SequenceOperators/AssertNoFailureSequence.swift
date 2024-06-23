@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct AssertNoFailure<Upstream: AsyncSequence>: AsyncSequence {
+    public struct AssertNoFailure<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream
 

@@ -13,7 +13,7 @@ extension AsyncSequences {
     /// `Just` is a simple `AsyncSequence` that emits only one element and then finishes. It's useful for creating sequences with a single, known value, often for testing or combining with other asynchronous sequences.
     ///
     /// - Parameter value: The single element that this sequence will emit.
-    public struct Just<Element>: AsyncSequence {
+    public struct Just<Element: Sendable>: AsyncSequence, Sendable {
         let val: Element
 
         /// Creates a `Just` sequence with the specified element.

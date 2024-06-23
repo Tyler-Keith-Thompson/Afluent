@@ -32,20 +32,20 @@ extension AsyncSequences {
     ///     // starts at the first element
     /// }
     /// ```
-    public struct Deferred<Upstream: AsyncSequence>: AsyncSequence {
+    public struct Deferred<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable {
         public typealias Element = Upstream.Element
-        private let upstream: () async throws -> Upstream
+        private let upstream: @Sendable () async throws -> Upstream
 
         /// Constructs an asynchronous sequence defining an closure that returns an asynchronous sequence
         /// that will later be called at the time of iteration.
         ///
         /// - Parameter upstream: A closure that returns an asynchronous sequence that will be used later during iteration.
-        public init(upstream: @escaping (() -> Upstream)) {
+        public init(upstream: @escaping (@Sendable () -> Upstream)) {
             self.upstream = upstream
         }
 
         public struct AsyncIterator: AsyncIteratorProtocol {
-            var upstream: () async throws -> Upstream
+            var upstream: @Sendable () async throws -> Upstream
             var upstreamIterator: Upstream.AsyncIterator?
 
             public mutating func next() async throws -> Upstream.AsyncIterator.Element? {
@@ -66,3 +66,5 @@ extension AsyncSequences {
 }
 
 public typealias Deferred = AsyncSequences.Deferred
+
+extension Deferred.AsyncIterator: Sendable where Upstream.AsyncIterator: Sendable { }

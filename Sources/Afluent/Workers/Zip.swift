@@ -99,7 +99,7 @@ extension AsynchronousUnitOfWork {
     ///   - downstream: The second asynchronous unit of work to zip with.
     ///   - transform: A function that takes a tuple of results from both units of work and returns a transformed result.
     /// - Returns: A new asynchronous unit of work that produces the transformed result when completed.
-    public func zip<D: AsynchronousUnitOfWork, T: Sendable>(_ downstream: D, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable ((Success, D.Success)) async throws -> T) -> some AsynchronousUnitOfWork<T> {
+    public func zip<D: AsynchronousUnitOfWork, T: Sendable>(_ downstream: D, @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping ((Success, D.Success)) async throws -> T) -> some AsynchronousUnitOfWork<T> {
         Workers.TryMap<Workers.Zip<Self, D>, T>(upstream: Workers.Zip<Self, D>(upstream: self, downstream: downstream), transform: transform)
     }
 
@@ -121,7 +121,7 @@ extension AsynchronousUnitOfWork {
     ///   - d1: The second additional asynchronous unit of work to zip with.
     ///   - transform: A function that takes a tuple of results from all units of work and returns a transformed result.
     /// - Returns: A new asynchronous unit of work that produces the transformed result when completed.
-    public func zip<D0: AsynchronousUnitOfWork, D1: AsynchronousUnitOfWork, T: Sendable>(_ d0: D0, _ d1: D1, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable ((Success, D0.Success, D1.Success)) async throws -> T) -> some AsynchronousUnitOfWork<T> {
+    public func zip<D0: AsynchronousUnitOfWork, D1: AsynchronousUnitOfWork, T: Sendable>(_ d0: D0, _ d1: D1, @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping ((Success, D0.Success, D1.Success)) async throws -> T) -> some AsynchronousUnitOfWork<T> {
         Workers.TryMap<Workers.Zip3<Self, D0, D1>, T>(upstream: Workers.Zip3<Self, D0, D1>(upstream: self, d0: d0, d1: d1), transform: transform)
     }
 
@@ -145,7 +145,7 @@ extension AsynchronousUnitOfWork {
     ///   - d2: The third additional asynchronous unit of work to zip with.
     ///   - transform: A function that takes a tuple of results from all units of work and returns a transformed result.
     /// - Returns: A new asynchronous unit of work that produces the transformed result when completed.
-    public func zip<D0: AsynchronousUnitOfWork, D1: AsynchronousUnitOfWork, D2: AsynchronousUnitOfWork, T: Sendable>(_ d0: D0, _ d1: D1, _ d2: D2, @_inheritActorContext @_implicitSelfCapture transform: @escaping @Sendable ((Success, D0.Success, D1.Success, D2.Success)) async throws -> T) -> some AsynchronousUnitOfWork<T> {
+    public func zip<D0: AsynchronousUnitOfWork, D1: AsynchronousUnitOfWork, D2: AsynchronousUnitOfWork, T: Sendable>(_ d0: D0, _ d1: D1, _ d2: D2, @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping ((Success, D0.Success, D1.Success, D2.Success)) async throws -> T) -> some AsynchronousUnitOfWork<T> {
         Workers.TryMap<Workers.Zip4<Self, D0, D1, D2>, T>(upstream: Workers.Zip4<Self, D0, D1, D2>(upstream: self, d0: d0, d1: d1, d2: d2), transform: transform)
     }
 }

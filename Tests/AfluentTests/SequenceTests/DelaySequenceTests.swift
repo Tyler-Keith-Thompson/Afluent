@@ -11,8 +11,8 @@ import ConcurrencyExtras
 import Foundation
 import Testing
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 struct DelaySequenceTests {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func delay_DelaysAllOutputByExpectedTime() async throws {
         // Create a simple AsyncSequence of integers
         let clock = TestClock()
@@ -46,6 +46,7 @@ struct DelaySequenceTests {
         #expect(count == 3, "Not all elements were received.")
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func delay_DoesNotDelayEveryElement() async throws {
         // Create a simple AsyncSequence of integers
         let clock = TestClock()
@@ -82,6 +83,7 @@ struct DelaySequenceTests {
         #expect(count == 3, "Not all elements were received.")
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func delay_DelaysCorrectlyEvenAfterIntervalHasPassed() async throws {
         await withMainSerialExecutor {
             let clock = TestClock()
@@ -122,7 +124,7 @@ struct DelaySequenceTests {
     }
 }
 
-extension Array {
+extension Array where Element: Sendable {
     fileprivate var async: AsyncStream<Element> {
         AsyncStream { continuation in
             for element in self {

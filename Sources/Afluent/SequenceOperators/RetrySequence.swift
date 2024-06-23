@@ -5,41 +5,64 @@
 //  Created by Tyler Thompson on 11/28/23.
 //
 
+import Atomics
 import Foundation
 
 extension AsyncSequences {
-    public final actor Retry<Upstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
+    public final actor Retry<Upstream: AsyncSequence & Sendable>: AsyncSequence, AsyncIteratorProtocol, Sendable where Upstream.Element: Sendable {
+        private final class State: @unchecked Sendable {
+            let lock = NSRecursiveLock()
+            let upstream: Upstream
+            var retries: ManagedAtomic<UInt>
+
+            private var _iterator: Upstream.AsyncIterator?
+            var iterator: Upstream.AsyncIterator {
+                get {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    guard let _iterator else {
+                        let val = upstream.makeAsyncIterator()
+                        self._iterator = val
+                        return val
+                    }
+                    return _iterator
+                } set {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    _iterator = newValue
+                }
+            }
+
+            init(upstream: Upstream, retries: UInt) {
+                self.upstream = upstream
+                self.retries = ManagedAtomic(retries)
+            }
+        }
+
         public typealias Element = Upstream.Element
-        let upstream: Upstream
-        var retries: UInt
-        private lazy var iterator = upstream.makeAsyncIterator()
+        private let state: State
 
         init(upstream: Upstream, retries: UInt) {
-            self.upstream = upstream
-            self.retries = retries
+            state = State(upstream: upstream, retries: retries)
         }
 
         private nonisolated func advanceAndSet(iterator: Upstream.AsyncIterator) async throws -> Upstream.Element? {
             var copy = iterator
             let next = try await copy.next()
-            await setIterator(copy)
+            state.iterator = copy
             return next
-        }
-
-        private func setIterator(_ iterator: Upstream.AsyncIterator) {
-            self.iterator = iterator
         }
 
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                return try await advanceAndSet(iterator: iterator)
+                return try await advanceAndSet(iterator: state.iterator)
             } catch {
                 guard !(error is CancellationError) else { throw error }
 
-                if retries > 0 {
-                    retries -= 1
-                    iterator = upstream.makeAsyncIterator()
+                if state.retries.load(ordering: .sequentiallyConsistent) > 0 {
+                    state.retries.wrappingDecrement(ordering: .sequentiallyConsistent)
+                    state.iterator = state.upstream.makeAsyncIterator()
                     return try await next()
                 } else {
                     throw error
@@ -50,47 +73,71 @@ extension AsyncSequences {
         public nonisolated func makeAsyncIterator() -> Retry<Upstream> { self }
     }
 
-    public final actor RetryOn<Upstream: AsyncSequence & Sendable, Failure: Error & Equatable>: AsyncSequence, AsyncIteratorProtocol where Upstream.Element: Sendable, Upstream.AsyncIterator: Sendable {
+    public final actor RetryOn<Upstream: AsyncSequence & Sendable, Failure: Error & Equatable>: AsyncSequence, AsyncIteratorProtocol, Sendable where Upstream.Element: Sendable {
         public typealias Element = Upstream.Element
-        let upstream: Upstream
-        var retries: UInt
-        let error: Failure
-        lazy var iterator = upstream.makeAsyncIterator()
+        private final class State: @unchecked Sendable {
+            let lock = NSRecursiveLock()
+            let upstream: Upstream
+            let error: Failure
+            var retries: ManagedAtomic<UInt>
+
+            private var _iterator: Upstream.AsyncIterator?
+            var iterator: Upstream.AsyncIterator {
+                get {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    guard let _iterator else {
+                        let val = upstream.makeAsyncIterator()
+                        self._iterator = val
+                        return val
+                    }
+                    return _iterator
+                } set {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    _iterator = newValue
+                }
+            }
+
+            init(upstream: Upstream, retries: UInt, failure: Failure) {
+                self.upstream = upstream
+                self.retries = ManagedAtomic(retries)
+                error = failure
+            }
+        }
+
+        private let state: State
 
         init(upstream: Upstream, retries: UInt, error: Failure) {
-            self.upstream = upstream
-            self.retries = retries
-            self.error = error
+            state = State(upstream: upstream,
+                          retries: retries,
+                          failure: error)
         }
 
         private nonisolated func advanceAndSet(iterator: Upstream.AsyncIterator) async throws -> Upstream.Element? {
             var copy = iterator
             let next = try await copy.next()
-            await setIterator(copy)
+            state.iterator = copy
             return next
-        }
-
-        private func setIterator(_ iterator: Upstream.AsyncIterator) {
-            self.iterator = iterator
         }
 
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                return try await advanceAndSet(iterator: iterator)
+                return try await advanceAndSet(iterator: state.iterator)
             } catch (let err) {
                 guard !(err is CancellationError) else { throw err }
 
                 guard let unwrappedError = (err as? Failure),
-                      unwrappedError == error else {
+                      unwrappedError == state.error else {
                     throw err
                 }
-                if retries > 0 {
-                    retries -= 1
-                    iterator = upstream.makeAsyncIterator()
+                if state.retries.load(ordering: .sequentiallyConsistent) > 0 {
+                    state.retries.wrappingDecrement(ordering: .sequentiallyConsistent)
+                    state.iterator = state.upstream.makeAsyncIterator()
                     return try await next()
                 } else {
-                    throw error
+                    throw state.error
                 }
             }
         }
@@ -99,7 +146,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence where Self: Sendable, Element: Sendable, Self.AsyncIterator: Sendable {
+extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// Retries the upstream `AsyncSequence` up to a specified number of times.
     ///
     /// - Parameter retries: The maximum number of times to retry the upstream, defaulting to 1.

@@ -12,11 +12,11 @@ import Foundation
 /// `AsynchronousUnitOfWorkSequence` is an `AsyncSequence` that wraps an `AsynchronousUnitOfWork`. It provides a way to use asynchronous units of work in contexts where an `AsyncSequence` is expected. This sequence emits a single value and then completes.
 ///
 /// - Note: The sequence will only execute the unit of work once. Subsequent iterations will receive `nil`, indicating the end of the sequence.
-public struct AsynchronousUnitOfWorkSequence<UnitOfWork: AsynchronousUnitOfWork>: AsyncSequence {
+public struct AsynchronousUnitOfWorkSequence<UnitOfWork: AsynchronousUnitOfWork>: AsyncSequence, Sendable {
     public typealias Element = UnitOfWork.Success
     let unitOfWork: UnitOfWork
 
-    public struct AsyncIterator: AsyncIteratorProtocol {
+    public struct AsyncIterator: AsyncIteratorProtocol, Sendable {
         let unitOfWork: UnitOfWork
         var executed = false
 

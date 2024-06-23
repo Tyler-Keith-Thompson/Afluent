@@ -51,7 +51,7 @@ extension AsynchronousUnitOfWork {
     ///
     /// - Availability: macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0 and above.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-    public func delay<C: Clock>(for duration: C.Duration, clock: C, tolerance: C.Duration?) -> some AsynchronousUnitOfWork<Success> {
+    public func delay<C: Clock>(for duration: C.Duration, clock: C, tolerance: C.Duration? = nil) -> some AsynchronousUnitOfWork<Success> {
         Workers.Delay(upstream: self, clock: clock, duration: duration, tolerance: tolerance)
     }
 }

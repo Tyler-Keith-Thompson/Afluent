@@ -12,8 +12,8 @@ import Testing
 
 struct ShareTests {
     @Test func unsharedTaskExecutesRepeatedly() async throws {
-        try await withMainSerialExecutor {
-            try await confirmation(expectedCount: 4) { exp in
+        try await confirmation(expectedCount: 4) { exp in
+            try await withMainSerialExecutor {
                 actor Test {
                     var arr = [String]()
                     func append(_ str: String) {

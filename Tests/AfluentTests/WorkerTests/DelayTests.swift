@@ -10,8 +10,8 @@ import Clocks
 import Foundation
 import Testing
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 struct DelayTests {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func deferredTaskCanDelayForAnExpectedDuration() async throws {
         actor Test {
             var finished = false

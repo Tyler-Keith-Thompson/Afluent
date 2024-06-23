@@ -10,8 +10,8 @@ import ConcurrencyExtras
 import Foundation
 import Testing
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 struct MaterializeSequenceTests {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func materializeCapturesSuccesses() async throws {
         let result = try await DeferredTask { 1 }
             .toAsyncSequence()
@@ -25,6 +25,7 @@ struct MaterializeSequenceTests {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func materializeCapturesCompletion() async throws {
         let result = try await DeferredTask { 1 }
             .toAsyncSequence()
@@ -38,6 +39,7 @@ struct MaterializeSequenceTests {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func materializeCapturesNonCancelErrors() async throws {
         let result = try await DeferredTask { throw URLError(.badURL) }
             .toAsyncSequence()
@@ -51,6 +53,7 @@ struct MaterializeSequenceTests {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func dematerializeWithError() async throws {
         let result = await Task {
             try await DeferredTask { throw URLError(.badURL) }
@@ -65,6 +68,7 @@ struct MaterializeSequenceTests {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func dematerializeWithoutError() async throws {
         let result = try await DeferredTask { 1 }
             .toAsyncSequence()
@@ -75,6 +79,7 @@ struct MaterializeSequenceTests {
         #expect(result == 1)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(.timeLimit(.milliseconds(10))) func materializeDoesNotInterfereWithCancellation() async throws {
         await withMainSerialExecutor {
             actor Test {

@@ -6,38 +6,30 @@
 //
 
 import Afluent
+import Atomics
 import ConcurrencyExtras
 import Foundation
 import Testing
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 struct HandleEventsSequenceTests {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func handleMakeIterator() async throws {
-        actor Test {
-            var iteratorMade = false
-
-            func makeIterator() { iteratorMade = true }
-        }
-        let test = Test()
+        let iteratorMade = ManagedAtomic(false)
 
         _ = await Task {
-            var subtask: Task<Void, Never>?
             _ = DeferredTask { }
                 .toAsyncSequence()
                 .handleEvents(receiveMakeIterator: {
-                    subtask = Task {
-                        await test.makeIterator()
-                    }
+                    iteratorMade.store(true, ordering: .sequentiallyConsistent)
                 })
                 .makeAsyncIterator()
-            _ = await subtask?.result
         }.value
 
-        let iteratorMade = await test.iteratorMade
-
-        #expect(iteratorMade)
+        let actual = iteratorMade.load(ordering: .sequentiallyConsistent)
+        #expect(actual)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func handleNext() async throws {
         actor Test {
             var nextCalled: Int = 0
@@ -63,11 +55,12 @@ struct HandleEventsSequenceTests {
         #expect(nextCalled == values.count + 1) // values + finish
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func handleOutput() async throws {
         actor Test {
-            var output: Any?
+            var output: Int?
 
-            func output(_ any: Any?) { output = any }
+            func output(_ any: Int?) { output = any }
         }
         let test = Test()
 
@@ -86,9 +79,10 @@ struct HandleEventsSequenceTests {
 
         let output = await test.output
 
-        #expect(output as? Int == 1)
+        #expect(output == 1)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func handleComplete() async throws {
         await confirmation { exp in
             _ = await Task {
@@ -102,6 +96,7 @@ struct HandleEventsSequenceTests {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func handleError() async throws {
         actor Test {
             var error: Error?
@@ -129,6 +124,7 @@ struct HandleEventsSequenceTests {
         #expect(error as? URLError == URLError(.badURL))
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(.timeLimit(.milliseconds(10))) func handleCancel() async throws {
         await withMainSerialExecutor {
             actor Test {
@@ -158,7 +154,7 @@ struct HandleEventsSequenceTests {
     }
 }
 
-extension Array {
+extension Array where Element: Sendable {
     fileprivate var async: AsyncStream<Element> {
         AsyncStream { continuation in
             for element in self {

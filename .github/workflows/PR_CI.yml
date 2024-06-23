@@ -16,5 +16,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run TESTS on Swift 6
-        run: swift test
+        run: swift test --use-integrated-swift-driver
         continue-on-error: true

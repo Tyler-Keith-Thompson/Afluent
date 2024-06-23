@@ -24,7 +24,7 @@ extension Workers {
             }
 
             func encode<T: Encodable>(_ value: T) throws -> Encoder.Output {
-                try lock.withLock {
+                try lock.protect {
                     try encoder.encode(value)
                 }
             }

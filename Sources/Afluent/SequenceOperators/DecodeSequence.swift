@@ -19,7 +19,7 @@ extension AsyncSequences {
             }
 
             func decode<T: Decodable>(_: T.Type, from input: Decoder.Input) throws -> T {
-                try lock.withLock {
+                try lock.protect {
                     try decoder.decode(T.self, from: input)
                 }
             }

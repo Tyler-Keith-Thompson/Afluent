@@ -154,6 +154,7 @@ struct ThrottleSequenceTests {
         for (i, step) in streamInput.enumerated() {
             if step == "-" {
                 await testClock.advance(by: .milliseconds(10))
+                await Task.yield()
                 advancedDuration.wrappingIncrement(by: 10, ordering: .sequentiallyConsistent)
             } else if step == "`" {
                 await testClock.advance(by: .milliseconds(5))
@@ -170,9 +171,11 @@ struct ThrottleSequenceTests {
             if step == "-" || step == "`" || last {
                 if last {
                     await testClock.advance(by: .milliseconds(10))
+                    await Task.yield()
                     advancedDuration.wrappingIncrement(by: 10, ordering: .sequentiallyConsistent)
                 }
                 _ = await Task {
+                    await Task.yield()
                     let elements = await test.elements
                     var total = 0
                     // Parse the expected DSL, this is tricky because you have to sort of calculate how far in time to go to understand what the expected result is

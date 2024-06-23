@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct GroupBy<Upstream: AsyncSequence & Sendable, Key: Hashable>: AsyncSequence, Sendable {
+    public struct GroupBy<Upstream: AsyncSequence & Sendable, Key: Hashable>: AsyncSequence, Sendable where Upstream.Element: Sendable {
         public typealias Element = (key: Key, stream: AsyncThrowingStream<Upstream.Element, Error>)
         let upstream: Upstream
         let keySelector: @Sendable (Upstream.Element) async -> Key
@@ -55,7 +55,7 @@ extension AsyncSequences {
     }
 }
 
-extension AsyncSequence where Self: Sendable {
+extension AsyncSequence where Self: Sendable, Element: Sendable {
     public func groupBy<Key: Hashable>(keySelector: @Sendable @escaping (Element) async -> Key) -> AsyncSequences.GroupBy<Self, Key> {
         AsyncSequences.GroupBy(upstream: self, keySelector: keySelector)
     }

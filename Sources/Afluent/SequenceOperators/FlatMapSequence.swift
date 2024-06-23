@@ -9,7 +9,7 @@ import Atomics
 import Foundation
 
 extension AsyncSequences {
-    public struct FlatMap<Upstream: AsyncSequence & Sendable, SegmentOfResult: AsyncSequence & Sendable>: AsyncSequence, Sendable where Upstream.Element: Sendable {
+    public struct FlatMap<Upstream: AsyncSequence & Sendable, SegmentOfResult: AsyncSequence & Sendable>: AsyncSequence, Sendable where Upstream.Element: Sendable, SegmentOfResult.Element: Sendable {
         public typealias Element = SegmentOfResult.Element
         let upstream: Upstream
         let maxSubscriptons: SubscriptionDemand

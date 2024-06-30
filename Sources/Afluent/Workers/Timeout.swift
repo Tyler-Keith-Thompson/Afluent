@@ -29,10 +29,9 @@ extension Workers {
             AsynchronousOperation {
                 try await Race {
                     try await clock.sleep(until: clock.now.advanced(by: duration), tolerance: tolerance)
-                    defer { upstream.cancel() }
                     throw customError ?? CancellationError()
                 } against: {
-                    try await self.upstream.execute()
+                    try await upstream.execute()
                 }
             }
         }

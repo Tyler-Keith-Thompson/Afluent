@@ -8,6 +8,7 @@
 /// Executes two asynchronous tasks concurrently and returns the result of the first one that completes.
 ///
 /// - Parameters:
+///   - cancelAllOnWin: A boolean indicating whether the remaining tasks in the group should be cancelled if the race is won, defaults to true
 ///   - firstTask: A closure representing the first asynchronous task to be executed.
 ///   - secondTask: A closure representing the second asynchronous task to be executed.
 /// - Returns: The result of the first task that completes.
@@ -40,17 +41,21 @@
 ///
 /// This function is particularly useful in scenarios where you want to implement a timeout mechanism. For example, you can create a race between your primary task and a timeout task. If the primary task does not complete within the specified time, the timeout task will complete first, allowing you to handle the timeout situation appropriately.
 ///
-/// The cancellation of the losing task is handled automatically, preventing resource wastage. This is especially important in environments with limited resources or where task completion times are unpredictable.
+/// If `cancelAllOnWin` (defaulted to true) is true, cancellation of the losing task is handled automatically, preventing resource wastage. This is especially important in environments with limited resources or where task completion times are unpredictable.
 ///
 /// ## Important
 /// A thrown error is considered to have won the race. Additionally, task groups don't guarantee parallelism, they guarantee concurrency. Consequently, while this is useful for lots of real world scenarios if you have strict parallelism requirements you may need to reach for GCD. [more information](https://forums.swift.org/t/taskgroup-and-parallelism/51039/1)
-public func Race<T: Sendable>(_ firstTask: @Sendable () async throws -> T, against secondTask: @Sendable () async throws -> T) async throws -> T {
+public func Race<T: Sendable>(cancelAllOnWin: Bool = true, _ firstTask: @Sendable () async throws -> T, against secondTask: @Sendable () async throws -> T) async throws -> T {
     try await withoutActuallyEscaping(firstTask) { firstTask in
         try await withoutActuallyEscaping(secondTask) { secondTask in
             try await withThrowingTaskGroup(of: T.self) { group in
                 group.addTask(operation: firstTask)
                 group.addTask(operation: secondTask)
-                defer { group.cancelAll() }
+                defer {
+                    if cancelAllOnWin {
+                        group.cancelAll()
+                    }
+                }
                 return try await group.next()!
             }
         }

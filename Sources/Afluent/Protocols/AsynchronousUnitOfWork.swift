@@ -31,7 +31,11 @@ public protocol AsynchronousUnitOfWork<Success>: Sendable where Success: Sendabl
 extension AsynchronousUnitOfWork {
     public var result: Result<Success, Error> {
         get async throws {
-            return await state.createTask(operation: operation).result
+            await withTaskCancellationHandler {
+                return await state.createTask(operation: operation).result
+            } onCancel: {
+                cancel()
+            }
         }
     }
 

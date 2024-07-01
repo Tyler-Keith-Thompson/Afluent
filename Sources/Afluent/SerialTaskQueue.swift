@@ -16,9 +16,8 @@ import Foundation
 ///
 /// The `SerialTaskQueue` actor provides a way to manage task execution in a serial manner. When a new task is queued, it checks if another task is currently running. If no task is running, the new task is executed immediately. If a task is already running, the new task is added to a queue and will be executed once the current task completes.
 /// This actor is useful in scenarios where tasks must be executed in a specific order or when you need to ensure that only one task is executed at a time to avoid race conditions.
-public final actor SerialTaskQueue<T: Sendable> {
+public final class SerialTaskQueue<T: Sendable>: @unchecked Sendable {
     private var lock = NSRecursiveLock()
-    private let isRunningTask = ManagedAtomic(false)
     private var tasks = [DeferredTask<Void>]()
 
     public init() { }
@@ -32,21 +31,28 @@ public final actor SerialTaskQueue<T: Sendable> {
     /// - Returns: The result of the task.
     /// - Throws: An error if the task throws an error.
     public func queue(_ task: @Sendable @escaping () async throws -> T) async throws -> T {
-        defer {
-            isRunningTask.store(false, ordering: .sequentiallyConsistent)
-            popAndExecute()
-        }
-        if !isRunningTask.load(ordering: .sequentiallyConsistent) {
-            isRunningTask.store(true, ordering: .sequentiallyConsistent)
+        if lock.protect({ tasks.isEmpty }) {
             return try await task()
-        } else {
-            let sub = SingleValueSubject<T>()
-            append(DeferredTask {
-                isRunningTask.store(true, ordering: .sequentiallyConsistent)
-                try sub.send(await task())
-            })
-            return try await sub.execute()
         }
+        return try await withUnsafeThrowingContinuation { continuation in
+            append(DeferredTask { [weak self] in
+                guard let self else {
+                    continuation.resume(throwing: CancellationError())
+                    return
+                }
+                do {
+                    try continuation.resume(returning: await task())
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+                self.popAndExecute()
+            })
+        }
+    }
+
+    /// Cancels all the ongoing tasks in the queue
+    public func cancelAll() {
+        lock.protect { tasks }.forEach { $0.cancel() }
     }
 
     private func append(_ task: DeferredTask<Void>) {
@@ -56,10 +62,13 @@ public final actor SerialTaskQueue<T: Sendable> {
     }
 
     private func popAndExecute() {
-        let task = lock.protect { () -> DeferredTask<Void>? in
+        lock.protect { () -> DeferredTask<Void>? in
             guard !tasks.isEmpty else { return nil }
             return tasks.removeFirst()
-        }
-        task?.run()
+        }?.run()
+    }
+
+    deinit {
+        tasks.forEach { $0.cancel() }
     }
 }

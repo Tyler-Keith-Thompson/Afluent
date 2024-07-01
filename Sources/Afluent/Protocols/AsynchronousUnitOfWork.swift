@@ -32,7 +32,7 @@ extension AsynchronousUnitOfWork {
     public var result: Result<Success, Error> {
         get async throws {
             await withTaskCancellationHandler {
-                return await state.createTask(operation: operation).result
+                await state.createTask(operation: operation).result
             } onCancel: {
                 cancel()
             }

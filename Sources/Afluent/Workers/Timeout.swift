@@ -9,11 +9,10 @@ import Foundation
 
 extension Workers {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-    actor Timeout<Upstream: AsynchronousUnitOfWork, Success: Sendable, C: Clock>: AsynchronousUnitOfWork where Upstream.Success == Success {
+    struct Timeout<Upstream: AsynchronousUnitOfWork, Success: Sendable, C: Clock>: AsynchronousUnitOfWork where Upstream.Success == Success {
         let state = TaskState<Success>()
         let upstream: Upstream
-        var customError: Error?
-        var timedOut = false
+        let customError: Error?
         let clock: C
         let duration: C.Duration
         let tolerance: C.Duration?
@@ -27,41 +26,14 @@ extension Workers {
         }
 
         func _operation() async throws -> AsynchronousOperation<Success> {
-            AsynchronousOperation { [weak self] in
-                guard let self else { throw CancellationError() }
-
-                await self.reset()
-                let timeoutTask = Task { [weak self] in
-                    guard let self else { throw CancellationError() }
-                    try await self.clock.sleep(until: self.clock.now.advanced(by: self.duration), tolerance: self.tolerance)
-                    await self.timeout()
-                    self.upstream.cancel()
+            AsynchronousOperation {
+                try await Race {
+                    try await clock.sleep(until: clock.now.advanced(by: duration), tolerance: tolerance)
+                    throw customError ?? CancellationError()
+                } against: {
+                    try await upstream.execute()
                 }
-
-                return try await Task { [weak self] in
-                    guard let self else { throw CancellationError() }
-                    do {
-                        let result = try await self.upstream.execute()
-                        timeoutTask.cancel()
-                        return result
-                    } catch {
-                        timeoutTask.cancel()
-                        if await self.timedOut {
-                            throw await self.customError ?? CancellationError()
-                        } else {
-                            throw error
-                        }
-                    }
-                }.value
             }
-        }
-
-        func reset() {
-            timedOut = false
-        }
-
-        func timeout() {
-            timedOut = true
         }
     }
 }

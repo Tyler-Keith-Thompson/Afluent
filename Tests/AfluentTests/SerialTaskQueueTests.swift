@@ -69,7 +69,7 @@ struct SerialTaskQueueTests {
             let sub = SingleValueSubject<Void>()
             var queue: SerialTaskQueue<Void>? = SerialTaskQueue<Void>()
             let executed = ManagedAtomic(false)
-            async let _: Void = try await #require(queue).queue {
+            async let _: Void = try await queue!.queue {
                 try sub.send()
                 try Task.checkCancellation()
                 try await Task.sleep(for: .milliseconds(20))

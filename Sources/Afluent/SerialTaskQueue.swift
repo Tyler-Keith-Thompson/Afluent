@@ -44,7 +44,9 @@ public final class SerialTaskQueue: @unchecked Sendable {
             self.deferredTaskContinuation.yield(
                 DeferredTask {
                     try continuation.resume(returning: await task())
-                }.handleEvents(receiveCancel: {
+                }.handleEvents(receiveError: { error in
+                    continuation.resume(throwing: error)
+                }, receiveCancel: {
                     continuation.resume(throwing: CancellationError())
                 })
                 .eraseToAnyUnitOfWork()

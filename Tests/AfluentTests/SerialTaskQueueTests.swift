@@ -60,6 +60,25 @@ struct SerialTaskQueueTests {
         })
     }
 
+    @Test func queuingATaskThatThrows_StillAllowsOthersToBeQueued() async throws {
+        enum Err: Error {
+            case e1
+        }
+        let queue = SerialTaskQueue()
+        let result = await Task {
+            try await queue.queue {
+                throw Err.e1
+            }
+        }.result
+        #expect(throws: Err.self, performing: {
+            try result.get()
+        })
+        let result2 = try await queue.queue {
+            2
+        }
+        #expect(result2 == 2)
+    }
+
     @Test func queueCanCancelOngoingTasks() async throws {
         try await withMainSerialExecutor {
             let sub = SingleValueSubject<Void>()

@@ -23,7 +23,7 @@ public final class SerialTaskQueue: @unchecked Sendable {
     public init() {
         DeferredTask {
             for await task in stream {
-                try await task.execute()
+                try? await task.execute()
             }
         }
         .subscribe()

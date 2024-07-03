@@ -12,7 +12,7 @@ import Afluent
 
 struct SerialTaskQueueTests {
     @Test func serialTaskQueueSchedulesOneTaskAtATime_EvenWhenSchedulingIsConcurrent() async throws {
-        let queue = SerialTaskQueue<Int>()
+        let queue = SerialTaskQueue()
         actor Test {
             var isExecuting = false
 
@@ -48,7 +48,7 @@ struct SerialTaskQueueTests {
     @Test func queueCanCancelOngoingTasks() async throws {
         try await withMainSerialExecutor {
             let sub = SingleValueSubject<Void>()
-            let queue = SerialTaskQueue<Void>()
+            let queue = SerialTaskQueue()
             let executed = ManagedAtomic(false)
             async let _: Void = try await queue.queue {
                 try sub.send()
@@ -68,7 +68,7 @@ struct SerialTaskQueueTests {
         @Test func queueCanCancelOngoingTasks_OnDeinit() async throws {
             try await withMainSerialExecutor {
                 let sub = SingleValueSubject<Void>()
-                var queue: SerialTaskQueue<Void>? = SerialTaskQueue<Void>()
+                var queue: SerialTaskQueue? = SerialTaskQueue()
                 let executed = ManagedAtomic(false)
                 async let _: Void = try await #require(queue).queue {
                     try sub.send()

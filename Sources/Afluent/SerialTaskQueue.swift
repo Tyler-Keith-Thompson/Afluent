@@ -16,9 +16,9 @@ import Foundation
 ///
 /// The `SerialTaskQueue` actor provides a way to manage task execution in a serial manner. When a new task is queued, it checks if another task is currently running. If no task is running, the new task is executed immediately. If a task is already running, the new task is added to a queue and will be executed once the current task completes.
 /// This actor is useful in scenarios where tasks must be executed in a specific order or when you need to ensure that only one task is executed at a time to avoid race conditions.
-public final class SerialTaskQueue<T: Sendable>: @unchecked Sendable {
+public final class SerialTaskQueue: @unchecked Sendable {
     private var subscribers = Set<AnyCancellable>()
-    private var (stream, deferredTaskContinuation) = AsyncStream<AnyAsynchronousUnitOfWork<Void>>.makeStream()
+    private let (stream, deferredTaskContinuation) = AsyncStream<AnyAsynchronousUnitOfWork<Void>>.makeStream()
 
     public init() {
         DeferredTask {
@@ -38,7 +38,7 @@ public final class SerialTaskQueue<T: Sendable>: @unchecked Sendable {
     /// - Parameter task: The asynchronous task to be queued and executed.
     /// - Returns: The result of the task.
     /// - Throws: An error if the task throws an error.
-    public func queue(_ task: @Sendable @escaping () async throws -> T) async throws -> T {
+    public func queue<T: Sendable>(_ task: @Sendable @escaping () async throws -> T) async throws -> T {
         return try await withUnsafeThrowingContinuation { [weak self] continuation in
             guard let self else { continuation.resume(throwing: CancellationError()); return }
             self.deferredTaskContinuation.yield(

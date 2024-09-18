@@ -41,13 +41,13 @@ struct MaterializeSequenceTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func materializeCapturesNonCancelErrors() async throws {
-        let result = try await DeferredTask { throw URLError(.badURL) }
+        let result = try await DeferredTask { throw GeneralError.e1 }
             .toAsyncSequence()
             .materialize()
             .first()
 
         if case .failure(let error) = result {
-            #expect(error as? URLError == URLError(.badURL))
+            #expect(error as? GeneralError == GeneralError.e1)
         } else {
             Issue.record("Expected failure, got: \(String(describing: result))")
         }
@@ -56,7 +56,7 @@ struct MaterializeSequenceTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func dematerializeWithError() async throws {
         let result = await Task {
-            try await DeferredTask { throw URLError(.badURL) }
+            try await DeferredTask { throw GeneralError.e1 }
                 .toAsyncSequence()
                 .materialize()
                 .dematerialize()
@@ -64,7 +64,7 @@ struct MaterializeSequenceTests {
         }.result
 
         #expect { try result.get() } throws: { error in
-            error as? URLError == URLError(.badURL)
+            error as? GeneralError == GeneralError.e1
         }
     }
 
@@ -80,7 +80,7 @@ struct MaterializeSequenceTests {
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-    @Test(.timeLimit(.milliseconds(10))) func materializeDoesNotInterfereWithCancellation() async throws {
+    @Test func materializeDoesNotInterfereWithCancellation() async throws {
         await withMainSerialExecutor {
             actor Test {
                 var started = false

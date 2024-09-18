@@ -41,11 +41,11 @@ struct MapTests {
 
     @Test func tryMapThrowsError() async throws {
         let val = try await DeferredTask { 1 }
-            .tryMap { _ in throw URLError(.badURL) }
+            .tryMap { _ in throw GeneralError.e1 }
             .result
 
         #expect { try val.get() } throws: { error in
-            error as? URLError == URLError(.badURL)
+            error as? GeneralError == GeneralError.e1
         }
     }
 }

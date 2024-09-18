@@ -25,7 +25,7 @@ struct RetrySequenceTests {
             try await DeferredTask {
                 await test.append("called")
             }.toAsyncSequence()
-                .map { _ in throw URLError(.badURL) }
+                .map { _ in throw GeneralError.e1 }
                 .retry(retryCount)
                 .first()
         }
@@ -51,7 +51,7 @@ struct RetrySequenceTests {
                 await test.append("called")
             }
             .toAsyncSequence()
-            .map { _ in throw URLError(.badURL) }
+            .map { _ in throw GeneralError.e1 }
             .retry(0)
             .first()
         }
@@ -77,7 +77,7 @@ struct RetrySequenceTests {
                 await test.append("called")
             }
             .toAsyncSequence()
-            .map { _ in throw URLError(.badURL) }
+            .map { _ in throw GeneralError.e1 }
             .retry()
             .first()
         }
@@ -103,7 +103,7 @@ struct RetrySequenceTests {
                 await test.append("called")
             }
             .toAsyncSequence()
-            .map { _ in throw URLError(.badURL) }
+            .map { _ in throw GeneralError.e1 }
             .retry()
             .retry()
             .first()

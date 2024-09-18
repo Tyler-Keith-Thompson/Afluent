@@ -24,7 +24,7 @@ struct RetryTests {
         let t = DeferredTask {
             await test.append("called")
         }
-        .tryMap { _ in throw URLError(.badURL) }
+        .tryMap { _ in throw GeneralError.e1 }
         .retry(retryCount)
 
         _ = try await t.result
@@ -46,7 +46,7 @@ struct RetryTests {
         let t = DeferredTask {
             await test.append("called")
         }
-        .tryMap { _ in throw URLError(.badURL) }
+        .tryMap { _ in throw GeneralError.e1 }
         .retry(0)
 
         _ = try await t.result
@@ -68,7 +68,7 @@ struct RetryTests {
         let t = DeferredTask {
             await test.append("called")
         }
-        .tryMap { _ in throw URLError(.badURL) }
+        .tryMap { _ in throw GeneralError.e1 }
         .retry()
 
         _ = try await t.result
@@ -90,7 +90,7 @@ struct RetryTests {
         let t = DeferredTask {
             await test.append("called")
         }
-        .tryMap { _ in throw URLError(.badURL) }
+        .tryMap { _ in throw GeneralError.e1 }
         .retry()
         .retry()
 

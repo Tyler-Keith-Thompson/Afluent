@@ -22,7 +22,7 @@ struct RetainTests {
         }
         .retain()
         .tryMap {
-            throw URLError(.badURL)
+            throw GeneralError.e1
         }
         .retry()
         .execute()
@@ -46,7 +46,7 @@ struct RetainTests {
             await test.increment()
         }
         .tryMap {
-            throw URLError(.badURL)
+            throw GeneralError.e1
         }
         .retry()
         .execute()
@@ -64,7 +64,7 @@ struct RetainTests {
 
         try? await DeferredTask {
             await test.increment()
-            throw URLError(.badURL)
+            throw GeneralError.e1
         }
         .retain()
         .retry()

@@ -21,9 +21,9 @@ struct CatchSequenceTests {
     @Test func testCatchDoesNotThrowError() async throws {
         let val = await Task {
             try await DeferredTask { 1 }.toAsyncSequence()
-                .map { _ -> Int in throw URLError(.badURL) }
+                .map { _ -> Int in throw GeneralError.e1 }
                 .catch { error in
-                    #expect(error as? URLError == URLError(.badURL))
+                    #expect(error as? GeneralError == GeneralError.e1)
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
                 .first()
@@ -84,9 +84,9 @@ struct CatchSequenceTests {
     @Test func testTryCatchDoesNotThrowError() async throws {
         let val = await Task {
             try await DeferredTask { 1 }.toAsyncSequence()
-                .map { _ -> Int in throw URLError(.badURL) }
+                .map { _ -> Int in throw GeneralError.e1 }
                 .tryCatch { error in
-                    #expect(error as? URLError == URLError(.badURL))
+                    #expect(error as? GeneralError == GeneralError.e1)
                     return DeferredTask { 2 }.toAsyncSequence()
                 }
                 .first()

@@ -24,7 +24,7 @@ struct RetryAfterFlatMappingTests {
         let t = DeferredTask {
             await test.append("called")
         }
-        .tryMap { _ in throw URLError(.badURL) }
+        .tryMap { _ in throw GeneralError.e1 }
         .retry(retryCount) { _ in
             DeferredTask {
                 await test.append("flatMap")
@@ -50,7 +50,7 @@ struct RetryAfterFlatMappingTests {
         let t = DeferredTask {
             await test.append("called")
         }
-        .tryMap { _ in throw URLError(.badURL) }
+        .tryMap { _ in throw GeneralError.e1 }
         .retry(0) { _ in
             DeferredTask {
                 await test.append("flatMap")
@@ -76,7 +76,7 @@ struct RetryAfterFlatMappingTests {
         let t = DeferredTask {
             await test.append("called")
         }
-        .tryMap { _ in throw URLError(.badURL) }
+        .tryMap { _ in throw GeneralError.e1 }
         .retry { _ in
             DeferredTask {
                 await test.append("flatMap")

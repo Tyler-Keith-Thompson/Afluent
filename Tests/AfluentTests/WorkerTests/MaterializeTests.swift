@@ -25,27 +25,27 @@ struct MaterializeTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func materializeCapturesNonCancelErrors() async throws {
         let result = try await DeferredTask {
-            throw URLError(.badURL)
+            throw GeneralError.e1
         }
         .materialize()
         .execute()
 
         #expect { try result.get() } throws: { error in
-            error as? URLError == URLError(.badURL)
+            error as? GeneralError == GeneralError.e1
         }
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func dematerializeWithError() async throws {
         let result = try await DeferredTask {
-            throw URLError(.badURL)
+            throw GeneralError.e1
         }
         .materialize()
         .dematerialize()
         .result
 
         #expect { try result.get() } throws: { error in
-            error as? URLError == URLError(.badURL)
+            error as? GeneralError == GeneralError.e1
         }
     }
 

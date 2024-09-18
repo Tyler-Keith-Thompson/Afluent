@@ -20,9 +20,9 @@ struct CatchTests {
 
     @Test func catchDoesNotThrowError() async throws {
         let val = try await DeferredTask { 1 }
-            .tryMap { _ in throw URLError(.badURL) }
+            .tryMap { _ in throw GeneralError.e1 }
             .catch { error -> DeferredTask<Int> in
-                #expect(error as? URLError == URLError(.badURL))
+                #expect(error as? GeneralError == GeneralError.e1)
                 return DeferredTask { 2 }
             }
             .result
@@ -76,9 +76,9 @@ struct CatchTests {
 
     @Test func tryCatchDoesNotThrowError() async throws {
         let val = try await DeferredTask { 1 }
-            .tryMap { _ in throw URLError(.badURL) }
+            .tryMap { _ in throw GeneralError.e1 }
             .tryCatch { error -> DeferredTask<Int> in
-                #expect(error as? URLError == URLError(.badURL))
+                #expect(error as? GeneralError == GeneralError.e1)
                 return DeferredTask { 2 }
             }
             .result

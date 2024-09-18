@@ -11,7 +11,7 @@ import Testing
 
 struct ReplaceErrorTests {
     @Test func replaceErrorTransformsValue() async throws {
-        let val = try await DeferredTask { throw URLError(.badURL) }
+        let val = try await DeferredTask { throw GeneralError.e1 }
             .replaceError(with: -1)
             .execute()
 

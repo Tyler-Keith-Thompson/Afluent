@@ -16,7 +16,7 @@ struct MapErrorTests {
         }
 
         let result = try await DeferredTask {
-            throw URLError(.badURL)
+            throw GeneralError.e1
         }
         .mapError { _ in Err.e1 }
         .result
@@ -32,9 +32,9 @@ struct MapErrorTests {
         }
 
         let result = try await DeferredTask {
-            throw URLError(.badURL)
+            throw GeneralError.e1
         }
-        .mapError(URLError(.badURL)) { _ in Err.e1 }
+        .mapError(GeneralError.e1) { _ in Err.e1 }
         .result
 
         #expect { try result.get() } throws: { error in
@@ -62,13 +62,13 @@ struct MapErrorTests {
         }
 
         let result = try await DeferredTask {
-            throw URLError(.badServerResponse)
+            throw GeneralError.e2
         }
-        .mapError(URLError(.badURL)) { _ in Err.e1 }
+        .mapError(GeneralError.e1) { _ in Err.e1 }
         .result
 
         #expect { try result.get() } throws: { error in
-            error as? URLError == URLError(.badServerResponse)
+            error as? GeneralError == .e2
         }
     }
 }

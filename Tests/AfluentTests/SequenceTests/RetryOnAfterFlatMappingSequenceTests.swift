@@ -145,4 +145,106 @@ struct RetryOnAfterFlatMappingSequenceTests {
         let copy = await test.arr
         #expect(UInt(copy.count) == 1)
     }
+    
+    @Test func taskCanRetryADefinedNumberOfTimes_WithStrategy() async throws {
+        enum Err: Error, Equatable {
+            case e1
+        }
+        actor Test {
+            var arr = [String]()
+            func append(_ str: String) {
+                arr.append(str)
+            }
+        }
+
+        let test = Test()
+        let retryCount = UInt.random(in: 2 ... 10)
+
+        let t = Task {
+            try await DeferredTask {
+                await test.append("called")
+            }
+            .toAsyncSequence()
+            .map { _ in throw Err.e1 }
+            .retry(RetryByCountOnErrorStrategy(retryCount: retryCount, error: Err.e1), on: Err.e1) { _ in
+                DeferredTask {
+                    await test.append("flatMap")
+                }
+                .toAsyncSequence()
+            }
+            .first()
+        }
+
+        _ = await t.result
+
+        let copy = await test.arr
+        #expect(UInt(copy.count) == (retryCount * 2) + 1)
+    }
+
+    @Test func taskCanRetryZero_DoesNothing_WithStrategy() async throws {
+        enum Err: Error, Equatable {
+            case e1
+        }
+        actor Test {
+            var arr = [String]()
+            func append(_ str: String) {
+                arr.append(str)
+            }
+        }
+
+        let test = Test()
+
+        let t = Task {
+            try await DeferredTask {
+                await test.append("called")
+            }
+            .toAsyncSequence()
+            .map { _ in throw Err.e1 }
+            .retry(RetryByCountOnErrorStrategy(retryCount: 0, error: Err.e1), on: Err.e1) { _ in
+                DeferredTask {
+                    await test.append("flatMap")
+                }
+                .toAsyncSequence()
+            }
+            .first()
+        }
+
+        _ = await t.result
+
+        let copy = await test.arr
+        #expect(UInt(copy.count) == 1)
+    }
+
+    @Test func taskCanRetryWithoutError_DoesNothing_WithStrategy() async throws {
+        enum Err: Error, Equatable {
+            case e1
+        }
+        actor Test {
+            var arr = [String]()
+            func append(_ str: String) {
+                arr.append(str)
+            }
+        }
+
+        let test = Test()
+
+        let t = Task {
+            try await DeferredTask {
+                await test.append("called")
+            }
+            .toAsyncSequence()
+            .retry(RetryByCountOnErrorStrategy(retryCount: 10, error: Err.e1), on: Err.e1) { _ in
+                DeferredTask {
+                    await test.append("flatMap")
+                }
+                .toAsyncSequence()
+            }
+            .first()
+        }
+
+        _ = await t.result
+
+        let copy = await test.arr
+        #expect(UInt(copy.count) == 1)
+    }
 }

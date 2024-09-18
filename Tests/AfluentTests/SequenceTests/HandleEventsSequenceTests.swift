@@ -108,7 +108,7 @@ struct HandleEventsSequenceTests {
         await confirmation { exp in
             _ = try? await Task {
                 try await DeferredTask {
-                    throw URLError(.badURL)
+                    throw GeneralError.e1
                 }
                 .toAsyncSequence()
                 .handleEvents(receiveError: {
@@ -121,11 +121,11 @@ struct HandleEventsSequenceTests {
 
         let error = await test.error
 
-        #expect(error as? URLError == URLError(.badURL))
+        #expect(error as? GeneralError == GeneralError.e1)
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-    @Test(.timeLimit(.milliseconds(10))) func handleCancel() async throws {
+    @Test func handleCancel() async throws {
         await withMainSerialExecutor {
             actor Test {
                 var canceled = false

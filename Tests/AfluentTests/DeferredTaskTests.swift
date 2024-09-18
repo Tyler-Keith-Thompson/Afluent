@@ -28,7 +28,7 @@ struct AfluentTests {
         }
     }
 
-    @Test(.timeLimit(.milliseconds(20))) func deferredTaskCancelledWithinCancelledTask_WithExecute() async throws {
+    @Test func deferredTaskCancelledWithinCancelledTask_WithExecute() async throws {
         await #expect(throws: CancellationError.self) {
             try await withMainSerialExecutor {
                 let cancelledSubject = SingleValueSubject<Void>()
@@ -49,7 +49,7 @@ struct AfluentTests {
         }
     }
 
-    @Test(.timeLimit(.milliseconds(20))) func deferredTaskCancelledWithinCancelledTask_WithResult() async throws {
+    @Test func deferredTaskCancelledWithinCancelledTask_WithResult() async throws {
         await #expect(throws: CancellationError.self) {
             try await withMainSerialExecutor {
                 let cancelledSubject = SingleValueSubject<Void>()

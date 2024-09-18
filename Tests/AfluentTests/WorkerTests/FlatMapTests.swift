@@ -73,13 +73,13 @@ struct FlatMapTests {
         let val = try await DeferredTask { 1 }
             .flatMap { _ in
                 DeferredTask {
-                    throw URLError(.badURL)
+                    throw GeneralError.e1
                 }
             }
             .result
 
         #expect { try val.get() } throws: { error in
-            error as? URLError == URLError(.badURL)
+            error as? GeneralError == GeneralError.e1
         }
     }
 }

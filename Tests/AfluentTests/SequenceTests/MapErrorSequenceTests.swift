@@ -17,7 +17,7 @@ struct MapErrorSequenceTests {
 
         let result = await Task {
             try await DeferredTask {
-                throw URLError(.badURL)
+                throw GeneralError.e1
             }
             .toAsyncSequence()
             .mapError { _ in Err.e1 }
@@ -37,10 +37,10 @@ struct MapErrorSequenceTests {
 
         let result = await Task {
             try await DeferredTask {
-                throw URLError(.badURL)
+                throw GeneralError.e1
             }
             .toAsyncSequence()
-            .mapError(URLError(.badURL)) { _ in Err.e1 }
+            .mapError(GeneralError.e1) { _ in Err.e1 }
             .first()
         }
         .result
@@ -75,16 +75,16 @@ struct MapErrorSequenceTests {
 
         let result = await Task {
             try await DeferredTask {
-                throw URLError(.badServerResponse)
+                throw GeneralError.e2
             }
             .toAsyncSequence()
-            .mapError(URLError(.badURL)) { _ in Err.e1 }
+            .mapError(GeneralError.e1) { _ in Err.e1 }
             .first()
         }
         .result
 
         #expect { try result.get() } throws: { error in
-            error as? URLError == URLError(.badServerResponse)
+            error as? GeneralError == .e2
         }
     }
 }

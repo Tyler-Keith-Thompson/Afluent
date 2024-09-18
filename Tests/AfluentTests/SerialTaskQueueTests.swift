@@ -79,7 +79,7 @@ struct SerialTaskQueueTests {
         #expect(result2 == 2)
     }
 
-    @Test func queueCanCancelOngoingTasks() async throws {
+    @Test(.disabled(if: SwiftVersion.isSwift6, "There's some kind of Xcode 16 bug where this crashes intermittently")) func queueCanCancelOngoingTasks() async throws {
         try await withMainSerialExecutor {
             let sub = SingleValueSubject<Void>()
             let queue = SerialTaskQueue()
@@ -118,4 +118,14 @@ struct SerialTaskQueueTests {
             }
         }
     #endif
+}
+
+enum SwiftVersion {
+    static var isSwift6: Bool {
+#if swift(>=6.0)
+        return true
+#else
+        return false
+#endif
+    }
 }

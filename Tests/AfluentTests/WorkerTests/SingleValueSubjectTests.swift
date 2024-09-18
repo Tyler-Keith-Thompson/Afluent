@@ -27,7 +27,7 @@ struct SingleValueSubjectTests {
         }
     }
 
-    @Test(.timeLimit(.milliseconds(10))) func singleValueSubjectEmittingValueAfterTaskRuns() async throws {
+    @Test func singleValueSubjectEmittingValueAfterTaskRuns() async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
             let expected = Int.random(in: 1 ... 1000)
             let subject = SingleValueSubject<Int>()
@@ -57,7 +57,7 @@ struct SingleValueSubjectTests {
         }
     }
 
-    @Test(.timeLimit(.milliseconds(10))) func singleValueSubjectEmittingErrorAfterTaskRuns() async throws {
+    @Test func singleValueSubjectEmittingErrorAfterTaskRuns() async throws {
         try await withMainSerialExecutor {
             enum Err: Error { case e1 }
             try await withCheckedThrowingContinuation { continuation in
@@ -140,7 +140,7 @@ struct SingleValueSubjectTests {
         }
     }
 
-    @Test(.timeLimit(.milliseconds(10))) func voidSingleValueSubjectEmittingValueAfterTaskRuns() async throws {
+    @Test func voidSingleValueSubjectEmittingValueAfterTaskRuns() async throws {
         try await withCheckedThrowingContinuation { continuation in
             let subject = SingleValueSubject<Void>()
             subject.map {

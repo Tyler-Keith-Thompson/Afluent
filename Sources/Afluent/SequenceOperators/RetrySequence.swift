@@ -76,6 +76,17 @@ extension AsyncSequences {
 extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// Retries the upstream `AsyncSequence` up to a specified number of times.
     ///
+    /// - Parameter strategy: The strategy to use when retrying.
+    ///
+    /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on failure up to the specified number of times.
+    /// - Important: Not every `AsyncSequence` can be retried, for this to work the sequence has to implement an iterator that doesn't preserve state across various creations.
+    /// - Note: `AsyncStream` and `AsyncThrowingStream` are notable sequences which cannot be retried on their own.
+    public func retry<S: RetryStrategy>(_ strategy: S) -> AsyncSequences.Retry<Self, S> {
+        AsyncSequences.Retry(upstream: self, strategy: strategy)
+    }
+    
+    /// Retries the upstream `AsyncSequence` up to a specified number of times.
+    ///
     /// - Parameter retries: The maximum number of times to retry the upstream, defaulting to 1.
     ///
     /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on failure up to the specified number of times.

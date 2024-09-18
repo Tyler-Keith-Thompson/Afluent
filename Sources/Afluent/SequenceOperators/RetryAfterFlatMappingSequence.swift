@@ -161,6 +161,17 @@ extension AsyncSequence where Self: Sendable {
     ///   - transform: An async closure that takes the error from the upstream and returns a new `AsyncSequence`.
     ///
     /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on failure up to the specified number of times, with the applied transformation.
+    public func retry<D: AsyncSequence, S: RetryStrategy>(_ strategy: S, _ transform: @Sendable @escaping (Error) async throws -> D) -> AsyncSequences.RetryAfterFlatMapping<Self, D, S> {
+        AsyncSequences.RetryAfterFlatMapping(upstream: self, strategy: strategy, transform: transform)
+    }
+
+    /// Retries the upstream `AsyncSequence` up to a specified number of times while applying a transformation on error.
+    ///
+    /// - Parameters:
+    ///   - retries: The maximum number of times to retry the upstream, defaulting to 1.
+    ///   - transform: An async closure that takes the error from the upstream and returns a new `AsyncSequence`.
+    ///
+    /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on failure up to the specified number of times, with the applied transformation.
     public func retry<D: AsyncSequence>(_ retries: UInt = 1, _ transform: @Sendable @escaping (Error) async throws -> D) -> AsyncSequences.RetryAfterFlatMapping<Self, D, RetryByCountStrategy> {
         AsyncSequences.RetryAfterFlatMapping(upstream: self, strategy: .byCount(retries), transform: transform)
     }
@@ -175,5 +186,17 @@ extension AsyncSequence where Self: Sendable {
     /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on the specified error up to the specified number of times, with the applied transformation.
     public func retry<D: AsyncSequence, E: Error & Equatable>(_ retries: UInt = 1, on error: E, _ transform: @Sendable @escaping (E) async throws -> D) -> AsyncSequences.RetryOnAfterFlatMapping<Self, E, D, RetryByCountOnErrorStrategy<E>> {
         AsyncSequences.RetryOnAfterFlatMapping(upstream: self, strategy: RetryByCountOnErrorStrategy(retryCount: retries, error: error), error: error, transform: transform)
+    }
+    
+    /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
+    ///
+    /// - Parameters:
+    ///   - strategy: The strategy to use when retrying
+    ///   - error: The specific error that should trigger a transform.
+    ///   - transform: An async closure that takes the error from the upstream and returns a new `AsyncSequence`.
+    ///
+    /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on the specified error up to the specified number of times, with the applied transformation.
+    public func retry<D: AsyncSequence, E: Error & Equatable, S: RetryStrategy>(_ strategy: S, on error: E, _ transform: @Sendable @escaping (E) async throws -> D) -> AsyncSequences.RetryOnAfterFlatMapping<Self, E, D, S> {
+        AsyncSequences.RetryOnAfterFlatMapping(upstream: self, strategy: strategy, error: error, transform: transform)
     }
 }

@@ -12,36 +12,36 @@ import Foundation
 import Testing
 
 struct DeferredTests {
-//    @Test func upstreamSequenceDefersExecutionUntilIteration() async throws {
-//        let started = ManagedAtomic<Bool>(false)
-//        let sent = Array(0 ... 9)
-//
-//        let sequence = Deferred {
-//            defer {
-//                started.store(true, ordering: .sequentiallyConsistent)
-//            }
-//            return AsyncStream(Int.self) { continuation in
-//                sent.forEach { continuation.yield($0) }
-//                continuation.finish()
-//            }
-//        }
-//
-//        var iterator = sequence.makeAsyncIterator()
-//
-//        let exp = started.load(ordering: .sequentiallyConsistent)
-//        #expect(!exp)
-//
-//        var received = try [await iterator.next()]
-//
-//        let val = started.load(ordering: .sequentiallyConsistent)
-//        #expect(val)
-//
-//        while let i = try await iterator.next() {
-//            received.append(i)
-//        }
-//
-//        #expect(received == sent)
-//    }
+    @Test(.disabled(if: SwiftVersion.isSwift6, "There's some kind of Xcode 16 bug where this crashes intermittently")) func upstreamSequenceDefersExecutionUntilIteration() async throws {
+        let started = ManagedAtomic<Bool>(false)
+        let sent = Array(0 ... 9)
+
+        let sequence = Deferred {
+            defer {
+                started.store(true, ordering: .sequentiallyConsistent)
+            }
+            return AsyncStream(Int.self) { continuation in
+                sent.forEach { continuation.yield($0) }
+                continuation.finish()
+            }
+        }
+
+        var iterator = sequence.makeAsyncIterator()
+
+        let exp = started.load(ordering: .sequentiallyConsistent)
+        #expect(!exp)
+
+        var received = try [await iterator.next()]
+
+        let val = started.load(ordering: .sequentiallyConsistent)
+        #expect(val)
+
+        while let i = try await iterator.next() {
+            received.append(i)
+        }
+
+        #expect(received == sent)
+    }
 
     @Test func returnsANewIteratorEachTime() async throws {
         let sent = Array(0 ... 9)

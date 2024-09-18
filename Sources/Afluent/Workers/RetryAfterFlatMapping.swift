@@ -24,7 +24,19 @@ extension Workers {
             AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
 
-                return try await self.strategy.handle(operation: self.upstream._operation(), beforeRetry: { _ = try await self.transform($0).operation() })
+                do {
+                    return try await self.upstream._operation()()
+                } catch {
+                    var err = error
+                    while try await strategy.handle(error: err, beforeRetry: { _ = try await self.transform($0).operation() }) {
+                        do {
+                            return try await self.upstream._operation()()
+                        } catch {
+                            err = error
+                        }
+                    }
+                    throw err
+                }
             }
         }
     }
@@ -47,10 +59,22 @@ extension Workers {
             AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
 
-                return try await self.strategy.handle(operation: self.upstream._operation(), beforeRetry: { err in
-                    guard let e = err as? Failure, e == self.error else { return }
-                    _ = try await self.transform(e).operation()
-                })
+                do {
+                    return try await self.upstream._operation()()
+                } catch {
+                    var err = error
+                    while try await strategy.handle(error: err, beforeRetry: { err in
+                        guard let e = err as? Failure, e == self.error else { return }
+                        _ = try await self.transform(e).operation()
+                    }) {
+                        do {
+                            return try await self.upstream._operation()()
+                        } catch {
+                            err = error
+                        }
+                    }
+                    throw err
+                }
             }
         }
     }

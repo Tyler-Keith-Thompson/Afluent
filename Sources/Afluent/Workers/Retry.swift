@@ -62,7 +62,7 @@ extension AsynchronousUnitOfWork {
     }
 }
 
-protocol RetryStrategy: Sendable {
+public protocol RetryStrategy: Sendable {
     func handle(error: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws -> Bool
 }
 
@@ -73,19 +73,19 @@ extension RetryStrategy {
 }
 
 extension RetryStrategy where Self == RetryByCountStrategy {
-    static func byCount(_ count: UInt) -> RetryByCountStrategy {
+    public static func byCount(_ count: UInt) -> RetryByCountStrategy {
         return RetryByCountStrategy(retryCount: count)
     }
 }
 
-actor RetryByCountStrategy: RetryStrategy {
+public actor RetryByCountStrategy: RetryStrategy {
     var retryCount: UInt
     
-    init(retryCount: UInt) {
+    public init(retryCount: UInt) {
         self.retryCount = retryCount
     }
 
-    func handle(error err: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws -> Bool {
+    public func handle(error err: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws -> Bool {
         guard retryCount > 0 else {
             return false
         }
@@ -101,16 +101,16 @@ actor RetryByCountStrategy: RetryStrategy {
     }
 }
 
-actor RetryByCountOnErrorStrategy<Failure: Error & Equatable>: RetryStrategy {
+public actor RetryByCountOnErrorStrategy<Failure: Error & Equatable>: RetryStrategy {
     var retryCount: UInt
-    let error: Failure
+    public let error: Failure
     
-    init(retryCount: UInt, error: Failure) {
+    public init(retryCount: UInt, error: Failure) {
         self.retryCount = retryCount
         self.error = error
     }
     
-    func handle(error err: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws -> Bool {
+    public func handle(error err: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws -> Bool {
         guard retryCount > 0 else {
             return false
         }

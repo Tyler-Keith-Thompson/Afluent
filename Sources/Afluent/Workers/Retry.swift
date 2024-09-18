@@ -43,6 +43,15 @@ extension Workers {
 extension AsynchronousUnitOfWork {
     /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times.
     ///
+    /// - Parameter strategy: The retry strategy to use.
+    ///
+    /// - Returns: An `AsynchronousUnitOfWork` that emits the same output as the upstream but retries on failure up to the specified number of times.
+    public func retry(_ strategy: some RetryStrategy) -> some AsynchronousUnitOfWork<Success> {
+        Workers.Retry(upstream: self, strategy: strategy)
+    }
+    
+    /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times.
+    ///
     /// - Parameter retries: The maximum number of times to retry the upstream, defaulting to 1.
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that emits the same output as the upstream but retries on failure up to the specified number of times.

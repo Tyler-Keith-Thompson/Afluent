@@ -166,7 +166,7 @@ struct RetryOnAfterFlatMappingSequenceTests {
             }
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
-            .retry(RetryByCountOnErrorStrategy(retryCount: retryCount, error: Err.e1), on: Err.e1) { _ in
+            .retry(.byCount(retryCount), on: Err.e1) { _ in
                 DeferredTask {
                     await test.append("flatMap")
                 }
@@ -200,7 +200,7 @@ struct RetryOnAfterFlatMappingSequenceTests {
             }
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
-            .retry(RetryByCountOnErrorStrategy(retryCount: 0, error: Err.e1), on: Err.e1) { _ in
+            .retry(.byCount(0), on: Err.e1) { _ in
                 DeferredTask {
                     await test.append("flatMap")
                 }
@@ -233,7 +233,7 @@ struct RetryOnAfterFlatMappingSequenceTests {
                 await test.append("called")
             }
             .toAsyncSequence()
-            .retry(RetryByCountOnErrorStrategy(retryCount: 10, error: Err.e1), on: Err.e1) { _ in
+            .retry(.byCount(10), on: Err.e1) { _ in
                 DeferredTask {
                     await test.append("flatMap")
                 }

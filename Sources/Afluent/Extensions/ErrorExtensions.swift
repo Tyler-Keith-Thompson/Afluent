@@ -6,15 +6,15 @@
 //
 
 extension Error {
-    @discardableResult func throwIf<E: Error & Equatable>(not error: E) throws -> Self {
+    @discardableResult func throwIf<E: Error & Equatable>(not error: E) throws -> E {
         if let unwrappedError = (self as? E) {
             if unwrappedError != error {
                 throw unwrappedError
             }
+            return unwrappedError
         } else {
             throw self
         }
-        return self
     }
     
     @discardableResult func throwIf<E: Error & Equatable>(_ error: E) throws -> Self {

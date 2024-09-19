@@ -58,7 +58,7 @@ extension AsyncSequences {
                 try Task.checkCancellation()
                 return try await advanceAndSet(iterator: state.iterator)
             } catch {
-                guard !(error is CancellationError) else { throw error }
+                try error.throwIf(CancellationError.self)
 
                 if try await strategy.handle(error: error) {
                     state.iterator = state.upstream.makeAsyncIterator()
@@ -124,12 +124,8 @@ extension AsyncSequences {
                 try Task.checkCancellation()
                 return try await advanceAndSet(iterator: state.iterator)
             } catch {
-                guard !(error is CancellationError) else { throw error }
-
-                guard let unwrappedError = (error as? Failure),
-                      unwrappedError == state.error else {
-                    throw error
-                }
+                try error.throwIf(CancellationError.self)
+                    .throwIf(not: state.error)
 
                 if try await strategy.handle(error: error) {
                     state.iterator = state.upstream.makeAsyncIterator()

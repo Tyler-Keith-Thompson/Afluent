@@ -58,7 +58,7 @@ extension AsyncSequences {
                 try Task.checkCancellation()
                 return try await advanceAndSet(iterator: state.iterator)
             } catch {
-                guard !(error is CancellationError) else { throw error }
+                try error.throwIf(CancellationError.self)
 
                 if try await strategy.handle(error: error) {
                     state.iterator = state.upstream.makeAsyncIterator()
@@ -70,6 +70,73 @@ extension AsyncSequences {
         }
 
         public nonisolated func makeAsyncIterator() -> Retry<Upstream, Strategy> { self }
+    }
+    
+    public final actor RetryOn<Upstream: AsyncSequence & Sendable, Failure: Error & Equatable, Strategy: RetryStrategy>: AsyncSequence, AsyncIteratorProtocol, Sendable where Upstream.Element: Sendable {
+        public typealias Element = Upstream.Element
+        private final class State: @unchecked Sendable {
+            let lock = NSRecursiveLock()
+            let upstream: Upstream
+            let error: Failure
+            
+            private var _iterator: Upstream.AsyncIterator?
+            var iterator: Upstream.AsyncIterator {
+                get {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    guard let _iterator else {
+                        let val = upstream.makeAsyncIterator()
+                        self._iterator = val
+                        return val
+                    }
+                    return _iterator
+                } set {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    _iterator = newValue
+                }
+            }
+            
+            init(upstream: Upstream, failure: Failure) {
+                self.upstream = upstream
+                error = failure
+            }
+        }
+        
+        private let state: State
+        private let strategy: Strategy
+        
+        init(upstream: Upstream, strategy: Strategy, error: Failure) {
+            state = State(upstream: upstream,
+                          failure: error)
+            self.strategy = strategy
+        }
+        
+        private nonisolated func advanceAndSet(iterator: Upstream.AsyncIterator) async throws -> Upstream.Element? {
+            var copy = iterator
+            let next = try await copy.next()
+            state.iterator = copy
+            return next
+        }
+        
+        public func next() async throws -> Upstream.Element? {
+            do {
+                try Task.checkCancellation()
+                return try await advanceAndSet(iterator: state.iterator)
+            } catch {
+                try error.throwIf(CancellationError.self)
+                    .throwIf(not: state.error)
+
+                if try await strategy.handle(error: error) {
+                    state.iterator = state.upstream.makeAsyncIterator()
+                    return try await next()
+                } else {
+                    throw error
+                }
+            }
+        }
+        
+        public nonisolated func makeAsyncIterator() -> RetryOn<Upstream, Failure, Strategy> { self }
     }
 }
 
@@ -105,7 +172,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on the specified error up to the specified number of times.
     /// - Important: Not every `AsyncSequence` can be retried, for this to work the sequence has to implement an iterator that doesn't preserve state across various creations.
     /// - Note: `AsyncStream` and `AsyncThrowingStream` are notable sequences which cannot be retried on their own.
-    public func retry<E: Error & Equatable>(_ retries: UInt = 1, on error: E) -> AsyncSequences.Retry<Self, RetryByCountOnErrorStrategy<E>> {
-        AsyncSequences.Retry(upstream: self, strategy: RetryByCountOnErrorStrategy(retryCount: retries, error: error))
+    public func retry<E: Error & Equatable>(_ retries: UInt = 1, on error: E) -> AsyncSequences.RetryOn<Self, E, RetryByCountStrategy> {
+        AsyncSequences.RetryOn(upstream: self, strategy: .byCount(retries), error: error)
     }
 }

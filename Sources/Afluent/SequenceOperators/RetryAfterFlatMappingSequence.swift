@@ -61,7 +61,7 @@ extension AsyncSequences {
                 try Task.checkCancellation()
                 return try await advanceAndSet(iterator: state.iterator)
             } catch {
-                guard !(error is CancellationError) else { throw error }
+                try error.throwIf(CancellationError.self)
 
                 if try await strategy.handle(error: error, beforeRetry: {
                     for try await _ in try await state.transform($0) { }
@@ -132,14 +132,11 @@ extension AsyncSequences {
                 try Task.checkCancellation()
                 return try await advanceAndSet(iterator: state.iterator)
             } catch {
-                guard !(error is CancellationError) else { throw error }
+                try error.throwIf(CancellationError.self)
+                    .throwIf(not: state.error)
 
                 if try await strategy.handle(error: error, beforeRetry: { err in
-                    guard let unwrappedError = (err as? Failure),
-                          unwrappedError == state.error else {
-                        throw err
-                    }
-                    for try await _ in try await state.transform(unwrappedError) { }
+                    for try await _ in try await state.transform(err.throwIf(not: state.error)) { }
                 }) {
                     state.iterator = state.upstream.makeAsyncIterator()
                     return try await next()
@@ -184,8 +181,8 @@ extension AsyncSequence where Self: Sendable {
     ///   - transform: An async closure that takes the error from the upstream and returns a new `AsyncSequence`.
     ///
     /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on the specified error up to the specified number of times, with the applied transformation.
-    public func retry<D: AsyncSequence, E: Error & Equatable>(_ retries: UInt = 1, on error: E, _ transform: @Sendable @escaping (E) async throws -> D) -> AsyncSequences.RetryOnAfterFlatMapping<Self, E, D, RetryByCountOnErrorStrategy<E>> {
-        AsyncSequences.RetryOnAfterFlatMapping(upstream: self, strategy: RetryByCountOnErrorStrategy(retryCount: retries, error: error), error: error, transform: transform)
+    public func retry<D: AsyncSequence, E: Error & Equatable>(_ retries: UInt = 1, on error: E, _ transform: @Sendable @escaping (E) async throws -> D) -> AsyncSequences.RetryOnAfterFlatMapping<Self, E, D, RetryByCountStrategy> {
+        AsyncSequences.RetryOnAfterFlatMapping(upstream: self, strategy: .byCount(retries), error: error, transform: transform)
     }
     
     /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times only when a specific error occurs, while applying a transformation on error.

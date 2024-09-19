@@ -38,6 +38,41 @@ extension Workers {
             }
         }
     }
+    
+    actor RetryOn<Upstream: AsynchronousUnitOfWork, Failure: Error & Equatable, Success, Strategy: RetryStrategy>: AsynchronousUnitOfWork where Upstream.Success == Success {
+        let state = TaskState<Success>()
+        let upstream: Upstream
+        let strategy: Strategy
+        let error: Failure
+        
+        init(upstream: Upstream, strategy: Strategy, error: Failure) {
+            self.upstream = upstream
+            self.strategy = strategy
+            self.error = error
+        }
+        
+        func _operation() async throws -> AsynchronousOperation<Success> {
+            AsynchronousOperation { [weak self] in
+                guard let self else { throw CancellationError() }
+                do {
+                    return try await self.upstream._operation()()
+                } catch {
+                    var err = error
+                    while try await strategy.handle(error: err) {
+                        try err.throwIf(CancellationError.self)
+                            .throwIf(not: self.error)
+
+                        do {
+                            return try await self.upstream._operation()()
+                        } catch {
+                            err = error
+                        }
+                    }
+                    throw err
+                }
+            }
+        }
+    }
 }
 
 extension AsynchronousUnitOfWork {
@@ -67,7 +102,7 @@ extension AsynchronousUnitOfWork {
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that emits the same output as the upstream but retries on the specified error up to the specified number of times.
     public func retry<E: Error & Equatable>(_ retries: UInt = 1, on error: E) -> some AsynchronousUnitOfWork<Success> {
-        Workers.Retry(upstream: self, strategy: RetryByCountOnErrorStrategy(retryCount: retries, error: error))
+        Workers.RetryOn(upstream: self, strategy: .byCount(retries), error: error)
     }
 }
 
@@ -100,35 +135,6 @@ public actor RetryByCountStrategy: RetryStrategy {
         }
         
         try await beforeRetry(err)
-        decrementRetry()
-        return true
-    }
-    
-    func decrementRetry() {
-        guard retryCount > 0 else { return }
-        retryCount -= 1
-    }
-}
-
-public actor RetryByCountOnErrorStrategy<Failure: Error & Equatable>: RetryStrategy {
-    var retryCount: UInt
-    public let error: Failure
-    
-    public init(retryCount: UInt, error: Failure) {
-        self.retryCount = retryCount
-        self.error = error
-    }
-    
-    public func handle(error err: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws -> Bool {
-        guard retryCount > 0 else {
-            return false
-        }
-
-        guard !(err is CancellationError) else { throw err }
-
-        guard let unwrappedError = (err as? Failure),
-              unwrappedError == error else { throw err }
-        try await beforeRetry(error)
         decrementRetry()
         return true
     }

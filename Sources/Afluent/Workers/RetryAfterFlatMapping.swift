@@ -67,10 +67,8 @@ extension Workers {
                         guard let e = err as? Failure, e == self.error else { return }
                         _ = try await self.transform(e).operation()
                     }) {
-                        guard !(err is CancellationError) else { throw err }
-                        
-                        guard let unwrappedError = (err as? Failure),
-                              unwrappedError == self.error else { throw err }
+                        try err.throwIf(CancellationError.self)
+                            .throwIf(not: self.error)
 
                         do {
                             return try await self.upstream._operation()()

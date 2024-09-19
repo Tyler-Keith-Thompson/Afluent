@@ -59,10 +59,8 @@ extension Workers {
                 } catch {
                     var err = error
                     while try await strategy.handle(error: err) {
-                        guard !(err is CancellationError) else { throw err }
-                        
-                        guard let unwrappedError = (err as? Failure),
-                              unwrappedError == self.error else { throw err }
+                        try err.throwIf(CancellationError.self)
+                            .throwIf(not: self.error)
 
                         do {
                             return try await self.upstream._operation()()

@@ -95,12 +95,15 @@ struct SubscriptionTests {
                 func end() { ended = true }
             }
             let test = Test()
+            let testStartSubject = SingleValueSubject<Void>()
+            let cancellationFinishedSubject = SingleValueSubject<Void>()
             let sub = SingleValueSubject<Void>()
             var set = Set<AnyCancellable>()
 
             DeferredTask {
                 await test.start()
-                set.removeAll()
+                try testStartSubject.send()
+                try await cancellationFinishedSubject.execute()
             }
             .handleEvents(receiveCancel: {
                 try? sub.send()
@@ -111,6 +114,10 @@ struct SubscriptionTests {
             .subscribe()
             .store(in: &set)
 
+            try await testStartSubject.execute()
+            set.removeAll()
+            try cancellationFinishedSubject.send()
+            
             try await sub.execute()
 
             let started = await test.started
@@ -222,12 +229,15 @@ struct SubscriptionTests {
                 func start() { started = true }
                 func end() { ended = true }
             }
+            let testStartSubject = SingleValueSubject<Void>()
             let test = Test()
+            let clock = TestClock()
 
             let sequence = AsyncStream<Void> { continuation in
                 Task {
                     await test.start()
-                    try await Task.sleep(for: .milliseconds(10))
+                    try testStartSubject.send()
+                    try await clock.sleep(for: .milliseconds(10))
                     continuation.yield()
                 }
             }.map {
@@ -237,11 +247,11 @@ struct SubscriptionTests {
             var subscription: AnyCancellable? = sequence.sink()
             noop(subscription)
 
-            try await Task.sleep(for: .milliseconds(2))
+            try await testStartSubject.execute()
 
             subscription = nil
-
-            try await Task.sleep(for: .milliseconds(9))
+            
+            await clock.advance(by: .milliseconds(10))
 
             let started = await test.started
             let ended = await test.ended
@@ -350,11 +360,14 @@ struct SubscriptionTests {
                 func receivedOutput() { output = true }
             }
             let test = Test()
+            let testStartSubject = SingleValueSubject<Void>()
+            let clock = TestClock()
 
             let sequence = AsyncThrowingStream<Void, Error> { continuation in
                 Task {
                     await test.start()
-                    try await Task.sleep(for: .milliseconds(10))
+                    try testStartSubject.send()
+                    try await clock.sleep(for: .milliseconds(10))
                     continuation.yield()
                 }
             }.map {
@@ -373,9 +386,11 @@ struct SubscriptionTests {
                 await test.receivedOutput()
             }
 
-            try await Task.sleep(for: .milliseconds(2))
+            try await testStartSubject.execute()
 
             subscription.cancel()
+            
+            await clock.advance(by: .milliseconds(10))
 
             try await completedChannel.execute()
 

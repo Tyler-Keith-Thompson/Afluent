@@ -9,15 +9,15 @@ import Foundation
 
 public typealias ClockDurationUnit<C: Clock, T: BinaryInteger> = @Sendable (T) -> C.Duration
 
-extension RetryStrategy where Self == RetryByBackoffStrategy<ContinuousClock> {
+extension RetryStrategy where Self == RetryByBackoffStrategy<ExponentialBackoffStrategy<ContinuousClock>> {
     /// Creates a retry strategy using the provided backoff strategy and a continuous clock.
     ///
     /// This extension provides a convenient method to create a `RetryByBackoffStrategy` using a `ContinuousClock`.
     ///
     /// - Parameter strategy: The backoff strategy to use for retrying operations.
     /// - Returns: A `RetryByBackoffStrategy` configured with the provided `BackoffStrategy` and a `ContinuousClock`.
-    public static func backoff(_ strategy: BackoffStrategy) -> RetryByBackoffStrategy<ContinuousClock> {
-        RetryByBackoffStrategy(strategy, clock: ContinuousClock())
+    public static func backoff(_ strategy: ExponentialBackoffStrategy<ContinuousClock>) -> RetryByBackoffStrategy<ExponentialBackoffStrategy<ContinuousClock>> {
+        RetryByBackoffStrategy(strategy, clock: ContinuousClock(), durationUnit: { .seconds($0) })
     }
 }
 
@@ -30,22 +30,24 @@ extension RetryStrategy where Self == RetryByBackoffStrategy<ContinuousClock> {
 /// - Parameters:
 ///   - C: The type of `Clock` used for measuring time between retries.
 /// - Note: This actor conforms to `RetryStrategy` and is used to manage retries based on time delays.
-public actor RetryByBackoffStrategy<C: Clock>: RetryStrategy where C.Duration == Duration {
-    let strategy: any BackoffStrategy
-    let clock: C
+public actor RetryByBackoffStrategy<Strategy: BackoffStrategy>: RetryStrategy {
+    let strategy: Strategy
+    let clock: Strategy.Clock
+    let durationUnit: ClockDurationUnit<Strategy.Clock, Int>
 
     /// Creates a new retry strategy with the given backoff strategy and clock.
     ///
     /// - Parameters:
     ///   - strategy: The backoff strategy used to determine how to back off between retries.
     ///   - clock: The clock used to measure the time between retries.
-    public init(_ strategy: some BackoffStrategy, clock: C) {
+    public init(_ strategy: Strategy, clock: Strategy.Clock, durationUnit: @escaping ClockDurationUnit<Strategy.Clock, Int>) {
         self.strategy = strategy
         self.clock = clock
+        self.durationUnit = durationUnit
     }
 
     public func handle(error err: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws -> Bool {
-        try await strategy.backoff(clock: clock, durationUnit: { (arg: Int) in .seconds(arg) })
+        try await strategy.backoff(clock: clock, durationUnit: durationUnit)
     }
 }
 
@@ -53,7 +55,8 @@ public actor RetryByBackoffStrategy<C: Clock>: RetryStrategy where C.Duration ==
 ///
 /// Types conforming to `BackoffStrategy` must implement logic for calculating delays between retry attempts.
 /// The delay is determined using a clock and a duration unit.
-public protocol BackoffStrategy: Sendable {
+public protocol BackoffStrategy<Clock>: Sendable where Clock: _Concurrency.Clock {
+    associatedtype Clock
     /// Calculates the delay between retries using a clock and a duration unit.
     ///
     /// This method allows for custom backoff strategies based on a clock and a duration unit. The delay between retries
@@ -65,17 +68,17 @@ public protocol BackoffStrategy: Sendable {
     ///
     /// - Returns: A Boolean value indicating whether a retry should be attempted (`true`) or not (`false`).
     /// - Throws: Any error encountered during the backoff process.
-    func backoff<C: Clock, T: BinaryInteger>(clock: C, durationUnit: ClockDurationUnit<C, T>) async throws -> Bool
+    func backoff<T: BinaryInteger>(clock: Clock, durationUnit: ClockDurationUnit<Clock, T>) async throws -> Bool
 }
 
-extension BackoffStrategy where Self == ExponentialBackoffStrategy {
+extension BackoffStrategy where Self == ExponentialBackoffStrategy<ContinuousClock> {
     /// Creates an exponential backoff strategy with a configurable base and maximum retry count.
     ///
     /// - Parameters:
     ///   - base: The base duration for the backoff, which will exponentially increase with each retry.
     ///   - maxCount: The maximum number of retries allowed.
     /// - Returns: An `ExponentialBackoffStrategy` configured with the provided base and maximum retry count.
-    public static func exponential(base: UInt, maxCount: UInt) -> ExponentialBackoffStrategy {
+    public static func exponential(base: UInt, maxCount: UInt) -> ExponentialBackoffStrategy<Clock> {
         ExponentialBackoffStrategy(base: base, maxCount: maxCount)
     }
     
@@ -85,7 +88,7 @@ extension BackoffStrategy where Self == ExponentialBackoffStrategy {
     ///
     /// - Parameter maxCount: The maximum number of retries allowed.
     /// - Returns: An `ExponentialBackoffStrategy` configured with a base of 2 and the provided maximum retry count.
-    public static func binaryExponential(maxCount: UInt) -> ExponentialBackoffStrategy {
+    public static func binaryExponential(maxCount: UInt) -> ExponentialBackoffStrategy<Clock> {
         ExponentialBackoffStrategy(base: 2, maxCount: maxCount)
     }
 }
@@ -94,24 +97,37 @@ extension BackoffStrategy where Self == ExponentialBackoffStrategy {
 ///
 /// This actor calculates exponential delays between retries based on a specified base value. With each retry,
 /// the delay increases exponentially until the maximum retry count is reached.
-public actor ExponentialBackoffStrategy: BackoffStrategy {
+public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrategy {
     let base: UInt
     var count = 1
     let maxCount: UInt
+    let maxDelay: Clock.Duration
     
     /// Creates a new exponential backoff strategy with the given base and maximum retry count.
     ///
     /// - Parameters:
     ///   - base: The base duration for the backoff, which will increase exponentially with each retry.
     ///   - maxCount: The maximum number of retries allowed.
-    public init(base: UInt, maxCount: UInt) {
+    public init(base: UInt, maxCount: UInt, maxDelay: Clock.Duration) {
         self.base = base
         self.maxCount = maxCount
+        self.maxDelay = maxDelay
     }
     
-    public func backoff<C: Clock, T: BinaryInteger>(clock: C, durationUnit: ClockDurationUnit<C, T>) async throws -> Bool {
+    /// Creates a new exponential backoff strategy with the given base and maximum retry count.
+    ///
+    /// - Parameters:
+    ///   - base: The base duration for the backoff, which will increase exponentially with each retry.
+    ///   - maxCount: The maximum number of retries allowed.
+    public init(base: UInt, maxCount: UInt, maxDelay: Clock.Duration = .seconds(Int.max)) where Clock.Duration == Duration {
+        self.base = base
+        self.maxCount = maxCount
+        self.maxDelay = maxDelay
+    }
+    
+    public func backoff<T: BinaryInteger>(clock: Clock, durationUnit: ClockDurationUnit<Clock, T>) async throws -> Bool {
         guard count < maxCount else { return false }
-        try await Task.sleep(for: durationUnit(T(pow(Double(base), Double(count)))), clock: clock)
+        try await clock.sleep(for: min(durationUnit(T(pow(Double(base), Double(count)))), maxDelay))
         count += 1
         return true
     }

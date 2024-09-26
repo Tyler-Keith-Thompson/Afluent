@@ -9,6 +9,7 @@ import Afluent
 import ConcurrencyExtras
 import Foundation
 import Testing
+import Clocks
 
 struct SubscriptionTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
@@ -22,12 +23,15 @@ struct SubscriptionTests {
                 func end() { ended = true }
             }
             let test = Test()
+            let testStartSubject = SingleValueSubject<Void>()
+            let cancellationSubject = SingleValueSubject<Void>()
             let sub = SingleValueSubject<Void>()
 
             var subscription: AnyCancellable?
             subscription = DeferredTask {
                 await test.start()
-                subscription?.cancel()
+                try testStartSubject.send()
+                try await cancellationSubject.execute()
             }
             .handleEvents(receiveCancel: {
                 try sub.send()
@@ -36,6 +40,10 @@ struct SubscriptionTests {
                 await test.end()
             }.subscribe()
 
+            try await testStartSubject.execute()
+            subscription?.cancel()
+            try cancellationSubject.send()
+            
             try await sub.execute()
 
             let started = await test.started
@@ -57,12 +65,15 @@ struct SubscriptionTests {
                 func end() { ended = true }
             }
             let test = Test()
+            let testStartSubject = SingleValueSubject<Void>()
+            let cancellationSubject = SingleValueSubject<Void>()
             let sub = SingleValueSubject<Void>()
 
             var subscription: AnyCancellable?
             subscription = DeferredTask {
                 await test.start()
-                subscription = nil
+                try testStartSubject.send()
+                try await cancellationSubject.execute()
             }
             .handleEvents(receiveCancel: {
                 try? sub.send()
@@ -73,6 +84,10 @@ struct SubscriptionTests {
             .subscribe()
 
             noop(subscription)
+            
+            try await testStartSubject.execute()
+            subscription = nil
+            try cancellationSubject.send()
 
             try await sub.execute()
 

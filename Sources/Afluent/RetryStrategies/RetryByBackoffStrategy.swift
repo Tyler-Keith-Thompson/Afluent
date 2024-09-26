@@ -17,7 +17,7 @@ extension RetryStrategy where Self == RetryByBackoffStrategy<ExponentialBackoffS
     /// - Parameter strategy: The backoff strategy to use for retrying operations.
     /// - Returns: A `RetryByBackoffStrategy` configured with the provided `BackoffStrategy` and a `ContinuousClock`.
     public static func backoff(_ strategy: ExponentialBackoffStrategy<ContinuousClock>) -> RetryByBackoffStrategy<ExponentialBackoffStrategy<ContinuousClock>> {
-        RetryByBackoffStrategy(strategy, clock: ContinuousClock(), durationUnit: { .seconds($0) })
+        RetryByBackoffStrategy(strategy, clock: ContinuousClock(), durationUnit: Duration.seconds)
     }
 }
 

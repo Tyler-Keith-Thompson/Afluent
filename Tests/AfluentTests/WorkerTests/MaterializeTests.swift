@@ -67,17 +67,20 @@ struct MaterializeTests {
             actor Test {
                 var started = false
                 var ended = false
+                var task: AnyCancellable?
 
                 func start() { started = true }
                 func end() { ended = true }
+                func setTask(_ cancellable: AnyCancellable?) {
+                    self.task = cancellable
+                }
             }
             let test = Test()
             let sub = SingleValueSubject<Void>()
 
-            var task: AnyCancellable?
-            task = DeferredTask {
+            await test.setTask(DeferredTask {
                 await test.start()
-                task?.cancel()
+                await test.task?.cancel()
             }
             .handleEvents(receiveCancel: {
                 try? sub.send()
@@ -86,7 +89,7 @@ struct MaterializeTests {
                 await test.end()
             }
             .materialize()
-            .subscribe()
+            .subscribe())
 
             try await sub.execute()
 

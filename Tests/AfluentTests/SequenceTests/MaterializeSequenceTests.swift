@@ -85,28 +85,33 @@ struct MaterializeSequenceTests {
             actor Test {
                 var started = false
                 var ended = false
+                var task: Task<Void, Error>?
 
                 func start() { started = true }
                 func end() { ended = true }
+                func setTask(_ task: Task<Void, Error>?) {
+                    self.task = task
+                }
             }
             let test = Test()
 
             await withCheckedContinuation { continuation in
-                var task: Task<Void, Error>?
-                task = Task {
-                    _ = try await DeferredTask {
-                        await test.start()
-                        task?.cancel()
-                    }
-                    .handleEvents(receiveCancel: {
-                        continuation.resume()
+                Task {
+                    await test.setTask(Task {
+                        _ = try await DeferredTask {
+                            await test.start()
+                            await test.task?.cancel()
+                        }
+                        .handleEvents(receiveCancel: {
+                            continuation.resume()
+                        })
+                        .map {
+                            await test.end()
+                        }
+                        .toAsyncSequence()
+                        .materialize()
+                        .first()
                     })
-                    .map {
-                        await test.end()
-                    }
-                    .toAsyncSequence()
-                    .materialize()
-                    .first()
                 }
             }
 

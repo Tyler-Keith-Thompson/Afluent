@@ -252,11 +252,14 @@ struct SubscriptionTests {
             }
             let test = Test()
             var set = Set<AnyCancellable>()
+            let clock = TestClock()
+            let sub = SingleValueSubject<Void>()
 
             let sequence = AsyncStream<Void> { continuation in
                 Task {
+                    try sub.send()
                     await test.start()
-                    try await Task.sleep(for: .milliseconds(10))
+                    try await clock.sleep(for: .milliseconds(10))
                     continuation.yield()
                 }
             }.map {
@@ -266,12 +269,12 @@ struct SubscriptionTests {
             sequence.sink()
                 .store(in: &set)
 
-            try await Task.sleep(for: .milliseconds(2))
+            try await sub.execute()
 
             set.removeAll()
 
-            try await Task.sleep(for: .milliseconds(9))
-
+            await clock.advance(by: .milliseconds(10))
+            
             let started = await test.started
             let ended = await test.ended
 

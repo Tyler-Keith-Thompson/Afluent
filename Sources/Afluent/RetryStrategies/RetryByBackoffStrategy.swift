@@ -77,19 +77,22 @@ extension BackoffStrategy where Self == ExponentialBackoffStrategy<ContinuousClo
     /// - Parameters:
     ///   - base: The base duration for the backoff, which will exponentially increase with each retry.
     ///   - maxCount: The maximum number of retries allowed.
+    ///   - maxDelay: The maximum duration to wait.
     /// - Returns: An `ExponentialBackoffStrategy` configured with the provided base and maximum retry count.
-    public static func exponential(base: UInt, maxCount: UInt) -> ExponentialBackoffStrategy<Clock> {
-        ExponentialBackoffStrategy(base: base, maxCount: maxCount)
+    public static func exponential(base: UInt, maxCount: UInt, maxDelay: ContinuousClock.Duration = .seconds(Int.max)) -> ExponentialBackoffStrategy<Clock> {
+        ExponentialBackoffStrategy(base: base, maxCount: maxCount, maxDelay: maxDelay)
     }
     
     /// Creates a binary exponential backoff strategy with a maximum retry count.
     ///
     /// The base duration for this strategy is set to 2, meaning the delay will double with each retry.
     ///
-    /// - Parameter maxCount: The maximum number of retries allowed.
+    /// - Parameters:
+    ///   - maxCount: The maximum number of retries allowed.
+    ///   - maxDelay: The maximum duration to wait.
     /// - Returns: An `ExponentialBackoffStrategy` configured with a base of 2 and the provided maximum retry count.
-    public static func binaryExponential(maxCount: UInt) -> ExponentialBackoffStrategy<Clock> {
-        ExponentialBackoffStrategy(base: 2, maxCount: maxCount)
+    public static func binaryExponential(maxCount: UInt, maxDelay: ContinuousClock.Duration = .seconds(Int.max)) -> ExponentialBackoffStrategy<Clock> {
+        ExponentialBackoffStrategy(base: 2, maxCount: maxCount, maxDelay: maxDelay)
     }
 }
 

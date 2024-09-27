@@ -108,6 +108,7 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
     /// - Parameters:
     ///   - base: The base duration for the backoff, which will increase exponentially with each retry.
     ///   - maxCount: The maximum number of retries allowed.
+    ///   - maxDelay: The maximum duration to wait.
     public init(base: UInt, maxCount: UInt, maxDelay: Clock.Duration) {
         self.base = base
         self.maxCount = maxCount
@@ -119,6 +120,7 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
     /// - Parameters:
     ///   - base: The base duration for the backoff, which will increase exponentially with each retry.
     ///   - maxCount: The maximum number of retries allowed.
+    ///   - maxDelay: The maximum duration to wait.
     public init(base: UInt, maxCount: UInt, maxDelay: Clock.Duration = .seconds(Int.max)) where Clock.Duration == Duration {
         self.base = base
         self.maxCount = maxCount

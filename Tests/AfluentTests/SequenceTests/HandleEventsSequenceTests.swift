@@ -129,22 +129,27 @@ struct HandleEventsSequenceTests {
         await withMainSerialExecutor {
             actor Test {
                 var canceled = false
+                var task: AnyCancellable?
 
                 func cancel() { canceled = true }
+                func setTask(_ task: AnyCancellable?) {
+                    self.task = task
+                }
             }
             let test = Test()
 
             await withCheckedContinuation { continuation in
-                var task: AnyCancellable?
-                task = DeferredTask {
-                    task?.cancel()
+                Task {
+                    await test.setTask(DeferredTask {
+                        await test.task?.cancel()
+                    }
+                    .toAsyncSequence()
+                    .handleEvents(receiveCancel: {
+                        await test.cancel()
+                        continuation.resume()
+                    })
+                    .sink())
                 }
-                .toAsyncSequence()
-                .handleEvents(receiveCancel: {
-                    await test.cancel()
-                    continuation.resume()
-                })
-                .sink()
             }
 
             let canceled = await test.canceled

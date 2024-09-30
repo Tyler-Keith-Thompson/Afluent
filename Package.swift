@@ -18,14 +18,12 @@ let package = Package(name: "Afluent",
                           .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.1.0"),
                           .package(url: "https://github.com/apple/swift-testing.git", from: "0.10.0"),
                           .package(url: "https://github.com/apple/swift-async-algorithms.git", from: "1.0.0"),
-                          .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.0"),
                       ],
                       targets: [
                           .target(name: "Afluent",
                                   dependencies: [
                                       .product(name: "Atomics", package: "swift-atomics"),
                                       .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
-                                      .product(name: "DequeModule", package: "swift-collections"),
                                   ],
                                   swiftSettings: [
                                       .enableExperimentalFeature("StrictConcurrency=complete"),

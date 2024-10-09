@@ -31,7 +31,7 @@ let package = Package(name: "Afluent",
                           .testTarget(name: "AfluentTests",
                                       dependencies: testDependencies()),
                       ],
-                      swiftLanguageVersions: [.version("5.10"), .version("6")])
+                      swiftLanguageModes: [.version("5.10"), .version("6")])
 
 func testDependencies() -> [PackageDescription.Target.Dependency] {
     #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)

@@ -32,6 +32,7 @@ struct FlatMapSequenceTests {
         try #expect(Set(#require(results)) == [1])
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     @Test func flatMapCorrectlyCancels() async throws {
         await withMainSerialExecutor {
             let (seq1, cont1) = AsyncThrowingStream<Int, Error>.makeStream()

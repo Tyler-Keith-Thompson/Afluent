@@ -12,6 +12,7 @@ import Clocks
 import Afluent
 
 struct ExponentialbackoffTests {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     @Test func taskCanRetryADefinedNumberOfTimes() async throws {
         actor Test {
             var arr = [String]()
@@ -56,6 +57,7 @@ struct ExponentialbackoffTests {
         #expect(await iterator.next() == nil)
     }
     
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     @Test func taskCanRetryADefinedNumberOfTimes_WithMaxDelay() async throws {
         actor Test {
             var arr = [String]()

@@ -7,8 +7,10 @@
 
 import Foundation
 
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 public typealias ClockDurationUnit<C: Clock, T: BinaryInteger> = @Sendable (T) -> C.Duration
 
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 extension RetryStrategy where Self == RetryByBackoffStrategy<ExponentialBackoffStrategy<ContinuousClock>> {
     /// Creates a retry strategy using the provided backoff strategy and a continuous clock.
     ///
@@ -30,6 +32,7 @@ extension RetryStrategy where Self == RetryByBackoffStrategy<ExponentialBackoffS
 /// - Parameters:
 ///   - C: The type of `Clock` used for measuring time between retries.
 /// - Note: This actor conforms to `RetryStrategy` and is used to manage retries based on time delays.
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 public actor RetryByBackoffStrategy<Strategy: BackoffStrategy>: RetryStrategy {
     let strategy: Strategy
     let clock: Strategy.Clock
@@ -55,6 +58,7 @@ public actor RetryByBackoffStrategy<Strategy: BackoffStrategy>: RetryStrategy {
 ///
 /// Types conforming to `BackoffStrategy` must implement logic for calculating delays between retry attempts.
 /// The delay is determined using a clock and a duration unit.
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 public protocol BackoffStrategy<Clock>: Sendable where Clock: _Concurrency.Clock {
     associatedtype Clock
     /// Calculates the delay between retries using a clock and a duration unit.
@@ -71,6 +75,7 @@ public protocol BackoffStrategy<Clock>: Sendable where Clock: _Concurrency.Clock
     func backoff<T: BinaryInteger>(clock: Clock, durationUnit: ClockDurationUnit<Clock, T>) async throws -> Bool
 }
 
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 extension BackoffStrategy where Self == ExponentialBackoffStrategy<ContinuousClock> {
     /// Creates an exponential backoff strategy with a configurable base and maximum retry count.
     ///
@@ -100,6 +105,7 @@ extension BackoffStrategy where Self == ExponentialBackoffStrategy<ContinuousClo
 ///
 /// This actor calculates exponential delays between retries based on a specified base value. With each retry,
 /// the delay increases exponentially until the maximum retry count is reached.
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrategy {
     let base: UInt
     var count = 1

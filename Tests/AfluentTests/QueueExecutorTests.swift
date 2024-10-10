@@ -76,4 +76,9 @@ struct QueueExecutorTests {
         }
     }
 }
+
+#if os(Linux)
+extension DispatchQoS.QoSClass: @unchecked Sendable { }
+#endif
+
 #endif

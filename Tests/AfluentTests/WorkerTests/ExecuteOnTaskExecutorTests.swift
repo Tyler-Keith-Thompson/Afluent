@@ -12,7 +12,7 @@ import Testing
 #if swift(>=6)
 struct ExecuteOnTaskExecutorTests {
     @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-    @Test func testExecutesOnExpectedExecutor() async throws {
+    @Test func executesOnExpectedExecutor() async throws {
         try await DeferredTask { }
             .handleEvents(receiveOutput: { _ in
                 dispatchPrecondition(condition: .onQueue(.main))
@@ -34,20 +34,22 @@ struct ExecuteOnTaskExecutorTests {
     }
 
     @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-    @Test func testRunsOnExpectedExecutor() async throws {
-        let (stream, continuation) = AsyncStream<Void>.makeStream()
+    @Test func runsOnExpectedExecutor() async throws {
+        let completed1 = SingleValueSubject<Void>()
+        let completed2 = SingleValueSubject<Void>()
+        let completed3 = SingleValueSubject<Void>()
 
         DeferredTask { }
             .handleEvents(receiveOutput: { _ in
                 dispatchPrecondition(condition: .onQueue(.main))
-                continuation.yield()
+                try completed1.send()
             })
             .run(executorPreference: .mainQueue)
 
         DeferredTask { }
             .handleEvents(receiveOutput: { _ in
                 dispatchPrecondition(condition: .onQueue(.global(qos: .background)))
-                continuation.yield()
+                try completed2.send()
             })
             .run(executorPreference: .globalQueue(qos: .background))
 
@@ -55,13 +57,52 @@ struct ExecuteOnTaskExecutorTests {
         DeferredTask { }
             .handleEvents(receiveOutput: { _ in
                 dispatchPrecondition(condition: .onQueue(queue))
-                continuation.yield()
+                try completed3.send()
             })
             .run(executorPreference: .queue(queue))
 
-        for await _ in stream.chunks(ofCount: 3) {
-            break
-        }
+        try await completed1.execute()
+        try await completed2.execute()
+        try await completed3.execute()
     }
+
+    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+    @Test func subscribesOnExpectedExecutor() async throws {
+        let completed1 = SingleValueSubject<Void>()
+        let completed2 = SingleValueSubject<Void>()
+        let completed3 = SingleValueSubject<Void>()
+
+        let sub1 = DeferredTask { }
+            .handleEvents(receiveOutput: { _ in
+                dispatchPrecondition(condition: .onQueue(.main))
+                try completed1.send()
+            })
+            .subscribe(executorPreference: .mainQueue)
+
+        let sub2 = DeferredTask { }
+            .handleEvents(receiveOutput: { _ in
+                dispatchPrecondition(condition: .onQueue(.global(qos: .background)))
+                try completed2.send()
+            })
+            .subscribe(executorPreference: .globalQueue(qos: .background))
+
+        let queue = DispatchQueue(label: "\(String(describing: Self.self))\(UUID().uuidString)")
+        let sub3 = DeferredTask { }
+            .handleEvents(receiveOutput: { _ in
+                dispatchPrecondition(condition: .onQueue(queue))
+                try completed3.send()
+            })
+            .subscribe(executorPreference: .queue(queue))
+
+        noop(sub1)
+        noop(sub2)
+        noop(sub3)
+
+        try await completed1.execute()
+        try await completed2.execute()
+        try await completed3.execute()
+    }
+
+    private func noop(_ any: Any) { }
 }
 #endif

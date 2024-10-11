@@ -9,37 +9,62 @@ import Afluent
 import Foundation
 @_spi(Experimental) import Testing
 
-#if swift(>=6)
+@Suite(.serialized)
 struct ExecutePriorityTests {
-    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-    @Test(.serialized, arguments: [TaskPriority.background, .low, .medium, .high, .userInitiated].map(\.rawValue))
-    func testExecutesWithExpectedPriority(priority: UInt8) async throws {
-        let executor = TestExecutor()
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @Test(.serialized, arguments: [TaskPriority.background, .low, .medium, .high, .userInitiated])
+    func executesWithExpectedPriority(priority: TaskPriority) async throws {
+        let completed = SingleValueSubject<Void>()
+
+        // With structured concurrency, awaiting a value will cause that work to be performed with at least the priority of the current context
+        // Thus Task.currentPriority is not always the priority passed during Task creation
+        // Task.basePriority on the other hand, is unchanged once the Task is created
+        // References:
+        // https://forums.swift.org/t/taskpriority-of-task-groups-child-tasks/74877/4
+        // https://forums.swift.org/t/task-priority-elevation-for-task-groups-and-async-let/61100
+
+        let expectedCurrentPriority = max(Task.currentPriority, priority)
+
         try await DeferredTask { }
-            .execute(executorPreference: executor, priority: TaskPriority(rawValue: priority))
-        let receivedPriority = try await executor.receivedPriority.execute()
-        #expect(receivedPriority == priority)
+            .handleEvents(receiveOutput: {
+                #expect(Task.basePriority == priority)
+                #expect(Task.currentPriority == expectedCurrentPriority)
+                try completed.send()
+            })
+            .execute(priority: priority)
+
+        try await completed.execute()
     }
 
-    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-    @Test(.serialized, arguments: [TaskPriority.background, .low, .medium, .high, .userInitiated].map(\.rawValue))
-    func testRunsWithExpectedPriority(priority: UInt8) async throws {
-        let executor = TestExecutor()
+    @Test(.serialized, arguments: [TaskPriority.background, .low, .medium, .high, .userInitiated])
+    func runsWithExpectedPriority(priority: TaskPriority) async throws {
+        let completed = SingleValueSubject<Void>()
+
         DeferredTask { }
-            .run(executorPreference: executor, priority: TaskPriority(rawValue: priority))
-        let receivedPriority = try await executor.receivedPriority.execute()
-        #expect(receivedPriority == priority)
-    }
-}
+            .handleEvents(receiveOutput: {
+                #expect(Task.currentPriority == priority)
+                try completed.send()
+            })
+            .run(priority: priority)
 
-@available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-private final class TestExecutor: TaskExecutor, Sendable {
-    init() { }
-    let receivedPriority = SingleValueSubject<UInt8>()
-
-    func enqueue(_ job: consuming ExecutorJob) {
-        try? self.receivedPriority.send(job.priority.rawValue)
-        job.runSynchronously(on: self.asUnownedTaskExecutor())
+        try await completed.execute()
     }
+
+    @Test(.serialized, arguments: [TaskPriority.background, .low, .medium, .high, .userInitiated])
+    func subscribesWithExpectedPriority(priority: TaskPriority) async throws {
+        let completed = SingleValueSubject<Void>()
+
+        let subscription = DeferredTask { }
+            .handleEvents(receiveOutput: { _ in
+                #expect(Task.currentPriority == priority)
+                try completed.send()
+            })
+            .subscribe(priority: priority)
+
+        noop(subscription)
+
+        try await completed.execute()
+    }
+
+    private func noop(_ any: Any) { }
 }
-#endif

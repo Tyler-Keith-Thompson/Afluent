@@ -53,26 +53,26 @@ struct QueueExecutorTests {
 
         #expect(Context.value == nil)
 
-        Context.$value.withValue(expectedValue) {
-            Task(executorPreference: .mainQueue) {
+        await Context.$value.withValue(expectedValue) {
+            await Task(executorPreference: .mainQueue) {
                 dispatchPrecondition(condition: .onQueue(.main))
                 #expect(Context.value == expectedValue)
-            }
+            }.value
         }
 
-        Context.$value.withValue(expectedValue) {
-            Task(executorPreference: .globalQueue(qos: .background)) {
+        await Context.$value.withValue(expectedValue) {
+            await Task(executorPreference: .globalQueue(qos: .background)) {
                 dispatchPrecondition(condition: .onQueue(.global(qos: .background)))
                 #expect(Context.value == expectedValue)
-            }
+            }.value
         }
 
         let queue = DispatchQueue(label: "\(String(describing: Self.self))\(UUID().uuidString)")
-        Context.$value.withValue(expectedValue) {
-            Task(executorPreference: .queue(queue)) {
+        await Context.$value.withValue(expectedValue) {
+            await Task(executorPreference: .queue(queue)) {
                 dispatchPrecondition(condition: .onQueue(queue))
                 #expect(Context.value == expectedValue)
-            }
+            }.value
         }
     }
 }

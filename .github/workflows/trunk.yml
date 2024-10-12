@@ -8,11 +8,11 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: swift:5.10
+    container: swift:6.0
     steps:
       - uses: actions/checkout@v4
       - name: Run TESTS
-        run: swift test
+        run: swift test --use-integrated-swift-driver
   deploy:
     needs: test
     runs-on: ubuntu-22.04

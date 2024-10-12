@@ -18,12 +18,17 @@ struct PassthroughSubjectTests {
         }
         let test = Test()
         let subject = PassthroughSubject<Int>()
+        let taskStartedSubject = SingleValueSubject<Void>()
         
         let task = Task {
-            for try await value in subject {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
+                try? taskStartedSubject.send()
+            }) {
                 await test.appendValue(value)
             }
         }
+        
+        try await taskStartedSubject.execute()
         
         #expect(await test.values.isEmpty)
         
@@ -33,7 +38,10 @@ struct PassthroughSubjectTests {
         subject.send(completion: .finished)
         
         _ = try await task.value
-        
+
+        let val = await test.values
+        print(val)
+
         #expect(await test.values == [1, 2, 3])
     }
     
@@ -48,17 +56,26 @@ struct PassthroughSubjectTests {
         let test2 = Test()
         let subject = PassthroughSubject<Int>()
         
+        let taskStartedSubject = SingleValueSubject<Void>()
         let task = Task {
-            for try await value in subject {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
+                try? taskStartedSubject.send()
+            }) {
                 await test.appendValue(value)
             }
         }
         
+        let task2StartedSubject = SingleValueSubject<Void>()
         let task2 = Task {
-            for try await value in subject {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
+                try? task2StartedSubject.send()
+            }) {
                 await test2.appendValue(value)
             }
         }
+        
+        try await taskStartedSubject.execute()
+        try await task2StartedSubject.execute()
         
         #expect(await test.values.isEmpty)
         #expect(await test2.values.isEmpty)

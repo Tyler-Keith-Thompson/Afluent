@@ -11,7 +11,6 @@ import Atomics
     private let continuation: AsyncThrowingStream<Element, any Error>.Continuation
     private let streamIterator: () -> AsyncBroadcastSequence<AsyncThrowingStream<Element, any Error>>.AsyncIterator
     private let finished: ManagedAtomic<Bool> = .init(false)
-    private let finishedSubject = SingleValueSubject<Void>()
     
     public init() {
         let (s, c) = AsyncThrowingStream<Element, any Error>.makeStream()
@@ -20,28 +19,19 @@ import Atomics
         streamIterator = { shared.makeAsyncIterator() }
     }
     
-    public class Iterator: AsyncIteratorProtocol, @unchecked Sendable {
+    public struct Iterator: AsyncIteratorProtocol, @unchecked Sendable {
         var upstream: AsyncBroadcastSequence<AsyncThrowingStream<Element, any Error>>.AsyncIterator
-        let finished: @Sendable () async throws -> Void
+        let finished: Bool
         
-        init(upstream: AsyncBroadcastSequence<AsyncThrowingStream<Element, any Error>>.AsyncIterator, finished: @Sendable @escaping () async throws -> Void) {
-            self.upstream = upstream
-            self.finished = finished
-        }
-        
-        public func next() async throws -> Element? {
-            return try await Race {
-                try await finished()
-                return nil
-            } against: {
-                try await self.upstream.next()
-            }
+        public mutating func next() async throws -> Element? {
+            guard !finished else { return nil }
+            return try await upstream.next()
         }
     }
     
-    public func makeAsyncIterator() -> AsyncBroadcastSequence<AsyncThrowingStream<Element, any Error>>.AsyncIterator {
-        streamIterator()
-//        Iterator(upstream: streamIterator(), finished: { try await self.finishedSubject.execute() })
+    public func makeAsyncIterator() -> Iterator {
+        .init(upstream: streamIterator(), finished: finished.load(ordering: .sequentiallyConsistent))
+//        streamIterator()
     }
     
     public func send(_ element: Element) {
@@ -54,10 +44,7 @@ import Atomics
     }
     
     public func send(completion: Completion<any Error>) {
-        defer {
-            finished.store(true, ordering: .sequentiallyConsistent)
-            try? finishedSubject.send()
-        }
+        defer { finished.store(true, ordering: .sequentiallyConsistent) }
         switch completion {
         case .finished: continuation.finish()
         case .failure(let error): break

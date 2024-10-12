@@ -19,7 +19,6 @@ import Atomics
     private let continuation: AsyncThrowingStream<Element, any Error>.Continuation
     private let streamIterator: () -> AsyncBroadcastSequence<AsyncThrowingStream<Element, any Error>>.AsyncIterator
     private let state = State()
-    private let finished: ManagedAtomic<Bool> = .init(false)
     
     public init() {
         let (s, c) = AsyncThrowingStream<Element, any Error>.makeStream()

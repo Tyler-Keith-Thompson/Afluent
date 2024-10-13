@@ -22,7 +22,6 @@ let package = Package(name: "Afluent",
                           .target(name: "Afluent",
                                   dependencies: [
                                       .product(name: "Atomics", package: "swift-atomics"),
-                                      .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
                                   ],
                                   swiftSettings: [
                                       .enableExperimentalFeature("StrictConcurrency=complete"),
@@ -40,12 +39,14 @@ func testDependencies() -> [PackageDescription.Target.Dependency] {
             .product(name: "OHHTTPStubsSwift", package: "OHHTTPStubs"),
             .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"),
             .product(name: "Clocks", package: "swift-clocks"),
+            .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
         ]
     #else
         [
             "Afluent",
             .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"),
             .product(name: "Clocks", package: "swift-clocks"),
+            .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
         ]
     #endif
 }

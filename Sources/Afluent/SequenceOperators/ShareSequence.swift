@@ -17,8 +17,6 @@
 //
 
 
-import DequeModule
-
 @_spi(Experimental) extension AsyncSequence where Self: Sendable, Element: Sendable {
     public func broadcast() -> AsyncBroadcastSequence<Self> {
         AsyncBroadcastSequence(self)
@@ -37,7 +35,7 @@ import DequeModule
         }
         
         struct Side {
-            var buffer = Deque<Element>()
+            var buffer = [Element]()
             var terminal: Terminal?
             var continuation: UnsafeContinuation<Result<Element?, Error>, Never>?
             

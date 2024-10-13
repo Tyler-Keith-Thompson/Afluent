@@ -17,7 +17,6 @@
 //
 
 import Testing
-import AsyncAlgorithms
 
 @_spi(Experimental) import Afluent
 
@@ -39,7 +38,7 @@ import AsyncAlgorithms
     }
     
     @Test func BasicBroadcastingFromChannel() async {
-        let base = AsyncChannel<Int>()
+        let (base, continuation) = AsyncStream<Int>.makeStream()
         let a = base.broadcast()
         let b = a
         let results = await withTaskGroup(of: [Int].self) { group in
@@ -47,9 +46,9 @@ import AsyncAlgorithms
                 var sent = [Int]()
                 for i in 0..<10 {
                     sent.append(i)
-                    await base.send(i)
+                    continuation.yield(i)
                 }
-                base.finish()
+                continuation.finish()
                 return sent
             }
             group.addTask {
@@ -216,7 +215,7 @@ import AsyncAlgorithms
     @Test func AChannel_BroadcastingToTwoTasks_TheyReceivedTheChannelElements() async {
         // Given
         let elements = (0..<10).map { $0 }
-        let base = AsyncChannel<Int>()
+        let (base, continuation) = AsyncStream<Int>.makeStream()
         
         // When
         let broadcasted = base.broadcast()
@@ -225,9 +224,9 @@ import AsyncAlgorithms
                 var sent = [Int]()
                 for element in elements {
                     sent.append(element)
-                    await base.send(element)
+                    continuation.yield(element)
                 }
-                base.finish()
+                continuation.finish()
                 return sent
             }
             group.addTask {
@@ -320,4 +319,24 @@ func throwOn<T: Equatable>(_ toThrowOn: T, _ value: T) throws -> T {
         throw Failure()
     }
     return value
+}
+
+extension Array where Element: Sendable {
+    fileprivate var async: AsyncStream<Element> {
+        AsyncStream<Element> {
+            for item in self {
+                $0.yield(item)
+            }
+            $0.finish()
+        }
+    }
+}
+
+fileprivate extension RangeReplaceableCollection {
+    init<Source: AsyncSequence>(_ source: Source) async rethrows where Source.Element == Element {
+        self.init()
+        for try await item in source {
+            append(item)
+        }
+    }
 }

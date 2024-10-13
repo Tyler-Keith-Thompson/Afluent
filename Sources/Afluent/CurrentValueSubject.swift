@@ -51,9 +51,9 @@
         let state: State
         private var sentCurrentValue = false
 
-        init(upstream: AsyncBroadcastSequence<AsyncThrowingStream<Element, any Error>>.AsyncIterator, finished: Result<Element?, any Error>?, state: State) {
+        init(upstream: AsyncBroadcastSequence<AsyncThrowingStream<Element, any Error>>.AsyncIterator, state: State) {
             self.upstream = upstream
-            self.finished = finished
+            self.finished = state.finishedResult
             self.state = state
         }
                 
@@ -68,7 +68,7 @@
     }
     
     public func makeAsyncIterator() -> Iterator {
-        .init(upstream: streamIterator(), finished: state.finishedResult, state: state)
+        .init(upstream: streamIterator(), state: state)
     }
     
     public func send(_ element: Element) {

@@ -104,10 +104,12 @@ struct SerialTaskQueueTests {
         @Test func queueCanCancelOngoingTasks_OnDeinit() async throws {
             try await withMainSerialExecutor {
                 let sub = SingleValueSubject<Void>()
+                let cancelationSubject = SingleValueSubject<Void>()
                 var queue: SerialTaskQueue? = SerialTaskQueue()
                 let executed = ManagedAtomic(false)
                 async let _: Void = try await #require(queue).queue {
                     try sub.send()
+                    try await cancelationSubject.execute()
                     try Task.checkCancellation()
                     try await Task.sleep(for: .milliseconds(20))
                     executed.store(true, ordering: .sequentiallyConsistent)
@@ -115,6 +117,7 @@ struct SerialTaskQueueTests {
                 await Task.yield()
                 try await sub.execute()
                 queue = nil
+                try cancelationSubject.send()
                 let actual = executed.load(ordering: .sequentiallyConsistent)
                 #expect(actual == false)
             }

@@ -1,5 +1,5 @@
 //
-//  PassthroughSubjectTests.swift
+//  CurrentValueSubjectTests.swift
 //  Afluent
 //
 //  Created by Tyler Thompson on 10/12/24.
@@ -8,8 +8,8 @@
 import Testing
 @_spi(Experimental) import Afluent
 
-struct PassthroughSubjectTests {
-    @Test func passthroughSubjectCanSendValuesAndFinish() async throws {
+struct CurrentValueSubjectTests {
+    @Test func currentValueSubjectCanSendValuesAndFinish() async throws {
         actor Test {
             var values = [Int]()
             func appendValue(_ value: Int) {
@@ -17,7 +17,7 @@ struct PassthroughSubjectTests {
             }
         }
         let test = Test()
-        let subject = PassthroughSubject<Int>()
+        let subject = CurrentValueSubject<Int>(1)
         let taskStartedSubject = SingleValueSubject<Void>()
         
         let task = Task {
@@ -30,22 +30,88 @@ struct PassthroughSubjectTests {
         
         try await taskStartedSubject.execute()
         
-        #expect(await test.values.isEmpty)
+        #expect(await test.values.count < 2)
         
-        subject.send(1)
         subject.send(2)
         subject.send(3)
         subject.send(completion: .finished)
         
         _ = try await task.value
 
-        let val = await test.values
-        print(val)
+        #expect(await test.values == [1, 2, 3])
+    }
+    
+    @Test func currentValueSubjectUpdatesValueOnSend() async throws {
+        actor Test {
+            var values = [Int]()
+            func appendValue(_ value: Int) {
+                values.append(value)
+            }
+        }
+        let test = Test()
+        let subject = CurrentValueSubject<Int>(1)
+        #expect(subject.value == 1)
+        let taskStartedSubject = SingleValueSubject<Void>()
+        
+        let task = Task {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
+                try? taskStartedSubject.send()
+            }) {
+                await test.appendValue(value)
+            }
+        }
+        
+        try await taskStartedSubject.execute()
+        
+        #expect(await test.values.count < 2)
+        
+        subject.send(2)
+        #expect(subject.value == 2)
+        subject.send(3)
+        #expect(subject.value == 3)
+        subject.send(completion: .finished)
+        
+        _ = try await task.value
 
         #expect(await test.values == [1, 2, 3])
     }
     
-    @Test func passthroughSubjectCanSendValues_ToMultipleConsumers_AndFinish() async throws {
+    @Test func currentValueSubjectSendsWhenValueUpdated() async throws {
+        actor Test {
+            var values = [Int]()
+            func appendValue(_ value: Int) {
+                values.append(value)
+            }
+        }
+        let test = Test()
+        let subject = CurrentValueSubject<Int>(1)
+        #expect(subject.value == 1)
+        let taskStartedSubject = SingleValueSubject<Void>()
+        
+        let task = Task {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
+                try? taskStartedSubject.send()
+            }) {
+                await test.appendValue(value)
+            }
+        }
+        
+        try await taskStartedSubject.execute()
+        
+        #expect(await test.values.count < 2)
+        
+        subject.value = 2
+        #expect(subject.value == 2)
+        subject.value = 3
+        #expect(subject.value == 3)
+        subject.send(completion: .finished)
+        
+        _ = try await task.value
+
+        #expect(await test.values == [1, 2, 3])
+    }
+    
+    @Test func currentValueSubjectCanSendValues_ToMultipleConsumers_AndFinish() async throws {
         actor Test {
             var values = [Int]()
             func appendValue(_ value: Int) {
@@ -54,7 +120,7 @@ struct PassthroughSubjectTests {
         }
         let test = Test()
         let test2 = Test()
-        let subject = PassthroughSubject<Int>()
+        let subject = CurrentValueSubject<Int>(1)
         
         let taskStartedSubject = SingleValueSubject<Void>()
         let task = Task {
@@ -77,10 +143,9 @@ struct PassthroughSubjectTests {
         try await taskStartedSubject.execute()
         try await task2StartedSubject.execute()
         
-        #expect(await test.values.isEmpty)
-        #expect(await test2.values.isEmpty)
+        #expect(await test.values.count < 2)
+        #expect(await test2.values.count < 2)
 
-        subject.send(1)
         subject.send(2)
         subject.send(3)
         subject.send(completion: .finished)
@@ -92,7 +157,7 @@ struct PassthroughSubjectTests {
         #expect(await test2.values == [1, 2, 3])
     }
     
-    @Test func passthroughSubjectStopsSendingValuesUponFinish() async throws {
+    @Test func currentValueSubjectStopsSendingValuesUponFinish() async throws {
         actor Test {
             var values = [Int]()
             func appendValue(_ value: Int) {
@@ -100,7 +165,7 @@ struct PassthroughSubjectTests {
             }
         }
         let test = Test()
-        let subject = PassthroughSubject<Int>()
+        let subject = CurrentValueSubject<Int>(1)
         let taskStartedSubject = SingleValueSubject<Void>()
 
         let task = Task {
@@ -113,9 +178,8 @@ struct PassthroughSubjectTests {
         
         try await taskStartedSubject.execute()
 
-        #expect(await test.values.isEmpty)
-        
-        subject.send(1)
+        #expect(await test.values.count < 2)
+
         subject.send(2)
         subject.send(3)
         subject.send(completion: .finished)
@@ -137,10 +201,12 @@ struct PassthroughSubjectTests {
         
         _ = try await task2.value
 
+        let values = await test.values
+        print(values)
         #expect(await test.values == [1, 2, 3])
     }
     
-    @Test func passthroughSubjectCanCompleteWithError() async throws {
+    @Test func currentValueSubjectCanCompleteWithError() async throws {
         enum Err: Error, Equatable {
             case e1
         }
@@ -152,7 +218,7 @@ struct PassthroughSubjectTests {
             }
         }
         let test = Test()
-        let subject = PassthroughSubject<Int>()
+        let subject = CurrentValueSubject<Int>(1)
         let taskStartedSubject = SingleValueSubject<Void>()
 
         let task = Task {
@@ -162,9 +228,8 @@ struct PassthroughSubjectTests {
             }
         }
         
-        #expect(await test.values.isEmpty)
-        
-        subject.send(1)
+        #expect(await test.values.count < 2)
+
         try await taskStartedSubject.execute()
         subject.send(completion: .failure(Err.e1))
         subject.send(3)
@@ -192,7 +257,7 @@ struct PassthroughSubjectTests {
         #expect(await test.values == [1])
     }
     
-    @Test func passthroughSubjectCanSendVoidValues() async throws {
+    @Test func currentValueSubjectCanSendVoidValues() async throws {
         actor Test {
             var count = 0
             func appendValue() {
@@ -200,7 +265,7 @@ struct PassthroughSubjectTests {
             }
         }
         let test = Test()
-        let subject = PassthroughSubject<Void>()
+        let subject = CurrentValueSubject<Void>()
         let taskStartedSubject = SingleValueSubject<Void>()
 
         let task = Task {
@@ -213,9 +278,8 @@ struct PassthroughSubjectTests {
         
         try await taskStartedSubject.execute()
 
-        #expect(await test.count == 0)
-        
-        subject.send()
+        #expect(await test.count < 2)
+
         subject.send()
         subject.send()
         subject.send(completion: .finished)

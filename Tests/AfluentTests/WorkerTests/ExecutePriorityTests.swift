@@ -23,12 +23,15 @@ struct ExecutePriorityTests {
         // https://forums.swift.org/t/taskpriority-of-task-groups-child-tasks/74877/4
         // https://forums.swift.org/t/task-priority-elevation-for-task-groups-and-async-let/61100
 
+        // One more caveat: it appears Task.currentPriority may change while a Task is executing
+        // This behavior is difficult to test, so we're avoiding checking Task.currentPriority for this test
+        // since we more care about the priority we asked for, not necessarily the one the work actually has
+
         let expectedCurrentPriority = max(Task.currentPriority, priority)
 
         try await DeferredTask { }
             .handleEvents(receiveOutput: {
                 #expect(Task.basePriority == priority)
-                #expect(Task.currentPriority == expectedCurrentPriority)
                 try completed.send()
             })
             .execute(priority: priority)

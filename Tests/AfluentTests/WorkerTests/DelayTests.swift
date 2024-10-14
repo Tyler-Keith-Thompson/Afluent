@@ -21,7 +21,7 @@ struct DelayTests {
         }
         let clock = TestClock()
         let test = Test()
-        DeferredTask { }
+        DeferredTask {}
             .delay(for: .milliseconds(10), clock: clock, tolerance: nil)
             .handleEvents(receiveOutput: { _ in await test.setFinished(true) })
             .run()

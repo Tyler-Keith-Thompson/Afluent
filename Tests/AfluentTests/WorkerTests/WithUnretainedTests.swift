@@ -5,20 +5,22 @@
 //  Created by Daniel Bachar on 11/8/23.
 //
 import Afluent
-
 import Foundation
 import Testing
 
 struct WithUnretainedTests {
-    final class MyType: Sendable { }
+    final class MyType: Sendable {}
 
     @Test func withUnretainedHolds() async throws {
         let myTypeInstance = MyType()
 
         try await DeferredTask { 1 }
-            .withUnretained(myTypeInstance, resultSelector: { myType, _ in
-                #expect(myType != nil)
-            })
+            .withUnretained(
+                myTypeInstance,
+                resultSelector: { myType, _ in
+                    #expect(myType != nil)
+                }
+            )
             .execute()
     }
 

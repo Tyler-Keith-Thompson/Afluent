@@ -19,7 +19,7 @@ struct RetrySequenceTests {
         }
 
         let test = Test()
-        let retryCount = UInt.random(in: 2 ... 10)
+        let retryCount = UInt.random(in: 2...10)
 
         let t = Task {
             try await DeferredTask {
@@ -135,7 +135,7 @@ struct RetrySequenceTests {
         let copy = await test.arr
         #expect(UInt(copy.count) == 1)
     }
-    
+
     @Test func taskCanRetryADefinedNumberOfTimes_WithStrategy() async throws {
         actor Test {
             var arr = [String]()
@@ -145,7 +145,7 @@ struct RetrySequenceTests {
         }
 
         let test = Test()
-        let retryCount = UInt.random(in: 2 ... 10)
+        let retryCount = UInt.random(in: 2...10)
 
         let t = Task {
             try await DeferredTask {
@@ -188,7 +188,9 @@ struct RetrySequenceTests {
         #expect(UInt(copy.count) == 1)
     }
 
-    @Test func taskWithMultipleRetries_OnlyRetriesTheSpecifiedNumberOfTimes_WithStrategy() async throws {
+    @Test func taskWithMultipleRetries_OnlyRetriesTheSpecifiedNumberOfTimes_WithStrategy()
+        async throws
+    {
         actor Test {
             var arr = [String]()
             func append(_ str: String) {

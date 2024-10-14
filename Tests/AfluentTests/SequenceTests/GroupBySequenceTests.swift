@@ -9,6 +9,7 @@ import Clocks
 import ConcurrencyExtras
 import Foundation
 import Testing
+
 @testable import Afluent
 
 struct GroupBySequenceTests {
@@ -21,7 +22,7 @@ struct GroupBySequenceTests {
             let stream = AsyncStream<Int> { _ in }.groupBy { $0 }
 
             let task = Task {
-                for try await _ in stream { }
+                for try await _ in stream {}
             }
 
             task.cancel()
@@ -191,7 +192,9 @@ struct GroupBySequenceTests {
         }
     }
 
-    @Test func groupByWithPopulatedSequenceGroupsByKeysWithSequences_completingWithError() async throws {
+    @Test func groupByWithPopulatedSequenceGroupsByKeysWithSequences_completingWithError()
+        async throws
+    {
         let stream = AsyncThrowingStream<String, Error> { continuation in
             continuation.yield("a")
             continuation.yield("b")

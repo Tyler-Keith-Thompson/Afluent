@@ -9,7 +9,8 @@ import Foundation
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension AsyncSequences {
-    public struct Throttle<Upstream: AsyncSequence & Sendable, C: Clock>: AsyncSequence, Sendable where Upstream.Element: Sendable {
+    public struct Throttle<Upstream: AsyncSequence & Sendable, C: Clock>: AsyncSequence, Sendable
+    where Upstream.Element: Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         let interval: C.Duration
@@ -31,7 +32,8 @@ extension AsyncSequences {
                 try Task.checkCancellation()
 
                 if iterator == nil {
-                    iterator = AsyncThrowingStream<(Element?, Element?), Error> { [clock, interval, upstream, state] continuation in
+                    iterator = AsyncThrowingStream<(Element?, Element?), Error> {
+                        [clock, interval, upstream, state] continuation in
 
                         let intervalTask = DeferredTask {
                             guard let intervalStartInstant = state.startInstant else { return }
@@ -109,7 +111,9 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Parameter interval: The interval of time in which to observe and emit either the first or latest element.
     /// - Parameter latest: If `true`, emits the latest element in the time interval.  If `false`, emits the first element in the time interval.
     /// - Note: The first element in upstream will always be returned immediately.  Once a second element is received, then the clock will begin for the given time interval and return the first or latest element once completed.
-    public func throttle<C: Clock>(for interval: C.Duration, clock: C, latest: Bool) -> AsyncSequences.Throttle<Self, C> {
+    public func throttle<C: Clock>(for interval: C.Duration, clock: C, latest: Bool)
+        -> AsyncSequences.Throttle<Self, C>
+    {
         AsyncSequences.Throttle(upstream: self, interval: interval, clock: clock, latest: latest)
     }
 }

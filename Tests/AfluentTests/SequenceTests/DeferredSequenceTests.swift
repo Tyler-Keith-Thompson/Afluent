@@ -12,9 +12,13 @@ import Foundation
 import Testing
 
 struct DeferredTests {
-    @Test(.disabled(if: SwiftVersion.isSwift6, "There's some kind of Xcode 16 bug where this crashes intermittently")) func upstreamSequenceDefersExecutionUntilIteration() async throws {
+    @Test(
+        .disabled(
+            if: SwiftVersion.isSwift6,
+            "There's some kind of Xcode 16 bug where this crashes intermittently"))
+    func upstreamSequenceDefersExecutionUntilIteration() async throws {
         let started = ManagedAtomic<Bool>(false)
-        let sent = Array(0 ... 9)
+        let sent = Array(0...9)
 
         let sequence = Deferred {
             defer {
@@ -44,7 +48,7 @@ struct DeferredTests {
     }
 
     @Test func returnsANewIteratorEachTime() async throws {
-        let sent = Array(0 ... 9)
+        let sent = Array(0...9)
 
         let sequence = Deferred {
             AsyncStream(Int.self) { continuation in
@@ -62,13 +66,13 @@ struct DeferredTests {
         }
 
         try await withThrowingTaskGroup(of: Void.self) { group in
-            for _ in 0 ... 9 {
+            for _ in 0...9 {
                 group.addTask {
                     try await iterate()
                 }
             }
 
-            for try await _ in group { }
+            for try await _ in group {}
         }
     }
 
@@ -100,7 +104,7 @@ struct DeferredTests {
             }
         }
 
-        for try await _ in sequence.retry() { }
+        for try await _ in sequence.retry() {}
 
         #expect(await test.upstreamCount == 2)
     }
@@ -110,7 +114,7 @@ struct DeferredTests {
             let sequence = Deferred<AsyncStream<Int>> { AsyncStream { _ in } }
 
             let task = Task {
-                for try await _ in sequence { }
+                for try await _ in sequence {}
             }
             task.cancel()
 

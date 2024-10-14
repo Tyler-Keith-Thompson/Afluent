@@ -27,7 +27,8 @@ extension AsynchronousUnitOfWork {
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that emits the success value or throws the error contained within the `Result`.
     /// - Throws: The error contained within the `Result` if it's a failure.
-    public func dematerialize<T: Sendable>() -> some AsynchronousUnitOfWork<T> where Success == Result<T, Error> {
+    public func dematerialize<T: Sendable>() -> some AsynchronousUnitOfWork<T>
+    where Success == Result<T, Error> {
         tryMap { try $0.get() }
     }
 }

@@ -50,12 +50,13 @@ extension AsyncSequences {
 
         public func makeAsyncIterator() -> AsyncIterator {
             receiveMakeIterator?()
-            return AsyncIterator(upstream: upstream.makeAsyncIterator(),
-                                 receiveNext: receiveNext,
-                                 receiveOutput: receiveOutput,
-                                 receiveError: receiveError,
-                                 receiveComplete: receiveComplete,
-                                 receiveCancel: receiveCancel)
+            return AsyncIterator(
+                upstream: upstream.makeAsyncIterator(),
+                receiveNext: receiveNext,
+                receiveOutput: receiveOutput,
+                receiveError: receiveError,
+                receiveComplete: receiveComplete,
+                receiveCancel: receiveCancel)
         }
     }
 }
@@ -73,7 +74,27 @@ extension AsyncSequence where Self: Sendable {
     /// - Returns: An `AsynchronousUnitOfWork` that performs the side-effects for the specified receiving events.
     ///
     /// - Note: The returned `AsynchronousUnitOfWork` forwards all receiving events from the upstream unit of work.
-    public func handleEvents(@_implicitSelfCapture receiveMakeIterator: (@Sendable () -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveNext: (@Sendable () async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveOutput: (@Sendable (Element) async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveError: (@Sendable (Error) async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveComplete: (@Sendable () async throws -> Void)? = nil, @_inheritActorContext @_implicitSelfCapture receiveCancel: (@Sendable () async throws -> Void)? = nil) -> AsyncSequences.HandleEvents<Self> {
-        AsyncSequences.HandleEvents(upstream: self, receiveMakeIterator: receiveMakeIterator, receiveNext: receiveNext, receiveOutput: receiveOutput, receiveError: receiveError, receiveComplete: receiveComplete, receiveCancel: receiveCancel)
+    public func handleEvents(
+        @_implicitSelfCapture receiveMakeIterator: (@Sendable () -> Void)? = nil,
+        @_inheritActorContext @_implicitSelfCapture receiveNext: (
+            @Sendable () async throws -> Void
+        )? = nil,
+        @_inheritActorContext @_implicitSelfCapture receiveOutput: (
+            @Sendable (Element) async throws -> Void
+        )? = nil,
+        @_inheritActorContext @_implicitSelfCapture receiveError: (
+            @Sendable (Error) async throws -> Void
+        )? = nil,
+        @_inheritActorContext @_implicitSelfCapture receiveComplete: (
+            @Sendable () async throws -> Void
+        )? = nil,
+        @_inheritActorContext @_implicitSelfCapture receiveCancel: (
+            @Sendable () async throws -> Void
+        )? = nil
+    ) -> AsyncSequences.HandleEvents<Self> {
+        AsyncSequences.HandleEvents(
+            upstream: self, receiveMakeIterator: receiveMakeIterator, receiveNext: receiveNext,
+            receiveOutput: receiveOutput, receiveError: receiveError,
+            receiveComplete: receiveComplete, receiveCancel: receiveCancel)
     }
 }

@@ -12,10 +12,12 @@ public protocol TopLevelEncoder<Output> {
     func encode<T: Encodable>(_ value: T) throws -> Output
 }
 
-extension JSONEncoder: TopLevelEncoder { }
+extension JSONEncoder: TopLevelEncoder {}
 
 extension Workers {
-    struct Encode<Upstream: AsynchronousUnitOfWork, Encoder: TopLevelEncoder, Success: Sendable>: AsynchronousUnitOfWork where Success == Encoder.Output, Upstream.Success: Encodable {
+    struct Encode<Upstream: AsynchronousUnitOfWork, Encoder: TopLevelEncoder, Success: Sendable>:
+        AsynchronousUnitOfWork
+    where Success == Encoder.Output, Upstream.Success: Encodable {
         final class State: @unchecked Sendable {
             let lock = NSRecursiveLock()
             private let encoder: Encoder
@@ -55,7 +57,8 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` emitting the encoded values as output of type `E.Output`.
     ///
     /// - Note: The returned `AsynchronousUnitOfWork` will fail if the encoding process fails.
-    public func encode<E: TopLevelEncoder>(encoder: E) -> some AsynchronousUnitOfWork<E.Output> where Success: Encodable, E.Output: Sendable {
+    public func encode<E: TopLevelEncoder>(encoder: E) -> some AsynchronousUnitOfWork<E.Output>
+    where Success: Encodable, E.Output: Sendable {
         Workers.Encode(upstream: self, encoder: encoder)
     }
 }

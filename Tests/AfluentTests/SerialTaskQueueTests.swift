@@ -1,3 +1,4 @@
+import Afluent
 //
 //  SerialTaskQueueTests.swift
 //
@@ -8,10 +9,9 @@ import Atomics
 import ConcurrencyExtras
 import Testing
 
-import Afluent
-
 struct SerialTaskQueueTests {
-    @Test func serialTaskQueueSchedulesOneTaskAtATime_EvenWhenSchedulingIsConcurrent() async throws {
+    @Test func serialTaskQueueSchedulesOneTaskAtATime_EvenWhenSchedulingIsConcurrent() async throws
+    {
         let queue = SerialTaskQueue()
         actor Test {
             var isExecuting = false
@@ -21,8 +21,9 @@ struct SerialTaskQueueTests {
             }
         }
         let test = Test()
-        let results = try await withThrowingTaskGroup(of: Int.self, returning: [Int].self) { group in
-            for i in 1 ... 100 {
+        let results = try await withThrowingTaskGroup(of: Int.self, returning: [Int].self) {
+            group in
+            for i in 1...100 {
                 group.addTask {
                     try await queue.queue {
                         let executing = await test.isExecuting
@@ -42,7 +43,7 @@ struct SerialTaskQueueTests {
             return results
         }
         // Why sort the results? Because task groups don't make any guarantees, just because I asked it to schedule these in order doesn't mean it did.
-        #expect(results.sorted() == Array(1 ... 100))
+        #expect(results.sorted() == Array(1...100))
     }
 
     @Test func queuingATaskThatThrows_ThrowsToQueue() async throws {
@@ -55,9 +56,11 @@ struct SerialTaskQueueTests {
                 throw Err.e1
             }
         }.result
-        #expect(throws: Err.self, performing: {
-            try result.get()
-        })
+        #expect(
+            throws: Err.self,
+            performing: {
+                try result.get()
+            })
     }
 
     @Test func queuingATaskThatThrows_StillAllowsOthersToBeQueued() async throws {
@@ -70,9 +73,11 @@ struct SerialTaskQueueTests {
                 throw Err.e1
             }
         }.result
-        #expect(throws: Err.self, performing: {
-            try result.get()
-        })
+        #expect(
+            throws: Err.self,
+            performing: {
+                try result.get()
+            })
         let result2 = try await queue.queue {
             2
         }
@@ -80,7 +85,11 @@ struct SerialTaskQueueTests {
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-    @Test(.disabled(if: SwiftVersion.isSwift6, "There's some kind of Xcode 16 bug where this crashes intermittently")) func queueCanCancelOngoingTasks() async throws {
+    @Test(
+        .disabled(
+            if: SwiftVersion.isSwift6,
+            "There's some kind of Xcode 16 bug where this crashes intermittently"))
+    func queueCanCancelOngoingTasks() async throws {
         try await withMainSerialExecutor {
             let sub = SingleValueSubject<Void>()
             let queue = SerialTaskQueue()
@@ -127,10 +136,10 @@ struct SerialTaskQueueTests {
 
 enum SwiftVersion {
     static var isSwift6: Bool {
-#if swift(>=6.0)
-        return true
-#else
-        return false
-#endif
+        #if swift(>=6.0)
+            return true
+        #else
+            return false
+        #endif
     }
 }

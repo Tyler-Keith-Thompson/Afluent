@@ -9,6 +9,7 @@ import Clocks
 import ConcurrencyExtras
 import Foundation
 import Testing
+
 @testable import Afluent
 
 struct ShareFromCacheTests {
@@ -27,15 +28,18 @@ struct ShareFromCacheTests {
             let cache = AUOWCache()
 
             @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
-                DeferredTask { await test.increment(); return UUID().uuidString }
-                    .delay(for: .milliseconds(10), clock: clock)
-                    .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation)
+                DeferredTask {
+                    await test.increment()
+                    return UUID().uuidString
+                }
+                .delay(for: .milliseconds(10), clock: clock)
+                .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation)
             }
 
             let uow = unitOfWork()
             async let d1 = uow.execute()
             #expect(!cache.cache.isEmpty)
-            async let d2 = DeferredTask { }
+            async let d2 = DeferredTask {}
                 .delay(for: .milliseconds(5), clock: clock)
                 .flatMap {
                     #expect(!cache.cache.isEmpty)
@@ -72,15 +76,18 @@ struct ShareFromCacheTests {
             let clock = TestClock()
 
             @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
-                DeferredTask { await test.increment(); return UUID().uuidString }
-                    .delay(for: .milliseconds(10), clock: clock)
-                    .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation)
+                DeferredTask {
+                    await test.increment()
+                    return UUID().uuidString
+                }
+                .delay(for: .milliseconds(10), clock: clock)
+                .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation)
             }
 
             let uow = unitOfWork()
             async let d1 = uow.execute()
             #expect(!cache.cache.isEmpty)
-            async let d2 = DeferredTask { }
+            async let d2 = DeferredTask {}
                 .delay(for: .milliseconds(15), clock: clock)
                 .flatMap {
                     #expect(cache.cache.isEmpty)
@@ -114,15 +121,18 @@ struct ShareFromCacheTests {
             let clock = TestClock()
 
             @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
-                DeferredTask { await test.increment(); throw Err.e1 }
-                    .delay(for: .milliseconds(10), clock: clock)
-                    .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation)
+                DeferredTask {
+                    await test.increment()
+                    throw Err.e1
+                }
+                .delay(for: .milliseconds(10), clock: clock)
+                .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation)
             }
 
             let uow = unitOfWork()
             async let d1 = uow.execute()
             #expect(!cache.cache.isEmpty)
-            async let d2 = DeferredTask { }
+            async let d2 = DeferredTask {}
                 .delay(for: .milliseconds(15), clock: clock)
                 .flatMap {
                     #expect(cache.cache.isEmpty)
@@ -170,15 +180,18 @@ struct ShareFromCacheTests {
             let clock = TestClock()
 
             @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
-                DeferredTask { await test.increment(); return UUID().uuidString }
-                    .delay(for: .milliseconds(10), clock: clock)
-                    .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: 1)
+                DeferredTask {
+                    await test.increment()
+                    return UUID().uuidString
+                }
+                .delay(for: .milliseconds(10), clock: clock)
+                .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: 1)
             }
 
             let uow = unitOfWork()
             async let d1 = uow.execute()
             #expect(!cache.cache.isEmpty)
-            async let d2 = DeferredTask { }
+            async let d2 = DeferredTask {}
                 .delay(for: .milliseconds(5), clock: clock)
                 .flatMap { unitOfWork() }
                 .execute()

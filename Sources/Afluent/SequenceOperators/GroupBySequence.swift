@@ -8,7 +8,9 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct GroupBy<Upstream: AsyncSequence & Sendable, Key: Hashable>: AsyncSequence, Sendable where Upstream.Element: Sendable {
+    public struct GroupBy<Upstream: AsyncSequence & Sendable, Key: Hashable>: AsyncSequence,
+        Sendable
+    where Upstream.Element: Sendable {
         public typealias Element = (key: Key, stream: AsyncThrowingStream<Upstream.Element, Error>)
         let upstream: Upstream
         let keySelector: @Sendable (Upstream.Element) async -> Key
@@ -22,7 +24,12 @@ extension AsyncSequences {
             var upstream: Upstream.AsyncIterator
             let keySelector: (Upstream.Element) async -> Key
 
-            var keyedSequences = [Key: (stream: AsyncThrowingStream<Upstream.Element, Error>, continuation: AsyncThrowingStream<Upstream.Element, Error>.Continuation)]()
+            var keyedSequences = [
+                Key: (
+                    stream: AsyncThrowingStream<Upstream.Element, Error>,
+                    continuation: AsyncThrowingStream<Upstream.Element, Error>.Continuation
+                )
+            ]()
 
             public mutating func next() async throws -> Element? {
                 do {
@@ -37,7 +44,8 @@ extension AsyncSequences {
                         existing.continuation.yield(element)
                         return try await next()
                     } else {
-                        let (stream, continuation) = AsyncThrowingStream<Upstream.Element, Error>.makeStream()
+                        let (stream, continuation) = AsyncThrowingStream<Upstream.Element, Error>
+                            .makeStream()
                         keyedSequences[key] = (stream: stream, continuation: continuation)
                         defer { continuation.yield(element) }
                         return (key: key, stream: stream)
@@ -56,7 +64,9 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence where Self: Sendable, Element: Sendable {
-    public func groupBy<Key: Hashable>(keySelector: @Sendable @escaping (Element) async -> Key) -> AsyncSequences.GroupBy<Self, Key> {
+    public func groupBy<Key: Hashable>(keySelector: @Sendable @escaping (Element) async -> Key)
+        -> AsyncSequences.GroupBy<Self, Key>
+    {
         AsyncSequences.GroupBy(upstream: self, keySelector: keySelector)
     }
 }

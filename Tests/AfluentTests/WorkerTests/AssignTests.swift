@@ -20,7 +20,8 @@ struct AssignTests {
                     lock.lock()
                     defer { lock.unlock() }
                     return _val
-                } set {
+                }
+                set {
                     lock.lock()
                     defer { lock.unlock() }
                     _val = newValue

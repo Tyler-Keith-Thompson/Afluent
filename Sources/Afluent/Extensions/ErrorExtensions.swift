@@ -16,7 +16,7 @@ extension Error {
             throw self
         }
     }
-    
+
     @discardableResult func throwIf<E: Error & Equatable>(_ error: E) throws -> Self {
         if let unwrappedError = (self as? E) {
             if unwrappedError == error {
@@ -25,7 +25,7 @@ extension Error {
         }
         return self
     }
-    
+
     @discardableResult func throwIf<E: Error>(_ error: E.Type) throws -> Self {
         if let unwrappedError = (self as? E) {
             throw unwrappedError

@@ -25,7 +25,7 @@ struct ExecutePriorityTests {
 
         let expectedCurrentPriority = max(Task.currentPriority, priority)
 
-        try await DeferredTask { }
+        try await DeferredTask {}
             .handleEvents(receiveOutput: {
                 #expect(Task.basePriority == priority)
                 #expect(Task.currentPriority == expectedCurrentPriority)
@@ -40,7 +40,7 @@ struct ExecutePriorityTests {
     func runsWithExpectedPriority(priority: TaskPriority) async throws {
         let completed = SingleValueSubject<Void>()
 
-        DeferredTask { }
+        DeferredTask {}
             .handleEvents(receiveOutput: {
                 #expect(Task.currentPriority == priority)
                 try completed.send()
@@ -54,7 +54,7 @@ struct ExecutePriorityTests {
     func subscribesWithExpectedPriority(priority: TaskPriority) async throws {
         let completed = SingleValueSubject<Void>()
 
-        let subscription = DeferredTask { }
+        let subscription = DeferredTask {}
             .handleEvents(receiveOutput: { _ in
                 #expect(Task.currentPriority == priority)
                 try completed.send()
@@ -66,5 +66,5 @@ struct ExecutePriorityTests {
         try await completed.execute()
     }
 
-    private func noop(_ any: Any) { }
+    private func noop(_ any: Any) {}
 }

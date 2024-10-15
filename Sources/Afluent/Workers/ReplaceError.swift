@@ -8,7 +8,8 @@
 import Foundation
 
 extension Workers {
-    struct ReplaceError<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork where Upstream.Success == Success {
+    struct ReplaceError<Upstream: AsynchronousUnitOfWork, Success: Sendable>: AsynchronousUnitOfWork
+    where Upstream.Success == Success {
         let state = TaskState<Success>()
         let upstream: Upstream
         let newValue: Success

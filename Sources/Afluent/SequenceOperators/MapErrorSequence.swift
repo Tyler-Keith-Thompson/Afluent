@@ -28,8 +28,9 @@ extension AsyncSequences {
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstreamIterator: upstream.makeAsyncIterator(),
-                          transform: transform)
+            AsyncIterator(
+                upstreamIterator: upstream.makeAsyncIterator(),
+                transform: transform)
         }
     }
 }
@@ -42,7 +43,9 @@ extension AsyncSequence where Self: Sendable {
     /// - Parameter transform: A closure that takes the original error and returns a transformed error.
     ///
     /// - Returns: An `AsyncSequence` that produces the transformed error.
-    public func mapError(_ transform: @Sendable @escaping (Error) -> Error) -> AsyncSequences.MapError<Self> {
+    public func mapError(_ transform: @Sendable @escaping (Error) -> Error)
+        -> AsyncSequences.MapError<Self>
+    {
         AsyncSequences.MapError(upstream: self, transform: transform)
     }
 
@@ -55,7 +58,9 @@ extension AsyncSequence where Self: Sendable {
     ///   - transform: A closure that takes the matched error and returns a transformed error.
     ///
     /// - Returns: An `AsyncSequence` that produces the transformed error.
-    public func mapError<E: Error & Equatable>(_ error: E, _ transform: @Sendable @escaping (Error) -> Error) -> AsyncSequences.MapError<Self> {
+    public func mapError<E: Error & Equatable>(
+        _ error: E, _ transform: @Sendable @escaping (Error) -> Error
+    ) -> AsyncSequences.MapError<Self> {
         mapError {
             if let e = $0 as? E, e == error { return transform(e) }
             return $0

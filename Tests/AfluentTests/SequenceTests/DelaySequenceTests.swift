@@ -68,9 +68,12 @@ struct DelaySequenceTests {
                 let elapsedTime = startTime.duration(to: currentTime)
 
                 if count == 1 {
-                    #expect(elapsedTime >= delayDuration, "Element \(count) was not delayed correctly.")
+                    #expect(
+                        elapsedTime >= delayDuration, "Element \(count) was not delayed correctly.")
                 } else {
-                    #expect(elapsedTime < delayDuration * count, "Element \(count) was not delayed correctly.")
+                    #expect(
+                        elapsedTime < delayDuration * count,
+                        "Element \(count) was not delayed correctly.")
                 }
             }
             return count
@@ -105,12 +108,16 @@ struct DelaySequenceTests {
                     let elapsedTime = startTime.duration(to: currentTime)
 
                     if count == 1 {
-                        #expect(elapsedTime >= delayDuration, "Element \(count) was not delayed correctly.")
+                        #expect(
+                            elapsedTime >= delayDuration,
+                            "Element \(count) was not delayed correctly.")
                         await clock.advance(by: .milliseconds(15))
                         continuation.yield(2)
                         Task { await clock.advance(by: delayDuration) }
                     } else {
-                        #expect(elapsedTime >= delayDuration + .milliseconds(15), "Element \(count) was not delayed correctly.")
+                        #expect(
+                            elapsedTime >= delayDuration + .milliseconds(15),
+                            "Element \(count) was not delayed correctly.")
                         continuation.finish()
                     }
                 }

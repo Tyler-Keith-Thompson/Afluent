@@ -8,7 +8,10 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct Decode<Upstream: AsyncSequence & Sendable, Decoder: TopLevelDecoder, DecodedType: Decodable & Sendable>: AsyncSequence, Sendable where Upstream.Element == Decoder.Input {
+    public struct Decode<
+        Upstream: AsyncSequence & Sendable, Decoder: TopLevelDecoder,
+        DecodedType: Decodable & Sendable
+    >: AsyncSequence, Sendable where Upstream.Element == Decoder.Input {
         public typealias Element = DecodedType
 
         final class State: @unchecked Sendable {
@@ -46,15 +49,18 @@ extension AsyncSequences {
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstreamIterator: upstream.makeAsyncIterator(),
-                          state: state)
+            AsyncIterator(
+                upstreamIterator: upstream.makeAsyncIterator(),
+                state: state)
         }
     }
 }
 
 extension AsyncSequence where Self: Sendable {
     /// Decodes the output from the upstream using a specified decoder.
-    public func decode<T: Decodable, D: TopLevelDecoder>(type _: T.Type, decoder: D) -> AsyncSequences.Decode<Self, D, T> where Element == D.Input {
+    public func decode<T: Decodable, D: TopLevelDecoder>(type _: T.Type, decoder: D)
+        -> AsyncSequences.Decode<Self, D, T> where Element == D.Input
+    {
         AsyncSequences.Decode(upstream: self, decoder: decoder)
     }
 }

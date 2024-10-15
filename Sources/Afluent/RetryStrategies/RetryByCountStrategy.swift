@@ -25,7 +25,7 @@ extension RetryStrategy where Self == RetryByCountStrategy {
 public actor RetryByCountStrategy: RetryStrategy {
     /// The number of retries remaining.
     var retryCount: UInt
-    
+
     /// Creates a new `RetryByCountStrategy` with the specified retry count.
     ///
     /// - Parameter retryCount: The maximum number of retries allowed.
@@ -33,16 +33,18 @@ public actor RetryByCountStrategy: RetryStrategy {
         self.retryCount = retryCount
     }
 
-    public func handle(error err: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws -> Bool {
+    public func handle(error err: Error, beforeRetry: @Sendable (Error) async throws -> Void)
+        async throws -> Bool
+    {
         guard retryCount > 0 else {
             return false
         }
-        
+
         try await beforeRetry(err)
         decrementRetry()
         return true
     }
-    
+
     func decrementRetry() {
         guard retryCount > 0 else { return }
         retryCount -= 1

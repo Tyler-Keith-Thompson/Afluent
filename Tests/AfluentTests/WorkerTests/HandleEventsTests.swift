@@ -21,7 +21,7 @@ struct HandleEventsTests {
         let test = Test()
 
         try await confirmation { exp in
-            try await DeferredTask { }
+            try await DeferredTask {}
                 .handleEvents(receiveOperation: {
                     await test.operation()
                     exp()
@@ -96,11 +96,12 @@ struct HandleEventsTests {
 
             await withCheckedContinuation { continuation in
                 Task {
-                    await test.setTask(DeferredTask { await test.task?.cancel() }
-                        .handleEvents(receiveCancel: {
-                            await test.cancel()
-                            continuation.resume()
-                        })
+                    await test.setTask(
+                        DeferredTask { await test.task?.cancel() }
+                            .handleEvents(receiveCancel: {
+                                await test.cancel()
+                                continuation.resume()
+                            })
                             .subscribe())
                 }
             }

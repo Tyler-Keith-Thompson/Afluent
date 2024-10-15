@@ -14,9 +14,11 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
     let lock = NSRecursiveLock()
     var cache = [Int: any AsynchronousUnitOfWork & AnySendableReference]()
 
-    public init() { }
+    public init() {}
 
-    func retrieveOrCreate<A: AsynchronousUnitOfWork & AnySendableReference>(unitOfWork: A, keyedBy key: Int) -> A {
+    func retrieveOrCreate<A: AsynchronousUnitOfWork & AnySendableReference>(
+        unitOfWork: A, keyedBy key: Int
+    ) -> A {
         lock.lock()
         if let fromCache: A = cache[key] as? A {
             lock.unlock()

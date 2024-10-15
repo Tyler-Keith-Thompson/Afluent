@@ -50,14 +50,16 @@ extension AsynchronousUnitOfWork {
         return AnyCancellable(self)
     }
 
-#if swift(>=6)
-    /// Executes the current asynchronous unit of work and returns an AnyCancellable token to cancel the subscription
-    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-    public func subscribe(executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority? = nil) -> AnyCancellable {
-        defer { run(executorPreference: taskExecutor, priority: priority) }
-        return AnyCancellable(self)
-    }
-#endif
+    #if swift(>=6)
+        /// Executes the current asynchronous unit of work and returns an AnyCancellable token to cancel the subscription
+        @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+        public func subscribe(
+            executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority? = nil
+        ) -> AnyCancellable {
+            defer { run(executorPreference: taskExecutor, priority: priority) }
+            return AnyCancellable(self)
+        }
+    #endif
 }
 
 extension AsyncSequence where Self: Sendable {
@@ -67,8 +69,10 @@ extension AsyncSequence where Self: Sendable {
     ///   - receiveCompletion: A function that is executed when the stream has completed normally with `nil` or an error.
     ///   - receiveOutput: A function that is executed when output is received from the sequence.
     ///   If this function throws an error, then the stream is completed.
-    public func sink(receiveCompletion: (@Sendable (AsyncSequences.Completion<Error>) async -> Void)? = nil,
-                     receiveOutput: (@Sendable (Element) async throws -> Void)? = nil) -> AnyCancellable {
+    public func sink(
+        receiveCompletion: (@Sendable (AsyncSequences.Completion<Error>) async -> Void)? = nil,
+        receiveOutput: (@Sendable (Element) async throws -> Void)? = nil
+    ) -> AnyCancellable {
         DeferredTask {
             do {
                 for try await output in self {

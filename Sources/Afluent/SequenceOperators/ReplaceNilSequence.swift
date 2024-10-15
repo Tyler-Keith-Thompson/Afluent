@@ -8,7 +8,9 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct ReplaceNil<Upstream: AsyncSequence & Sendable, Output: Sendable>: AsyncSequence, Sendable where Upstream.Element == Output? {
+    public struct ReplaceNil<Upstream: AsyncSequence & Sendable, Output: Sendable>: AsyncSequence,
+        Sendable
+    where Upstream.Element == Output? {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         let newOutput: Output
@@ -28,8 +30,9 @@ extension AsyncSequences {
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstreamIterator: upstream.makeAsyncIterator(),
-                          newOutput: newOutput)
+            AsyncIterator(
+                upstreamIterator: upstream.makeAsyncIterator(),
+                newOutput: newOutput)
         }
     }
 }
@@ -40,7 +43,8 @@ extension AsyncSequence where Self: Sendable {
     /// - Parameter value: The value to emit when the upstream emits `nil`.
     ///
     /// - Returns: An `AsyncSequence` that emits the specified value instead of `nil` when the upstream emits `nil`.
-    public func replaceNil<E>(with value: E) -> AsyncSequences.ReplaceNil<Self, E> where Element == E? {
+    public func replaceNil<E>(with value: E) -> AsyncSequences.ReplaceNil<Self, E>
+    where Element == E? {
         AsyncSequences.ReplaceNil(upstream: self, newOutput: value)
     }
 }

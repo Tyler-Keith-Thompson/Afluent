@@ -22,7 +22,8 @@ public protocol RetryStrategy: Sendable {
     /// - Returns: A Boolean value indicating whether a retry should be attempted (`true`) or not (`false`).
     ///
     /// - Throws: An error if either the retry strategy itself fails or if the `beforeRetry` closure encounters an error.
-    func handle(error: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws -> Bool
+    func handle(error: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws
+        -> Bool
 }
 
 extension RetryStrategy {

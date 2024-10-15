@@ -13,7 +13,12 @@ extension Workers {
         let upstream: Upstream
         let transform: @Sendable (Upstream.Success) async -> Success
 
-        init(upstream: Upstream, @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (Upstream.Success) async -> Success) {
+        init(
+            upstream: Upstream,
+            @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (
+                Upstream.Success
+            ) async -> Success
+        ) {
             self.upstream = upstream
             self.transform = transform
         }
@@ -30,7 +35,12 @@ extension Workers {
         let upstream: Upstream
         let transform: @Sendable (Upstream.Success) async throws -> Success
 
-        init(upstream: Upstream, @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (Upstream.Success) async throws -> Success) {
+        init(
+            upstream: Upstream,
+            @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (
+                Upstream.Success
+            ) async throws -> Success
+        ) {
             self.upstream = upstream
             self.transform = transform
         }
@@ -50,7 +60,10 @@ extension AsynchronousUnitOfWork {
     ///   - transform: A closure that takes the successful output of the upstream and returns a transformed value.
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that emits the transformed value.
-    public func map<S: Sendable>(@_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (Success) async -> S) -> some AsynchronousUnitOfWork<S> {
+    public func map<S: Sendable>(
+        @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (Success) async
+            -> S
+    ) -> some AsynchronousUnitOfWork<S> {
         Workers.Map(upstream: self, transform: transform)
     }
 
@@ -72,7 +85,10 @@ extension AsynchronousUnitOfWork {
     ///   - transform: A closure that takes the successful output of the upstream and returns a transformed value. The closure can throw errors.
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that emits the transformed value or an error if the transformation fails.
-    public func tryMap<S: Sendable>(@_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (Success) async throws -> S) -> some AsynchronousUnitOfWork<S> {
+    public func tryMap<S: Sendable>(
+        @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (Success)
+            async throws -> S
+    ) -> some AsynchronousUnitOfWork<S> {
         Workers.TryMap(upstream: self, transform: transform)
     }
 }

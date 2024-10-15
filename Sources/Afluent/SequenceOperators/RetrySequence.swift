@@ -9,7 +9,9 @@ import Atomics
 import Foundation
 
 extension AsyncSequences {
-    public final actor Retry<Upstream: AsyncSequence & Sendable, Strategy: RetryStrategy>: AsyncSequence, AsyncIteratorProtocol, Sendable where Upstream.Element: Sendable {
+    public final actor Retry<Upstream: AsyncSequence & Sendable, Strategy: RetryStrategy>:
+        AsyncSequence, AsyncIteratorProtocol, Sendable
+    where Upstream.Element: Sendable {
         private final class State: @unchecked Sendable {
             let lock = NSRecursiveLock()
             let upstream: Upstream
@@ -25,7 +27,8 @@ extension AsyncSequences {
                         return val
                     }
                     return _iterator
-                } set {
+                }
+                set {
                     lock.lock()
                     defer { lock.unlock() }
                     _iterator = newValue
@@ -46,7 +49,9 @@ extension AsyncSequences {
             self.strategy = strategy
         }
 
-        private nonisolated func advanceAndSet(iterator: Upstream.AsyncIterator) async throws -> Upstream.Element? {
+        private nonisolated func advanceAndSet(iterator: Upstream.AsyncIterator) async throws
+            -> Upstream.Element?
+        {
             var copy = iterator
             let next = try await copy.next()
             state.iterator = copy
@@ -71,14 +76,16 @@ extension AsyncSequences {
 
         public nonisolated func makeAsyncIterator() -> Retry<Upstream, Strategy> { self }
     }
-    
-    public final actor RetryOn<Upstream: AsyncSequence & Sendable, Failure: Error & Equatable, Strategy: RetryStrategy>: AsyncSequence, AsyncIteratorProtocol, Sendable where Upstream.Element: Sendable {
+
+    public final actor RetryOn<
+        Upstream: AsyncSequence & Sendable, Failure: Error & Equatable, Strategy: RetryStrategy
+    >: AsyncSequence, AsyncIteratorProtocol, Sendable where Upstream.Element: Sendable {
         public typealias Element = Upstream.Element
         private final class State: @unchecked Sendable {
             let lock = NSRecursiveLock()
             let upstream: Upstream
             let error: Failure
-            
+
             private var _iterator: Upstream.AsyncIterator?
             var iterator: Upstream.AsyncIterator {
                 get {
@@ -90,35 +97,39 @@ extension AsyncSequences {
                         return val
                     }
                     return _iterator
-                } set {
+                }
+                set {
                     lock.lock()
                     defer { lock.unlock() }
                     _iterator = newValue
                 }
             }
-            
+
             init(upstream: Upstream, failure: Failure) {
                 self.upstream = upstream
                 error = failure
             }
         }
-        
+
         private let state: State
         private let strategy: Strategy
-        
+
         init(upstream: Upstream, strategy: Strategy, error: Failure) {
-            state = State(upstream: upstream,
-                          failure: error)
+            state = State(
+                upstream: upstream,
+                failure: error)
             self.strategy = strategy
         }
-        
-        private nonisolated func advanceAndSet(iterator: Upstream.AsyncIterator) async throws -> Upstream.Element? {
+
+        private nonisolated func advanceAndSet(iterator: Upstream.AsyncIterator) async throws
+            -> Upstream.Element?
+        {
             var copy = iterator
             let next = try await copy.next()
             state.iterator = copy
             return next
         }
-        
+
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
@@ -135,7 +146,7 @@ extension AsyncSequences {
                 }
             }
         }
-        
+
         public nonisolated func makeAsyncIterator() -> RetryOn<Upstream, Failure, Strategy> { self }
     }
 }
@@ -151,7 +162,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     public func retry<S: RetryStrategy>(_ strategy: S) -> AsyncSequences.Retry<Self, S> {
         AsyncSequences.Retry(upstream: self, strategy: strategy)
     }
-    
+
     /// Retries the upstream `AsyncSequence` up to a specified number of times.
     ///
     /// - Parameter retries: The maximum number of times to retry the upstream, defaulting to 1.
@@ -172,7 +183,9 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on the specified error up to the specified number of times.
     /// - Important: Not every `AsyncSequence` can be retried, for this to work the sequence has to implement an iterator that doesn't preserve state across various creations.
     /// - Note: `AsyncStream` and `AsyncThrowingStream` are notable sequences which cannot be retried on their own.
-    public func retry<E: Error & Equatable>(_ retries: UInt = 1, on error: E) -> AsyncSequences.RetryOn<Self, E, RetryByCountStrategy> {
+    public func retry<E: Error & Equatable>(_ retries: UInt = 1, on error: E)
+        -> AsyncSequences.RetryOn<Self, E, RetryByCountStrategy>
+    {
         AsyncSequences.RetryOn(upstream: self, strategy: .byCount(retries), error: error)
     }
 }

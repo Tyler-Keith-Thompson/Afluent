@@ -17,7 +17,7 @@ struct HandleEventsSequenceTests {
         let iteratorMade = ManagedAtomic(false)
 
         _ = await Task {
-            _ = DeferredTask { }
+            _ = DeferredTask {}
                 .toAsyncSequence()
                 .handleEvents(receiveMakeIterator: {
                     iteratorMade.store(true, ordering: .sequentiallyConsistent)
@@ -38,21 +38,21 @@ struct HandleEventsSequenceTests {
         }
         let test = Test()
 
-        let values = Array(0 ... 9)
+        let values = Array(0...9)
 
         let task = Task {
             let sequence = values.async.handleEvents(receiveNext: {
                 await test.next()
             })
 
-            for try await _ in sequence { }
+            for try await _ in sequence {}
         }
 
         try await task.value
 
         let nextCalled = await test.nextCalled
 
-        #expect(nextCalled == values.count + 1) // values + finish
+        #expect(nextCalled == values.count + 1)  // values + finish
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
@@ -91,7 +91,7 @@ struct HandleEventsSequenceTests {
                     .handleEvents(receiveComplete: {
                         exp()
                     })
-                for try await _ in sequence { }
+                for try await _ in sequence {}
             }.result
         }
     }
@@ -140,15 +140,16 @@ struct HandleEventsSequenceTests {
 
             await withCheckedContinuation { continuation in
                 Task {
-                    await test.setTask(DeferredTask {
-                        await test.task?.cancel()
-                    }
-                    .toAsyncSequence()
-                    .handleEvents(receiveCancel: {
-                        await test.cancel()
-                        continuation.resume()
-                    })
-                    .sink())
+                    await test.setTask(
+                        DeferredTask {
+                            await test.task?.cancel()
+                        }
+                        .toAsyncSequence()
+                        .handleEvents(receiveCancel: {
+                            await test.cancel()
+                            continuation.resume()
+                        })
+                        .sink())
                 }
             }
 

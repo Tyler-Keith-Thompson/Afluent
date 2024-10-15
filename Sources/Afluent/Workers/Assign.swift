@@ -12,7 +12,9 @@ extension AsynchronousUnitOfWork {
     ///  - Parameter keyPath: The key path to assign the output to.
     ///  - Parameter object: The object to assign the output to.
     ///  - Note: This method will not retain the object passed in. If the object is deallocated the assignment will stop.
-    public func assign<Root: AnyObject & Sendable>(to keyPath: ReferenceWritableKeyPath<Root, Success>, on object: Root) async throws {
+    public func assign<Root: AnyObject & Sendable>(
+        to keyPath: ReferenceWritableKeyPath<Root, Success>, on object: Root
+    ) async throws {
         _ = try await handleEvents(receiveOutput: { [weak object] in
             object?[keyPath: keyPath] = $0
         }).execute()

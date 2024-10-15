@@ -18,7 +18,8 @@ import Foundation
 /// This actor is useful in scenarios where tasks must be executed in a specific order or when you need to ensure that only one task is executed at a time to avoid race conditions.
 public final class SerialTaskQueue: @unchecked Sendable {
     private var subscribers = Set<AnyCancellable>()
-    private let (stream, deferredTaskContinuation) = AsyncStream<AnyAsynchronousUnitOfWork<Void>>.makeStream()
+    private let (stream, deferredTaskContinuation) = AsyncStream<AnyAsynchronousUnitOfWork<Void>>
+        .makeStream()
 
     public init() {
         DeferredTask {
@@ -38,17 +39,25 @@ public final class SerialTaskQueue: @unchecked Sendable {
     /// - Parameter task: The asynchronous task to be queued and executed.
     /// - Returns: The result of the task.
     /// - Throws: An error if the task throws an error.
-    public func queue<T: Sendable>(_ task: @Sendable @escaping () async throws -> T) async throws -> T {
+    public func queue<T: Sendable>(_ task: @Sendable @escaping () async throws -> T) async throws
+        -> T
+    {
         return try await withUnsafeThrowingContinuation { [weak self] continuation in
-            guard let self else { continuation.resume(throwing: CancellationError()); return }
+            guard let self else {
+                continuation.resume(throwing: CancellationError())
+                return
+            }
             self.deferredTaskContinuation.yield(
                 DeferredTask {
                     try continuation.resume(returning: await task())
-                }.handleEvents(receiveError: { error in
-                    continuation.resume(throwing: error)
-                }, receiveCancel: {
-                    continuation.resume(throwing: CancellationError())
-                })
+                }.handleEvents(
+                    receiveError: { error in
+                        continuation.resume(throwing: error)
+                    },
+                    receiveCancel: {
+                        continuation.resume(throwing: CancellationError())
+                    }
+                )
                 .eraseToAnyUnitOfWork()
             )
         }

@@ -30,10 +30,11 @@ struct ThrottleSequenceTests {
         await withMainSerialExecutor {
             let testClock = TestClock()
 
-            let stream = AsyncStream<Int> { _ in }.throttle(for: .milliseconds(10), clock: testClock, latest: true)
+            let stream = AsyncStream<Int> { _ in }.throttle(
+                for: .milliseconds(10), clock: testClock, latest: true)
 
             let task = Task {
-                for try await _ in stream { }
+                for try await _ in stream {}
             }
 
             task.cancel()
@@ -49,10 +50,11 @@ struct ThrottleSequenceTests {
         await withMainSerialExecutor {
             let testClock = TestClock()
 
-            let stream = AsyncStream<Int> { _ in }.throttle(for: .milliseconds(10), clock: testClock, latest: false)
+            let stream = AsyncStream<Int> { _ in }.throttle(
+                for: .milliseconds(10), clock: testClock, latest: false)
 
             let task = Task {
-                for try await _ in stream { }
+                for try await _ in stream {}
             }
 
             task.cancel()
@@ -91,19 +93,21 @@ struct ThrottleSequenceTests {
                 let (stream, continuation) = AsyncThrowingStream<Int, any Error>.makeStream()
                 let testClock = TestClock()
                 let test = ElementContainer()
-                let throttledStream = stream.throttle(for: .milliseconds(10), clock: testClock, latest: true)
+                let throttledStream = stream.throttle(
+                    for: .milliseconds(10), clock: testClock, latest: true)
                 Task {
                     for try await el in throttledStream {
                         await test.append(el)
                     }
                 }
                 let advancedDuration = ManagedAtomic<Int>(0)
-                await parseThrottleDSL(streamInput: streamInput,
-                                       expectedOutput: expectedOutput,
-                                       testClock: testClock,
-                                       advancedDuration: advancedDuration,
-                                       continuation: continuation,
-                                       test: test)
+                await parseThrottleDSL(
+                    streamInput: streamInput,
+                    expectedOutput: expectedOutput,
+                    testClock: testClock,
+                    advancedDuration: advancedDuration,
+                    continuation: continuation,
+                    test: test)
             }
         }
     }
@@ -136,25 +140,31 @@ struct ThrottleSequenceTests {
                 let (stream, continuation) = AsyncThrowingStream<Int, any Error>.makeStream()
                 let testClock = TestClock()
                 let test = ElementContainer()
-                let throttledStream = stream.throttle(for: .milliseconds(10), clock: testClock, latest: false)
+                let throttledStream = stream.throttle(
+                    for: .milliseconds(10), clock: testClock, latest: false)
                 Task {
                     for try await el in throttledStream {
                         await test.append(el)
                     }
                 }
                 let advancedDuration = ManagedAtomic<Int>(0)
-                await parseThrottleDSL(streamInput: streamInput,
-                                       expectedOutput: expectedOutput,
-                                       testClock: testClock,
-                                       advancedDuration: advancedDuration,
-                                       continuation: continuation,
-                                       test: test)
+                await parseThrottleDSL(
+                    streamInput: streamInput,
+                    expectedOutput: expectedOutput,
+                    testClock: testClock,
+                    advancedDuration: advancedDuration,
+                    continuation: continuation,
+                    test: test)
             }
         }
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-    fileprivate func parseThrottleDSL(streamInput: String, expectedOutput: String, testClock: TestClock<Duration>, advancedDuration: ManagedAtomic<Int>, continuation: AsyncThrowingStream<Int, any Error>.Continuation, test: ElementContainer) async {
+    fileprivate func parseThrottleDSL(
+        streamInput: String, expectedOutput: String, testClock: TestClock<Duration>,
+        advancedDuration: ManagedAtomic<Int>,
+        continuation: AsyncThrowingStream<Int, any Error>.Continuation, test: ElementContainer
+    ) async {
         for (i, step) in streamInput.enumerated() {
             if step == "-" {
                 await testClock.advance(by: .milliseconds(10))
@@ -184,7 +194,8 @@ struct ThrottleSequenceTests {
                     var total = 0
                     // Parse the expected DSL, this is tricky because you have to sort of calculate how far in time to go to understand what the expected result is
                     var expected = expectedOutput.reduce(into: "") { partialResult, character in
-                        guard total < advancedDuration.load(ordering: .sequentiallyConsistent) else { return }
+                        guard total < advancedDuration.load(ordering: .sequentiallyConsistent)
+                        else { return }
                         if character == "-" {
                             total += 10
                         } else if character == "`" {
@@ -193,10 +204,14 @@ struct ThrottleSequenceTests {
                         partialResult.append(character)
                     }.compactMap { Int(String($0)) }
                     // after the first interval you have to wait for the full interval to have elapsed
-                    if !(advancedDuration.load(ordering: .sequentiallyConsistent) % 10 == 0), advancedDuration.load(ordering: .sequentiallyConsistent) > 10, !last {
+                    if !(advancedDuration.load(ordering: .sequentiallyConsistent) % 10 == 0),
+                        advancedDuration.load(ordering: .sequentiallyConsistent) > 10, !last
+                    {
                         expected = Array(expected.dropLast())
                     }
-                    #expect(elements == expected, "\(i) \(advancedDuration.load(ordering: .sequentiallyConsistent)) \(total)")
+                    #expect(
+                        elements == expected,
+                        "\(i) \(advancedDuration.load(ordering: .sequentiallyConsistent)) \(total)")
                 }.result
             }
         }

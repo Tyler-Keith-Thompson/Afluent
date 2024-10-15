@@ -19,7 +19,7 @@ struct RetryAfterFlatMappingTests {
         }
 
         let test = Test()
-        let retryCount = UInt.random(in: 2 ... 10)
+        let retryCount = UInt.random(in: 2...10)
 
         let t = DeferredTask {
             await test.append("called")
@@ -113,7 +113,7 @@ struct RetryAfterFlatMappingTests {
         let copy = await test.arr
         #expect(UInt(copy.count) == 1)
     }
-    
+
     @Test func taskCanRetryADefinedNumberOfTimes_WithStrategy() async throws {
         actor Test {
             var arr = [String]()
@@ -123,7 +123,7 @@ struct RetryAfterFlatMappingTests {
         }
 
         let test = Test()
-        let retryCount = UInt.random(in: 2 ... 10)
+        let retryCount = UInt.random(in: 2...10)
 
         let t = DeferredTask {
             await test.append("called")

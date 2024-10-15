@@ -24,7 +24,7 @@ public actor SingleValueChannel<Success: Sendable>: AsynchronousUnitOfWork {
     private var channelState = State.noValue
 
     /// Creates a new `SingleValueChannel`.
-    public init() { }
+    public init() {}
 
     public func _operation() async throws -> AsynchronousOperation<Success> {
         AsynchronousOperation { [weak self] in

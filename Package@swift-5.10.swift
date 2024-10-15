@@ -13,17 +13,14 @@ let package = Package(name: "Afluent",
                           .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
                           .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
                           .package(url: "https://github.com/AliSoftware/OHHTTPStubs.git", from: "9.1.0"),
-                          .package(url: "https://github.com/nicklockwood/SwiftFormat", from: "0.52.11"),
                           .package(url: "https://github.com/pointfreeco/swift-clocks.git", from: "1.0.2"),
                           .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.1.0"),
                           .package(url: "https://github.com/apple/swift-testing.git", from: "0.7.0"),
-                          .package(url: "https://github.com/apple/swift-async-algorithms.git", from: "1.0.0"),
                       ],
                       targets: [
                           .target(name: "Afluent",
                                   dependencies: [
                                       .product(name: "Atomics", package: "swift-atomics"),
-                                      .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
                                   ],
                                   swiftSettings: [
                                       .enableExperimentalFeature("StrictConcurrency=complete"),

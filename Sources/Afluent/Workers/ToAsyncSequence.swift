@@ -12,7 +12,9 @@ import Foundation
 /// `AsynchronousUnitOfWorkSequence` is an `AsyncSequence` that wraps an `AsynchronousUnitOfWork`. It provides a way to use asynchronous units of work in contexts where an `AsyncSequence` is expected. This sequence emits a single value and then completes.
 ///
 /// - Note: The sequence will only execute the unit of work once. Subsequent iterations will receive `nil`, indicating the end of the sequence.
-public struct AsynchronousUnitOfWorkSequence<UnitOfWork: AsynchronousUnitOfWork>: AsyncSequence, Sendable {
+public struct AsynchronousUnitOfWorkSequence<UnitOfWork: AsynchronousUnitOfWork>: AsyncSequence,
+    Sendable
+{
     public typealias Element = UnitOfWork.Success
     let unitOfWork: UnitOfWork
 
@@ -39,7 +41,10 @@ extension AsynchronousUnitOfWork {
     /// Converts the asynchronous unit of work into an `AsyncThrowingStream`.
     ///
     /// - Deprecated: This stream was replaced with a custom `AsyncSequence` which behaves better.
-    @available(*, deprecated, renamed: "toAsyncSequence()", message: "This stream was replaced with a custom AsyncSequence which behaves better")
+    @available(
+        *, deprecated, renamed: "toAsyncSequence()",
+        message: "This stream was replaced with a custom AsyncSequence which behaves better"
+    )
     public func toStream() -> AsyncThrowingStream<Success, Error> {
         .init { continuation in
             Task {

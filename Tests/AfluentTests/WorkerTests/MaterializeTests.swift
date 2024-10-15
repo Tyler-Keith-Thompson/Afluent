@@ -78,18 +78,19 @@ struct MaterializeTests {
             let test = Test()
             let sub = SingleValueSubject<Void>()
 
-            await test.setTask(DeferredTask {
-                await test.start()
-                await test.task?.cancel()
-            }
-            .handleEvents(receiveCancel: {
-                try? sub.send()
-            })
-            .map {
-                await test.end()
-            }
-            .materialize()
-            .subscribe())
+            await test.setTask(
+                DeferredTask {
+                    await test.start()
+                    await test.task?.cancel()
+                }
+                .handleEvents(receiveCancel: {
+                    try? sub.send()
+                })
+                .map {
+                    await test.end()
+                }
+                .materialize()
+                .subscribe())
 
             try await sub.execute()
 

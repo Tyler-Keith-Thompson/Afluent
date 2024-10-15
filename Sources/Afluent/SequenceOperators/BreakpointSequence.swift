@@ -18,16 +18,21 @@ extension AsyncSequence where Self: Sendable {
     ///   - receiveError: A closure that takes any error produced by the sequence. If this closure returns `true`, a breakpoint is triggered. Default is `nil`.
     ///
     /// - Returns: An asynchronous unit of work with the breakpoint conditions applied.
-    @_transparent @_alwaysEmitIntoClient @inlinable public func breakpoint(receiveOutput: (@Sendable (Element) async throws -> Bool)? = nil, receiveError: (@Sendable (Error) async throws -> Bool)? = nil) -> AsyncSequences.HandleEvents<Self> {
-        handleEvents(receiveOutput: { output in
-            if try await receiveOutput?(output) == true {
-                raise(SIGTRAP)
-            }
-        }, receiveError: { error in
-            if try await receiveError?(error) == true {
-                raise(SIGTRAP)
-            }
-        })
+    @_transparent @_alwaysEmitIntoClient @inlinable public func breakpoint(
+        receiveOutput: (@Sendable (Element) async throws -> Bool)? = nil,
+        receiveError: (@Sendable (Error) async throws -> Bool)? = nil
+    ) -> AsyncSequences.HandleEvents<Self> {
+        handleEvents(
+            receiveOutput: { output in
+                if try await receiveOutput?(output) == true {
+                    raise(SIGTRAP)
+                }
+            },
+            receiveError: { error in
+                if try await receiveError?(error) == true {
+                    raise(SIGTRAP)
+                }
+            })
     }
 
     /// Introduces a breakpoint into the async sequence when an error occurs.
@@ -35,7 +40,9 @@ extension AsyncSequence where Self: Sendable {
     /// This function triggers a `SIGTRAP` signal, pausing execution in a debugger, whenever the async sequence produces an error.
     ///
     /// - Returns: An `AsyncSequence` with the breakpoint-on-error condition applied.
-    @_transparent @_alwaysEmitIntoClient @inlinable public func breakpointOnError() -> AsyncSequences.HandleEvents<Self> {
+    @_transparent @_alwaysEmitIntoClient @inlinable public func breakpointOnError()
+        -> AsyncSequences.HandleEvents<Self>
+    {
         breakpoint(receiveError: { _ in true })
     }
 }

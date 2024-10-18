@@ -22,7 +22,7 @@ struct RetryOnSequenceTests {
         }
 
         let test = Test()
-        let retryCount = UInt.random(in: 2 ... 10)
+        let retryCount = UInt.random(in: 2...10)
 
         let t = Task {
             try await DeferredTask {

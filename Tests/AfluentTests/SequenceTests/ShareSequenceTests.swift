@@ -16,9 +16,8 @@
 //  Modified by Tyler Thompson on 9/29/24.
 //
 
-import Testing
-
 @_spi(Experimental) import Afluent
+import Testing
 
 @Suite struct ShareSequenceTests {
     @Test func BasicBroadcasting() async {
@@ -36,7 +35,7 @@ import Testing
         }
         #expect(results[0] == results[1])
     }
-    
+
     @Test func BasicBroadcastingFromChannel() async {
         let (base, continuation) = AsyncStream<Int>.makeStream()
         let a = base.broadcast()
@@ -61,14 +60,14 @@ import Testing
         }
         #expect(results[0] == results[1])
     }
-    
+
     @Test func ABaseSequence_BroadcastingToTwoTasks_TheBaseSequenceIsIteratedOnce() async {
         // Given
         let elements = (0..<10).map { $0 }
         let base = ReportingAsyncSequence(elements)
-        
+
         let expectedNexts = elements.map { _ in ReportingAsyncSequence<Int>.Event.next }
-        
+
         // When
         let broadcasted = base.broadcast()
         await withTaskGroup(of: Void.self) { group in
@@ -80,16 +79,19 @@ import Testing
             }
             await group.waitForAll()
         }
-        
+
         // Then
-        #expect(base.events == [ReportingAsyncSequence<Int>.Event.makeAsyncIterator] + expectedNexts + [ReportingAsyncSequence<Int>.Event.next])
+        #expect(
+            base.events == [ReportingAsyncSequence<Int>.Event.makeAsyncIterator] + expectedNexts + [
+                ReportingAsyncSequence<Int>.Event.next
+            ])
     }
-    
+
     @Test func ABaseSequence_BroadcastingToTwoTasks_TheyReceiveTheBaseElements() async {
         // Given
         let base = (0..<10).map { $0 }
         let expected = (0...4).map { $0 }
-        
+
         // When
         let broadcasted = base.async.map { try throwOn(5, $0) }.broadcast()
         let results = await withTaskGroup(of: [Int].self) { group in
@@ -103,7 +105,7 @@ import Testing
                 } catch {
                     #expect(error is Failure)
                 }
-                
+
                 return received
             }
             group.addTask {
@@ -116,22 +118,24 @@ import Testing
                 } catch {
                     #expect(error is Failure)
                 }
-                
+
                 return received
             }
-            
+
             return await Array(group)
         }
-        
+
         // Then
         #expect(results[0] == expected)
         #expect(results[0] == results[1])
     }
-    
-    @Test func AThrowingBaseSequence_BroadcastingToTwoTasks_TheyReceiveTheBaseElementsAndFailure() async {
+
+    @Test func AThrowingBaseSequence_BroadcastingToTwoTasks_TheyReceiveTheBaseElementsAndFailure()
+        async
+    {
         // Given
         let base = (0..<10).map { $0 }
-        
+
         // When
         let broadcasted = base.async.broadcast()
         let results = await withTaskGroup(of: [Int].self) { group in
@@ -143,46 +147,46 @@ import Testing
             }
             return await Array(group)
         }
-        
+
         // Then
         #expect(results[0] == base)
         #expect(results[0] == results[1])
     }
-    
+
     @Test func ABaseSequence_BroadcastingToTwoTasks_TheyReceiveFinishAndPastEndIsNil() async {
         // Given
         let base = (0..<10).map { $0 }
-        
+
         // When
         let broadcasted = base.async.broadcast()
         await withTaskGroup(of: Void.self) { group in
             group.addTask {
                 var iterator = broadcasted.makeAsyncIterator()
-                while let _ = await iterator.next() {}
+                while await iterator.next() != nil {}
                 let pastEnd = await iterator.next()
-                
+
                 // Then
                 #expect(pastEnd == nil)
             }
             group.addTask {
                 var iterator = broadcasted.makeAsyncIterator()
-                while let _ = await iterator.next() {}
+                while await iterator.next() != nil {}
                 let pastEnd = await iterator.next()
-                
+
                 // Then
                 #expect(pastEnd == nil)
             }
-            
+
             await group.waitForAll()
         }
     }
-    
+
     @Test func ABaseSequence_BroadcastingToTwoTasks_TheBufferIsUsed() async {
         let task1IsIsFinished = SingleValueSubject<Void>()
-        
+
         // Given
         let base = (0..<10).map { $0 }
-        
+
         // When
         let broadcasted = base.async.broadcast()
         let results = await withTaskGroup(of: [Int].self) { group in
@@ -197,26 +201,30 @@ import Testing
                 let firstElement = await iterator.next()
                 result.append(firstElement!)
                 try? await task1IsIsFinished.execute()
-                
+
                 while let element = await iterator.next() {
                     result.append(element)
                 }
-                
+
                 return result
             }
             return await Array(group)
         }
-        
+
         // Then
         #expect(results[0] == base)
         #expect(results[0] == results[1])
     }
-    
+
     @Test func AChannel_BroadcastingToTwoTasks_TheyReceivedTheChannelElements() async {
         // Given
         let elements = (0..<10).map { $0 }
         let (base, continuation) = AsyncStream<Int>.makeStream()
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> 5593613b35e8eff05bc5802bb92283d11cc4380d
         // When
         let broadcasted = base.broadcast()
         let results = await withTaskGroup(of: [Int].self) { group in
@@ -237,7 +245,7 @@ import Testing
             }
             return await Array(group)
         }
-        
+
         // Then
         #expect(results[0] == elements)
         #expect(results[0] == results[1])
@@ -248,22 +256,22 @@ final class ReportingSequence<Element>: Sequence, IteratorProtocol {
     enum Event: Equatable, CustomStringConvertible {
         case next
         case makeIterator
-        
+
         var description: String {
             switch self {
-            case .next: return "next()"
-            case .makeIterator: return "makeIterator()"
+                case .next: return "next()"
+                case .makeIterator: return "makeIterator()"
             }
         }
     }
-    
+
     var events = [Event]()
     var elements: [Element]
-    
+
     init(_ elements: [Element]) {
         self.elements = elements
     }
-    
+
     func next() -> Element? {
         events.append(.next)
         guard elements.count > 0 else {
@@ -271,33 +279,35 @@ final class ReportingSequence<Element>: Sequence, IteratorProtocol {
         }
         return elements.removeFirst()
     }
-    
+
     func makeIterator() -> ReportingSequence {
         events.append(.makeIterator)
         return self
     }
 }
 
-final class ReportingAsyncSequence<Element: Sendable>: AsyncSequence, AsyncIteratorProtocol, @unchecked Sendable {
+final class ReportingAsyncSequence<Element: Sendable>: AsyncSequence, AsyncIteratorProtocol,
+    @unchecked Sendable
+{
     enum Event: Equatable, CustomStringConvertible {
         case next
         case makeAsyncIterator
-        
+
         var description: String {
             switch self {
-            case .next: return "next()"
-            case .makeAsyncIterator: return "makeAsyncIterator()"
+                case .next: return "next()"
+                case .makeAsyncIterator: return "makeAsyncIterator()"
             }
         }
     }
-    
+
     var events = [Event]()
     var elements: [Element]
-    
+
     init(_ elements: [Element]) {
         self.elements = elements
     }
-    
+
     func next() async -> Element? {
         events.append(.next)
         guard elements.count > 0 else {
@@ -305,14 +315,14 @@ final class ReportingAsyncSequence<Element: Sendable>: AsyncSequence, AsyncItera
         }
         return elements.removeFirst()
     }
-    
+
     func makeAsyncIterator() -> ReportingAsyncSequence {
         events.append(.makeAsyncIterator)
         return self
     }
 }
 
-struct Failure: Error, Equatable { }
+struct Failure: Error, Equatable {}
 
 func throwOn<T: Equatable>(_ toThrowOn: T, _ value: T) throws -> T {
     if value == toThrowOn {
@@ -332,8 +342,9 @@ extension Array where Element: Sendable {
     }
 }
 
-fileprivate extension RangeReplaceableCollection {
-    init<Source: AsyncSequence>(_ source: Source) async rethrows where Source.Element == Element {
+extension RangeReplaceableCollection {
+    fileprivate init<Source: AsyncSequence>(_ source: Source) async rethrows
+    where Source.Element == Element {
         self.init()
         for try await item in source {
             append(item)

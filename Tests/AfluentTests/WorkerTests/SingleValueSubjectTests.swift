@@ -13,7 +13,7 @@ import Testing
 struct SingleValueSubjectTests {
     @Test func singleValueSubjectEmittingValueBeforeTaskRuns() async throws {
         try await confirmation { confirmation in
-            let expected = Int.random(in: 1 ... 1000)
+            let expected = Int.random(in: 1...1000)
             let subject = SingleValueSubject<Int>()
             let unitOfWork = subject.map {
                 confirmation()
@@ -28,14 +28,15 @@ struct SingleValueSubjectTests {
     }
 
     @Test func singleValueSubjectEmittingValueAfterTaskRuns() async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
-            let expected = Int.random(in: 1 ... 1000)
+        try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<Void, any Error>) in
+            let expected = Int.random(in: 1...1000)
             let subject = SingleValueSubject<Int>()
             subject.map {
                 defer { continuation.resume() }
                 #expect($0 == expected)
                 return $0
-            }.run() // task started
+            }.run()  // task started
 
             do {
                 try subject.send(expected)
@@ -63,7 +64,8 @@ struct SingleValueSubjectTests {
             try await withCheckedThrowingContinuation { continuation in
                 Task {
                     let subject = SingleValueSubject<Int>()
-                    let unitOfWork = subject
+                    let unitOfWork =
+                        subject
                         .materialize()
                         .map {
                             continuation.resume()
@@ -88,12 +90,12 @@ struct SingleValueSubjectTests {
     }
 
     @Test func singleValueSubjectOnlyEmitsValueOnce() async throws {
-        let expected = Int.random(in: 1 ... 1000)
+        let expected = Int.random(in: 1...1000)
         let subject = SingleValueSubject<Int>()
         subject.map {
             #expect($0 == expected)
             return $0
-        }.run() // task started
+        }.run()  // task started
 
         try subject.send(expected)
         #expect(throws: (any Error).self) { try subject.send(expected) }
@@ -104,7 +106,8 @@ struct SingleValueSubjectTests {
             enum Err: Error { case e1 }
             let subject = SingleValueSubject<Int>()
             let exp1 = SingleValueSubject<Void>()
-            let unitOfWork = subject
+            let unitOfWork =
+                subject
                 .materialize()
                 .map {
                     try! exp1.send()
@@ -145,7 +148,7 @@ struct SingleValueSubjectTests {
             let subject = SingleValueSubject<Void>()
             subject.map {
                 continuation.resume()
-            }.run() // task started
+            }.run()  // task started
 
             do {
                 try subject.send()
@@ -156,7 +159,7 @@ struct SingleValueSubjectTests {
     }
 
     @Test func singleValueSubjectEmittingValueConcurrentlyWithExecute() async throws {
-        let expected = Int.random(in: 1 ... 1000)
+        let expected = Int.random(in: 1...1000)
         try await confirmation { exp in
             let subject = SingleValueSubject<Int>()
             let unitOfWork = subject.map {
@@ -181,7 +184,8 @@ struct SingleValueSubjectTests {
         enum Err: Error { case e1 }
         try await confirmation { exp in
             let subject = SingleValueSubject<Int>()
-            let unitOfWork = subject
+            let unitOfWork =
+                subject
                 .materialize()
                 .map {
                     exp()

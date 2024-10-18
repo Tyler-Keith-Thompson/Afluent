@@ -9,7 +9,9 @@ import Atomics
 import Foundation
 
 extension AsyncSequences {
-    public struct FlatMap<Upstream: AsyncSequence & Sendable, SegmentOfResult: AsyncSequence & Sendable>: AsyncSequence, Sendable where Upstream.Element: Sendable, SegmentOfResult.Element: Sendable {
+    public struct FlatMap<
+        Upstream: AsyncSequence & Sendable, SegmentOfResult: AsyncSequence & Sendable
+    >: AsyncSequence, Sendable where Upstream.Element: Sendable, SegmentOfResult.Element: Sendable {
         public typealias Element = SegmentOfResult.Element
         let upstream: Upstream
         let maxSubscriptons: SubscriptionDemand
@@ -26,7 +28,8 @@ extension AsyncSequences {
                 switch maxSubscriptons {
                     case .unlimited:
                         if iterator == nil {
-                            iterator = AsyncThrowingStream<Element, Error> { [upstream, transform] continuation in
+                            iterator = AsyncThrowingStream<Element, Error> {
+                                [upstream, transform] continuation in
                                 Task { [transform] in
                                     do {
                                         try Task.checkCancellation()
@@ -59,14 +62,19 @@ extension AsyncSequences {
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstream: upstream, maxSubscriptons: maxSubscriptons, transform: transform)
+            AsyncIterator(
+                upstream: upstream, maxSubscriptons: maxSubscriptons, transform: transform)
         }
     }
 }
 
 extension AsyncSequence {
-    public func flatMap<SegmentOfResult: AsyncSequence>(maxSubscriptions: SubscriptionDemand, _ transform: @Sendable @escaping (Self.Element) async throws -> SegmentOfResult) -> AsyncSequences.FlatMap<Self, SegmentOfResult> {
-        AsyncSequences.FlatMap(upstream: self, maxSubscriptons: maxSubscriptions, transform: transform)
+    public func flatMap<SegmentOfResult: AsyncSequence>(
+        maxSubscriptions: SubscriptionDemand,
+        _ transform: @Sendable @escaping (Self.Element) async throws -> SegmentOfResult
+    ) -> AsyncSequences.FlatMap<Self, SegmentOfResult> {
+        AsyncSequences.FlatMap(
+            upstream: self, maxSubscriptons: maxSubscriptions, transform: transform)
     }
 }
 

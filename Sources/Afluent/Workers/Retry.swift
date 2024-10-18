@@ -8,7 +8,9 @@
 import Foundation
 
 extension Workers {
-    actor Retry<Upstream: AsynchronousUnitOfWork, Success, Strategy: RetryStrategy>: AsynchronousUnitOfWork where Upstream.Success == Success {
+    actor Retry<Upstream: AsynchronousUnitOfWork, Success, Strategy: RetryStrategy>:
+        AsynchronousUnitOfWork
+    where Upstream.Success == Success {
         let state = TaskState<Success>()
         let upstream: Upstream
         var strategy: Strategy
@@ -38,19 +40,22 @@ extension Workers {
             }
         }
     }
-    
-    actor RetryOn<Upstream: AsynchronousUnitOfWork, Failure: Error & Equatable, Success, Strategy: RetryStrategy>: AsynchronousUnitOfWork where Upstream.Success == Success {
+
+    actor RetryOn<
+        Upstream: AsynchronousUnitOfWork, Failure: Error & Equatable, Success,
+        Strategy: RetryStrategy
+    >: AsynchronousUnitOfWork where Upstream.Success == Success {
         let state = TaskState<Success>()
         let upstream: Upstream
         let strategy: Strategy
         let error: Failure
-        
+
         init(upstream: Upstream, strategy: Strategy, error: Failure) {
             self.upstream = upstream
             self.strategy = strategy
             self.error = error
         }
-        
+
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
@@ -84,7 +89,7 @@ extension AsynchronousUnitOfWork {
     public func retry(_ strategy: some RetryStrategy) -> some AsynchronousUnitOfWork<Success> {
         Workers.Retry(upstream: self, strategy: strategy)
     }
-    
+
     /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times.
     ///
     /// - Parameter retries: The maximum number of times to retry the upstream, defaulting to 1.
@@ -101,7 +106,9 @@ extension AsynchronousUnitOfWork {
     ///   - error: The specific error that should trigger a retry.
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that emits the same output as the upstream but retries on the specified error up to the specified number of times.
-    public func retry<E: Error & Equatable>(_ retries: UInt = 1, on error: E) -> some AsynchronousUnitOfWork<Success> {
+    public func retry<E: Error & Equatable>(_ retries: UInt = 1, on error: E)
+        -> some AsynchronousUnitOfWork<Success>
+    {
         Workers.RetryOn(upstream: self, strategy: .byCount(retries), error: error)
     }
 }

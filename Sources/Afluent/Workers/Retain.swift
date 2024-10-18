@@ -8,7 +8,8 @@
 import Foundation
 
 extension Workers {
-    actor Retain<Upstream: AsynchronousUnitOfWork, Success>: AsynchronousUnitOfWork where Success == Upstream.Success {
+    actor Retain<Upstream: AsynchronousUnitOfWork, Success>: AsynchronousUnitOfWork
+    where Success == Upstream.Success {
         let state = TaskState<Success>()
         let upstream: Upstream
         var cachedSuccess: Success?

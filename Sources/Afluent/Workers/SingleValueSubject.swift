@@ -12,7 +12,9 @@ import Foundation
 /// `SingleValueSubject` is an `AsynchronousUnitOfWork` that can be manually completed with either a success value or an error. It's useful for scenarios where you need to bridge callback-based APIs into the world of `async/await`.
 ///
 /// - Note: Once completed, any further attempts to send a value or an error will result in a `SubjectError.alreadyCompleted`.
-public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork, @unchecked Sendable {
+public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork, @unchecked
+    Sendable
+{
     /// Errors specific to `SingleValueSubject`.
     public enum SubjectError: Error {
         /// Indicates that the subject has already been completed and cannot accept further values or errors.
@@ -24,7 +26,7 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     private var subjectState = State.noValue
 
     /// Creates a new `SingleValueSubject`.
-    public init() { }
+    public init() {}
 
     public func _operation() async throws -> AsynchronousOperation<Success> {
         AsynchronousOperation { [weak self] in

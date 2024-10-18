@@ -13,7 +13,7 @@ import Testing
 struct SingleValueChannelTests {
     @Test func SingleValueChannelEmittingValueBeforeTaskRuns() async throws {
         try await confirmation { confirmation in
-            let expected = Int.random(in: 1 ... 1000)
+            let expected = Int.random(in: 1...1000)
             let subject = SingleValueChannel<Int>()
             let unitOfWork = subject.map {
                 confirmation()
@@ -28,14 +28,15 @@ struct SingleValueChannelTests {
     }
 
     @Test func SingleValueChannelEmittingValueAfterTaskRuns() async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
-            let expected = Int.random(in: 1 ... 1000)
+        try await withCheckedThrowingContinuation {
+            (continuation: CheckedContinuation<Void, any Error>) in
+            let expected = Int.random(in: 1...1000)
             let subject = SingleValueChannel<Int>()
             subject.map {
                 defer { continuation.resume() }
                 #expect($0 == expected)
                 return $0
-            }.run() // task started
+            }.run()  // task started
 
             Task {
                 do {
@@ -65,7 +66,8 @@ struct SingleValueChannelTests {
             try await withCheckedThrowingContinuation { continuation in
                 Task {
                     let subject = SingleValueChannel<Int>()
-                    let unitOfWork = subject
+                    let unitOfWork =
+                        subject
                         .materialize()
                         .map {
                             continuation.resume()
@@ -90,12 +92,12 @@ struct SingleValueChannelTests {
     }
 
     @Test func SingleValueChannelOnlyEmitsValueOnce() async throws {
-        let expected = Int.random(in: 1 ... 1000)
+        let expected = Int.random(in: 1...1000)
         let subject = SingleValueChannel<Int>()
         subject.map {
             #expect($0 == expected)
             return $0
-        }.run() // task started
+        }.run()  // task started
 
         try await subject.send(expected)
         await #expect(throws: (any Error).self) { try await subject.send(expected) }
@@ -106,7 +108,8 @@ struct SingleValueChannelTests {
         try await confirmation { exp in
             try await withMainSerialExecutor {
                 let subject = SingleValueChannel<Int>()
-                let unitOfWork = subject
+                let unitOfWork =
+                    subject
                     .materialize()
                     .map {
                         exp()
@@ -146,7 +149,7 @@ struct SingleValueChannelTests {
             let subject = SingleValueChannel<Void>()
             subject.map {
                 continuation.resume()
-            }.run() // task started
+            }.run()  // task started
 
             Task {
                 do {
@@ -159,7 +162,7 @@ struct SingleValueChannelTests {
     }
 
     @Test func SingleValueChannelEmittingValueConcurrentlyWithExecute() async throws {
-        let expected = Int.random(in: 1 ... 1000)
+        let expected = Int.random(in: 1...1000)
         try await confirmation { exp in
             let subject = SingleValueChannel<Int>()
             let unitOfWork = subject.map {
@@ -184,7 +187,8 @@ struct SingleValueChannelTests {
         enum Err: Error { case e1 }
         try await confirmation { exp in
             let subject = SingleValueChannel<Int>()
-            let unitOfWork = subject
+            let unitOfWork =
+                subject
                 .materialize()
                 .map {
                     exp()

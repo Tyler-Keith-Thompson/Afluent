@@ -8,12 +8,18 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct Catch<Upstream: AsyncSequence & Sendable, Downstream: AsyncSequence & Sendable>: AsyncSequence, Sendable where Upstream.Element == Downstream.Element {
+    public struct Catch<Upstream: AsyncSequence & Sendable, Downstream: AsyncSequence & Sendable>:
+        AsyncSequence, Sendable
+    where Upstream.Element == Downstream.Element {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         let handler: @Sendable (Error) async throws -> Downstream
 
-        init(upstream: Upstream, @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error) async throws -> Downstream) {
+        init(
+            upstream: Upstream,
+            @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error)
+                async throws -> Downstream
+        ) {
             self.upstream = upstream
             self.handler = handler
         }
@@ -40,8 +46,9 @@ extension AsyncSequences {
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstreamIterator: upstream.makeAsyncIterator(),
-                          handler: handler)
+            AsyncIterator(
+                upstreamIterator: upstream.makeAsyncIterator(),
+                handler: handler)
         }
     }
 }
@@ -53,7 +60,10 @@ extension AsyncSequence where Self: Sendable {
     ///   - handler: A closure that takes an `Error` and returns an `AsyncSequence`.
     ///
     /// - Returns: An `AsyncSequence` that will catch and handle any errors emitted by the upstream sequence.
-    public func `catch`<D: AsyncSequence>(@_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error) async -> D) -> AsyncSequences.Catch<Self, D> {
+    public func `catch`<D: AsyncSequence>(
+        @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error) async ->
+            D
+    ) -> AsyncSequences.Catch<Self, D> {
         AsyncSequences.Catch(upstream: self, handler)
     }
 
@@ -64,10 +74,14 @@ extension AsyncSequence where Self: Sendable {
     ///   - handler: A closure that takes an `Error` and returns an `AsyncSequence`.
     ///
     /// - Returns: An `AsyncSequence` that will catch and handle the specific error.
-    public func `catch`<D: AsyncSequence, E: Error & Equatable>(_ error: E, @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (E) async -> D) -> AsyncSequences.Catch<Self, D> {
+    public func `catch`<D: AsyncSequence, E: Error & Equatable>(
+        _ error: E,
+        @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (E) async -> D
+    ) -> AsyncSequences.Catch<Self, D> {
         tryCatch { err in
             guard let unwrappedError = (err as? E),
-                  unwrappedError == error else { throw err }
+                unwrappedError == error
+            else { throw err }
             return await handler(unwrappedError)
         }
     }
@@ -78,7 +92,10 @@ extension AsyncSequence where Self: Sendable {
     ///   - handler: A closure that takes an `Error` and returns an `AsyncSequence`, potentially throwing an error.
     ///
     /// - Returns: An `AsyncSequence` that will try to catch and handle any errors emitted by the upstream sequence.
-    public func tryCatch<D: AsyncSequence>(@_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error) async throws -> D) -> AsyncSequences.Catch<Self, D> {
+    public func tryCatch<D: AsyncSequence>(
+        @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error)
+            async throws -> D
+    ) -> AsyncSequences.Catch<Self, D> {
         AsyncSequences.Catch(upstream: self, handler)
     }
 
@@ -89,10 +106,15 @@ extension AsyncSequence where Self: Sendable {
     ///   - handler: A closure that takes an `Error` and returns an `AsyncSequence`, potentially throwing an error.
     ///
     /// - Returns: An `AsyncSequence` that will try to catch and handle the specific error.
-    public func tryCatch<D: AsyncSequence, E: Error & Equatable>(_ error: E, @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (E) async throws -> D) -> AsyncSequences.Catch<Self, D> {
+    public func tryCatch<D: AsyncSequence, E: Error & Equatable>(
+        _ error: E,
+        @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (E) async throws
+            -> D
+    ) -> AsyncSequences.Catch<Self, D> {
         tryCatch { err in
             guard let unwrappedError = (err as? E),
-                  unwrappedError == error else { throw err }
+                unwrappedError == error
+            else { throw err }
             return try await handler(unwrappedError)
         }
     }

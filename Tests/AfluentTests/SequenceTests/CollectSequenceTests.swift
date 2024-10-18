@@ -13,7 +13,9 @@ struct CollectSequenceTests {
     @Test func testCollectWithEmptySequence() async throws {
         let emptySequence = [Int]().async
         let collected = try await emptySequence.collect().first()
-        try #expect(#require(collected).isEmpty, "Collect should return an empty array for an empty sequence")
+        try #expect(
+            #require(collected).isEmpty,
+            "Collect should return an empty array for an empty sequence")
     }
 
     @Test func testCollectWithNonEmptySequence() async throws {

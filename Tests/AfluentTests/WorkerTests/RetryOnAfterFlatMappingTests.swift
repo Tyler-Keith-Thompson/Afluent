@@ -22,7 +22,7 @@ struct RetryOnAfterFlatMappingTests {
         }
 
         let test = Test()
-        let retryCount = UInt.random(in: 2 ... 10)
+        let retryCount = UInt.random(in: 2...10)
 
         let t = DeferredTask {
             await test.append("called")
@@ -125,7 +125,7 @@ struct RetryOnAfterFlatMappingTests {
         let copy = await test.arr
         #expect(UInt(copy.count) == 1)
     }
-    
+
     @Test func taskCanRetryADefinedNumberOfTimes_WithStrategy() async throws {
         enum Err: Error, Equatable {
             case e1
@@ -138,7 +138,7 @@ struct RetryOnAfterFlatMappingTests {
         }
 
         let test = Test()
-        let retryCount = UInt.random(in: 2 ... 10)
+        let retryCount = UInt.random(in: 2...10)
 
         let t = DeferredTask {
             await test.append("called")

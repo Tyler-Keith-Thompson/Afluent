@@ -97,21 +97,22 @@ struct MaterializeSequenceTests {
 
             await withCheckedContinuation { continuation in
                 Task {
-                    await test.setTask(Task {
-                        _ = try await DeferredTask {
-                            await test.start()
-                            await test.task?.cancel()
-                        }
-                        .handleEvents(receiveCancel: {
-                            continuation.resume()
+                    await test.setTask(
+                        Task {
+                            _ = try await DeferredTask {
+                                await test.start()
+                                await test.task?.cancel()
+                            }
+                            .handleEvents(receiveCancel: {
+                                continuation.resume()
+                            })
+                            .map {
+                                await test.end()
+                            }
+                            .toAsyncSequence()
+                            .materialize()
+                            .first()
                         })
-                        .map {
-                            await test.end()
-                        }
-                        .toAsyncSequence()
-                        .materialize()
-                        .first()
-                    })
                 }
             }
 

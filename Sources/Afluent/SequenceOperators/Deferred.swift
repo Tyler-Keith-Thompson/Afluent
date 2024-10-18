@@ -67,4 +67,4 @@ extension AsyncSequences {
 
 public typealias Deferred = AsyncSequences.Deferred
 
-extension Deferred.AsyncIterator: Sendable where Upstream.AsyncIterator: Sendable { }
+extension Deferred.AsyncIterator: Sendable where Upstream.AsyncIterator: Sendable {}

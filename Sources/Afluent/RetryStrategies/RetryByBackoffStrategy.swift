@@ -11,14 +11,17 @@ import Foundation
 public typealias ClockDurationUnit<C: Clock, T: BinaryInteger> = @Sendable (T) -> C.Duration
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-extension RetryStrategy where Self == RetryByBackoffStrategy<ExponentialBackoffStrategy<ContinuousClock>> {
+extension RetryStrategy
+where Self == RetryByBackoffStrategy<ExponentialBackoffStrategy<ContinuousClock>> {
     /// Creates a retry strategy using the provided backoff strategy and a continuous clock.
     ///
     /// This extension provides a convenient method to create a `RetryByBackoffStrategy` using a `ContinuousClock`.
     ///
     /// - Parameter strategy: The backoff strategy to use for retrying operations.
     /// - Returns: A `RetryByBackoffStrategy` configured with the provided `BackoffStrategy` and a `ContinuousClock`.
-    public static func backoff(_ strategy: ExponentialBackoffStrategy<ContinuousClock>) -> RetryByBackoffStrategy<ExponentialBackoffStrategy<ContinuousClock>> {
+    public static func backoff(_ strategy: ExponentialBackoffStrategy<ContinuousClock>)
+        -> RetryByBackoffStrategy<ExponentialBackoffStrategy<ContinuousClock>>
+    {
         RetryByBackoffStrategy(strategy, clock: ContinuousClock(), durationUnit: Duration.seconds)
     }
 }
@@ -43,13 +46,18 @@ public actor RetryByBackoffStrategy<Strategy: BackoffStrategy>: RetryStrategy {
     /// - Parameters:
     ///   - strategy: The backoff strategy used to determine how to back off between retries.
     ///   - clock: The clock used to measure the time between retries.
-    public init(_ strategy: Strategy, clock: Strategy.Clock, durationUnit: @escaping ClockDurationUnit<Strategy.Clock, Int>) {
+    public init(
+        _ strategy: Strategy, clock: Strategy.Clock,
+        durationUnit: @escaping ClockDurationUnit<Strategy.Clock, Int>
+    ) {
         self.strategy = strategy
         self.clock = clock
         self.durationUnit = durationUnit
     }
 
-    public func handle(error err: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws -> Bool {
+    public func handle(error err: Error, beforeRetry: @Sendable (Error) async throws -> Void)
+        async throws -> Bool
+    {
         try await strategy.backoff(clock: clock, durationUnit: durationUnit)
     }
 }
@@ -72,7 +80,8 @@ public protocol BackoffStrategy<Clock>: Sendable where Clock: _Concurrency.Clock
     ///
     /// - Returns: A Boolean value indicating whether a retry should be attempted (`true`) or not (`false`).
     /// - Throws: Any error encountered during the backoff process.
-    func backoff<T: BinaryInteger>(clock: Clock, durationUnit: ClockDurationUnit<Clock, T>) async throws -> Bool
+    func backoff<T: BinaryInteger>(clock: Clock, durationUnit: ClockDurationUnit<Clock, T>)
+        async throws -> Bool
 }
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
@@ -84,10 +93,12 @@ extension BackoffStrategy where Self == ExponentialBackoffStrategy<ContinuousClo
     ///   - maxCount: The maximum number of retries allowed.
     ///   - maxDelay: The maximum duration to wait.
     /// - Returns: An `ExponentialBackoffStrategy` configured with the provided base and maximum retry count.
-    public static func exponential(base: UInt, maxCount: UInt, maxDelay: ContinuousClock.Duration = .seconds(Int.max)) -> ExponentialBackoffStrategy<Clock> {
+    public static func exponential(
+        base: UInt, maxCount: UInt, maxDelay: ContinuousClock.Duration = .seconds(Int.max)
+    ) -> ExponentialBackoffStrategy<Clock> {
         ExponentialBackoffStrategy(base: base, maxCount: maxCount, maxDelay: maxDelay)
     }
-    
+
     /// Creates a binary exponential backoff strategy with a maximum retry count.
     ///
     /// The base duration for this strategy is set to 2, meaning the delay will double with each retry.
@@ -96,7 +107,9 @@ extension BackoffStrategy where Self == ExponentialBackoffStrategy<ContinuousClo
     ///   - maxCount: The maximum number of retries allowed.
     ///   - maxDelay: The maximum duration to wait.
     /// - Returns: An `ExponentialBackoffStrategy` configured with a base of 2 and the provided maximum retry count.
-    public static func binaryExponential(maxCount: UInt, maxDelay: ContinuousClock.Duration = .seconds(Int.max)) -> ExponentialBackoffStrategy<Clock> {
+    public static func binaryExponential(
+        maxCount: UInt, maxDelay: ContinuousClock.Duration = .seconds(Int.max)
+    ) -> ExponentialBackoffStrategy<Clock> {
         ExponentialBackoffStrategy(base: 2, maxCount: maxCount, maxDelay: maxDelay)
     }
 }
@@ -111,7 +124,7 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
     var count = 1
     let maxCount: UInt
     let maxDelay: Clock.Duration
-    
+
     /// Creates a new exponential backoff strategy with the given base and maximum retry count.
     ///
     /// - Parameters:
@@ -123,20 +136,23 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
         self.maxCount = maxCount
         self.maxDelay = maxDelay
     }
-    
+
     /// Creates a new exponential backoff strategy with the given base and maximum retry count.
     ///
     /// - Parameters:
     ///   - base: The base duration for the backoff, which will increase exponentially with each retry.
     ///   - maxCount: The maximum number of retries allowed.
     ///   - maxDelay: The maximum duration to wait.
-    public init(base: UInt, maxCount: UInt, maxDelay: Clock.Duration = .seconds(Int.max)) where Clock.Duration == Duration {
+    public init(base: UInt, maxCount: UInt, maxDelay: Clock.Duration = .seconds(Int.max))
+    where Clock.Duration == Duration {
         self.base = base
         self.maxCount = maxCount
         self.maxDelay = maxDelay
     }
-    
-    public func backoff<T: BinaryInteger>(clock: Clock, durationUnit: ClockDurationUnit<Clock, T>) async throws -> Bool {
+
+    public func backoff<T: BinaryInteger>(clock: Clock, durationUnit: ClockDurationUnit<Clock, T>)
+        async throws -> Bool
+    {
         guard count < maxCount else { return false }
         try await clock.sleep(for: min(durationUnit(T(pow(Double(base), Double(count)))), maxDelay))
         count += 1

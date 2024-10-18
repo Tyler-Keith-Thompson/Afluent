@@ -18,7 +18,8 @@ extension AsyncSequences {
         case complete
     }
 
-    public struct Materialize<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable where Upstream.Element: Sendable {
+    public struct Materialize<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable
+    where Upstream.Element: Sendable {
         public typealias Element = Event<Upstream.Element>
 
         let upstream: Upstream

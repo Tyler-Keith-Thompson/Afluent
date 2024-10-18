@@ -12,7 +12,8 @@ extension AsyncSequences {
     public struct AnyAsyncSequence<Element: Sendable>: AsyncSequence, Sendable {
         let makeIterator: @Sendable () -> AnyAsyncIterator<Element>
 
-        public init<S: AsyncSequence & Sendable>(erasing sequence: S) where S.Element == Element, S.Element: Sendable {
+        public init<S: AsyncSequence & Sendable>(erasing sequence: S)
+        where S.Element == Element, S.Element: Sendable {
             makeIterator = { AnyAsyncIterator(erasing: sequence.makeAsyncIterator()) }
         }
 
@@ -30,7 +31,8 @@ extension AsyncSequences {
                     lock.lock()
                     defer { lock.unlock() }
                     return _iterator
-                } set {
+                }
+                set {
                     lock.lock()
                     defer { lock.unlock() }
                     _iterator = newValue

@@ -8,7 +8,9 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct Dematerialize<Upstream: AsyncSequence & Sendable, Element: Sendable>: AsyncSequence, Sendable where Upstream.Element == AsyncSequences.Event<Element> {
+    public struct Dematerialize<Upstream: AsyncSequence & Sendable, Element: Sendable>:
+        AsyncSequence, Sendable
+    where Upstream.Element == AsyncSequences.Event<Element> {
         let upstream: Upstream
 
         public struct AsyncIterator: AsyncIteratorProtocol {
@@ -43,7 +45,8 @@ extension AsyncSequence where Self: Sendable {
     ///
     /// - Returns: An `AsyncSequences.Dematerialize` instance that represents the original `AsyncSequence` with its elements and errors.
     /// - Throws: Re-throws any errors that were encapsulated in the `Event.failure` cases.
-    public func dematerialize<T>() -> AsyncSequences.Dematerialize<Self, T> where Element == AsyncSequences.Event<T> {
+    public func dematerialize<T>() -> AsyncSequences.Dematerialize<Self, T>
+    where Element == AsyncSequences.Event<T> {
         AsyncSequences.Dematerialize(upstream: self)
     }
 }

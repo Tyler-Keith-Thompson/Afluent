@@ -220,7 +220,6 @@ import Testing
         // Given
         let elements = (0..<10).map { $0 }
         let (base, continuation) = AsyncStream<Int>.makeStream()
-
         // When
         let broadcasted = base.broadcast()
         let results = await withTaskGroup(of: [Int].self) { group in

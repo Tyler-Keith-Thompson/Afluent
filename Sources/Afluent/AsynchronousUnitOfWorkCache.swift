@@ -45,11 +45,10 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
 }
 
 extension AsynchronousUnitOfWorkCache {
-    /// `Strategy` represents the available caching strategies for the `PublisherCache`.
+    /// `Strategy` represents the available caching strategies for the `AsynchronousUnitOfWorkCache`.
     public enum Strategy {
-        /// With the `.cacheUntilCompletionOrCancellation` strategy, the publisher cache
-        /// retains the result until the publisher completes or the subscribers cancel
-        /// their subscriptions.
+        /// With the `.cacheUntilCompletionOrCancellation` strategy, the cache
+        /// retains the result until the unit of work completes or is cancelled.
         case cacheUntilCompletionOrCancellation
     }
 }

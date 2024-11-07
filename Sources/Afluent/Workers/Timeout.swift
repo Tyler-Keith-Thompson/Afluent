@@ -35,7 +35,7 @@ extension Workers {
                 try await Race {
                     try await clock.sleep(
                         until: clock.now.advanced(by: duration), tolerance: tolerance)
-                    throw customError ?? CancellationError()
+                    throw customError ?? TimeoutError.timedOut(duration: duration)
                 } against: {
                     try await upstream.execute()
                 }
@@ -52,6 +52,7 @@ extension AsynchronousUnitOfWork {
     /// - Parameter duration: The maximum duration the operation is allowed to take, represented as a `Duration`.
     /// - Parameter customError: A custom error to throw if timeout occurs. If no value is supplied a `CancellationError` is thrown.
     /// - Returns: An asynchronous unit of work that includes the timeout behavior, encapsulating the operation's success or failure.
+    /// - Throws: ``TimeoutError`` if the timeout limit is reached.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func timeout(_ duration: Duration, customError: Error? = nil)
         -> some AsynchronousUnitOfWork<Success>
@@ -70,6 +71,7 @@ extension AsynchronousUnitOfWork {
     /// - Parameter tolerance: An optional tolerance for the delay. Defaults to `nil`.
     /// - Parameter customError: A custom error to throw if timeout occurs. If no value is supplied a `CancellationError` is thrown.
     /// - Returns: An asynchronous unit of work that includes the timeout behavior, encapsulating the operation's success or failure.
+    /// - Throws: ``TimeoutError`` if the timeout limit is reached.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func timeout<C: Clock>(
         _ duration: C.Duration, clock: C, tolerance: C.Duration? = nil, customError: Error? = nil

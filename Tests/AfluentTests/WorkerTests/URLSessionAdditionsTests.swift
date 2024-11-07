@@ -3,7 +3,7 @@
     import Foundation
     import OHHTTPStubs
     import OHHTTPStubsSwift
-    import Testing
+    @_spi(Experimental) import Testing
 
     @Suite(.serialized)
     final class URLSessionAdditionsTests {

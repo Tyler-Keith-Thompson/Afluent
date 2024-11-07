@@ -14,13 +14,23 @@ extension Workers {
     where Upstream.Success == Success {
         let state = TaskState<Success>()
         let upstream: Upstream
-        let customError: Error?
+        let customError: Swift.Error?
         let clock: C
         let duration: C.Duration
         let tolerance: C.Duration?
 
+        enum Error: Swift.Error, LocalizedError  {
+            case timedOut(duration: C.Duration)
+
+            var errorDescription: String? {
+                switch self {
+                    case .timedOut(let duration): return "Timed out after waiting \(duration)"
+                }
+            }
+        }
+
         init(
-            upstream: Upstream, customError: Error?, clock: C, duration: C.Duration,
+            upstream: Upstream, customError: Swift.Error?, clock: C, duration: C.Duration,
             tolerance: C.Duration?
         ) {
             self.upstream = upstream
@@ -35,7 +45,7 @@ extension Workers {
                 try await Race {
                     try await clock.sleep(
                         until: clock.now.advanced(by: duration), tolerance: tolerance)
-                    throw customError ?? CancellationError()
+                    throw customError ?? Error.timedOut(duration: duration)
                 } against: {
                     try await upstream.execute()
                 }
@@ -53,7 +63,7 @@ extension AsynchronousUnitOfWork {
     /// - Parameter customError: A custom error to throw if timeout occurs. If no value is supplied a `CancellationError` is thrown.
     /// - Returns: An asynchronous unit of work that includes the timeout behavior, encapsulating the operation's success or failure.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-    public func timeout(_ duration: Duration, customError: Error? = nil)
+    public func timeout(_ duration: Duration, customError: Swift.Error? = nil)
         -> some AsynchronousUnitOfWork<Success>
     {
         Workers.Timeout(
@@ -72,7 +82,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An asynchronous unit of work that includes the timeout behavior, encapsulating the operation's success or failure.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func timeout<C: Clock>(
-        _ duration: C.Duration, clock: C, tolerance: C.Duration? = nil, customError: Error? = nil
+        _ duration: C.Duration, clock: C, tolerance: C.Duration? = nil, customError: Swift.Error? = nil
     ) -> some AsynchronousUnitOfWork<Success> {
         Workers.Timeout(
             upstream: self, customError: customError, clock: clock, duration: duration,

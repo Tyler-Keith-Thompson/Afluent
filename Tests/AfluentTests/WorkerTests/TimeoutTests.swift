@@ -36,7 +36,9 @@ struct TimeoutTests {
         await clock.advance(by: .milliseconds(11))
 
         let res = await task.result
-        #expect(throws: (any Error).self) { try res.get() }
+        #expect { try res.get() } throws: { error in 
+            error.localizedDescription == "Timed out after waiting \(Duration.milliseconds(10))"
+        }
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)

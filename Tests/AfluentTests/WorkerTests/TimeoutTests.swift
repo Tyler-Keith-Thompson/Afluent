@@ -42,6 +42,27 @@ struct TimeoutTests {
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test func taskTimesOutIfItTakesTooLong_AndCanCatchTimeoutError() async throws {
+        let clock = TestClock()
+
+        let task = Task {
+            try await DeferredTask { "test" }
+                .delay(for: .milliseconds(20), clock: clock)
+                .timeout(.milliseconds(10), clock: clock)
+                .catch(TimeoutError.timedOut) { error in
+                    DeferredTask { "caught" }
+                }
+                .execute()
+        }
+
+        await clock.advance(by: .milliseconds(11))
+
+        let val = try await task.value
+
+        #expect(val == "caught")
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func taskTimesOutIfItTakesTooLong_WithCustomError() async throws {
         let clock = TestClock()
 

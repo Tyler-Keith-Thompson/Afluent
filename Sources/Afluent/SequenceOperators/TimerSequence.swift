@@ -9,7 +9,7 @@ import Foundation
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension AsyncSequences {
-    /// A sequence that repeatedly emits a time duration offsetn on a given interval.
+    /// A sequence that repeatedly emits an instant on a given interval.
     public struct TimerSequence<C: Clock>: AsyncSequence, Sendable {
         public typealias Element = C.Instant
 

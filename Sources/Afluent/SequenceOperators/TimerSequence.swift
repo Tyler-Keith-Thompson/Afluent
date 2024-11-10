@@ -56,7 +56,7 @@ public typealias TimerSequence = AsyncSequences.TimerSequence
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension TimerSequence where C == ContinuousClock {
-    /// Returns a sequence that repeatedly emits the current offset of a continuous clock on the given interval.
+    /// Returns a sequence that repeatedly emits an instant of a continuous clock on the given interval.
     ///
     /// - Parameters:
     ///   - interval: The time interval on which to publish events. For example, a value of `.milliseconds(1)` will publish an event approximately every 0.01 seconds.
@@ -70,7 +70,7 @@ extension TimerSequence where C == ContinuousClock {
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension TimerSequence {
-    /// Returns a sequence that repeatedly emits the current offset of the passed clock on the given interval.
+    /// Returns a sequence that repeatedly emits an instant of the passed clock on the given interval.
     ///
     /// - Parameters:
     ///   - interval: The time interval on which to publish events. For example, a value of `.milliseconds(1)` will publish an event approximately every 0.01 seconds.

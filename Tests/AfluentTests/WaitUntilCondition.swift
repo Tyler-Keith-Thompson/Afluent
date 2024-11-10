@@ -7,7 +7,7 @@
 
 import Afluent
 
-/// Waits for some condition to proceeds, unless the specified timeout is reached, in which case an error is thrown.
+/// Waits for some condition before proceeding, unless the specified timeout is reached, in which case an error is thrown.
 func wait(until condition: @autoclosure @escaping @Sendable () async -> Bool, timeout: Duration)
     async throws
 {

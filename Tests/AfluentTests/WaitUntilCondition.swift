@@ -11,11 +11,22 @@ import Afluent
 func wait(until condition: @autoclosure @escaping @Sendable () async -> Bool, timeout: Duration)
     async throws
 {
-    try await DeferredTask {
-        while await condition() == false {
-            try await Task.sleep(nanoseconds: 100)
+    try await wait(until: await condition(), timeout: timeout, clock: ContinuousClock())
+}
+
+/// Waits for some condition before proceeding, unless the specified timeout is reached, in which case an error is thrown.
+func wait<C: Clock>(
+    until condition: @autoclosure @escaping @Sendable () async -> Bool, timeout: C.Duration,
+    clock: C
+) async throws {
+    let start = clock.now
+    let checkTimeout = {
+        if start.duration(to: clock.now) >= timeout {
+            throw TimeoutError.timedOut(duration: timeout)
         }
     }
-    .timeout(timeout)
-    .execute()
+    while await condition() == false {
+        try checkTimeout()
+        try await clock.sleep(for: clock.minimumResolution)
+    }
 }

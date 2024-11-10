@@ -36,7 +36,7 @@ struct TimerSequenceTests {
             .init(offset: .milliseconds(10) * $0)
         }
         let actualOutput = await testOutput.output
-        #expect(actualOutput == expectedOutput, "Unexpected output \(actualOutput)")
+        #expect(actualOutput == expectedOutput)
 
         task.cancel()
     }
@@ -79,8 +79,8 @@ struct TimerSequenceTests {
         }
         let actualOutput1 = await testOutput1.output
         let actualOutput2 = await testOutput2.output
-        #expect(actualOutput1 == expectedOutput1, "Unexpected output \(actualOutput1)")
-        #expect(actualOutput2 == expectedOutput2, "Unexpected output \(actualOutput2)")
+        #expect(actualOutput1 == expectedOutput1)
+        #expect(actualOutput2 == expectedOutput2)
 
         task1.cancel()
         task2.cancel()
@@ -153,7 +153,7 @@ struct TimerSequenceTests {
                 }
             let actualOutput = await testOutput.output
             print(actualOutput)
-            #expect(actualOutput == expectedOutput, "Unexpected output \(actualOutput)")
+            #expect(actualOutput == expectedOutput)
 
             task.cancel()
         }
@@ -198,7 +198,7 @@ struct TimerSequenceTests {
             .map { $0 + initialWaitIntervals }
             .map { .init(offset: .milliseconds(10) * $0) }
         let actualOutput = await testOutput.output
-        #expect(actualOutput == expectedOutput, "Unexpected output \(actualOutput)")
+        #expect(actualOutput == expectedOutput)
 
         task.cancel()
     }
@@ -234,7 +234,7 @@ struct TimerSequenceTests {
             .init(offset: .milliseconds(10))
         ]
         let actualOutput = await testOutput.output
-        #expect(actualOutput == expectedOutput, "Unexpected output \(actualOutput)")
+        #expect(actualOutput == expectedOutput)
     }
 }
 

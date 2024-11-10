@@ -152,7 +152,6 @@ struct TimerSequenceTests {
                     }
                 }
             let actualOutput = await testOutput.output
-            print(actualOutput)
             #expect(actualOutput == expectedOutput)
 
             task.cancel()

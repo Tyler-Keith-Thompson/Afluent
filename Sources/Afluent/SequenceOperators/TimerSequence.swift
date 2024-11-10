@@ -27,21 +27,31 @@ extension AsyncSequences {
             private var cancellables: Set<AnyCancellable> = []
 
             init(interval: C.Duration, tolerance: C.Duration?, clock: C) {
-                let (stream, continuation) = AsyncStream<C.Instant>.makeStream()
-                self.iterator = stream.makeAsyncIterator()
-
-                DeferredTask {
-                    while true {
-                        try await clock.sleep(for: interval, tolerance: tolerance)
-                        continuation.yield(clock.now)
-                    }
-                }.subscribe().store(in: &cancellables)
+                self.interval = interval
+                self.tolerance = tolerance
+                self.clock = clock
             }
 
-            private var iterator: AsyncStream<Element>.Iterator
+            private let interval: C.Duration
+            private let tolerance: C.Duration?
+            private let clock: C
+            private var last: C.Instant?
+            private var finished = false
 
-            public mutating func next() async -> Element? {
-                await iterator.next()
+            public mutating func next() async -> C.Instant? {
+                guard !finished else {
+                    return nil
+                }
+                let next = (self.last ?? clock.now).advanced(by: self.interval)
+                do {
+                    try await clock.sleep(until: next, tolerance: self.tolerance)
+                } catch {
+                    self.finished = true
+                    return nil
+                }
+                let now = clock.now
+                self.last = next
+                return now
             }
         }
 

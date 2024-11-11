@@ -9,7 +9,7 @@ import Afluent
 
 extension Task where Failure == Error {
     /// Spawns a new Task to run some async operation and waits for that task to begin execution before proceeding.
-    static func waitUntilScheduled(
+    public static func waitUntilScheduled(
         operation: sending @escaping @isolated(any) () async throws -> Success
     ) async throws -> Self {
         let sub = SingleValueSubject<Void>()

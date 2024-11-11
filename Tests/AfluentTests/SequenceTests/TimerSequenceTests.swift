@@ -6,6 +6,7 @@
 //
 
 @_spi(Experimental) import Afluent
+import AfluentTesting
 import Atomics
 import Clocks
 import ConcurrencyExtras

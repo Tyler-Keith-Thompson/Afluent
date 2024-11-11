@@ -8,14 +8,16 @@
 import Afluent
 
 /// Waits for some condition before proceeding, unless the specified timeout is reached, in which case an error is thrown.
-func wait(until condition: @autoclosure @escaping @Sendable () async -> Bool, timeout: Duration)
+public func wait(
+    until condition: @autoclosure @escaping @Sendable () async -> Bool, timeout: Duration
+)
     async throws
 {
     try await wait(until: await condition(), timeout: timeout, clock: ContinuousClock())
 }
 
 /// Waits for some condition before proceeding, unless the specified timeout is reached, in which case an error is thrown.
-func wait<C: Clock>(
+public func wait<C: Clock>(
     until condition: @autoclosure @escaping @Sendable () async -> Bool, timeout: C.Duration,
     clock: C
 ) async throws {

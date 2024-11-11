@@ -4,7 +4,9 @@
 ![AfluentLogo](https://github.com/Tyler-Keith-Thompson/Afluent/assets/33705774/ba1b24b2-cd70-4c9c-824a-e89ee89348a8)
 
 
-[Click here for documentation](https://tyler-keith-thompson.github.io/Afluent/documentation/afluent/)
+Documentation:
+- [Afluent](https://tyler-keith-thompson.github.io/Afluent/documentation/afluent/)
+- [AfluentTesting](https://tyler-keith-thompson.github.io/Afluent/documentation/afluenttesting/)
 
 Afluent is a Swift library that lives between [swift-async-algorithms](https://github.com/apple/swift-async-algorithms) and foundation, adding reactive operators to async/await and AsyncSequence. The goal of Afluent is to provide a reactive friendly operator style API to enhance Apple's offerings. As a consequence, Afluent will add features that Apple has either already built or is actively building.
 While async/await has simplified asynchronous code, it doesn't offer the full suite of operations for transforming, combining, and error-handling that Combine does. Afluent deliberately keeps as much of the Combine API as makes sense to make moving from Combine to Afluent much easier. As a consequence, you may have some minor symbol collisions when you import both Combine and Afluent in the same file.
@@ -13,6 +15,7 @@ While async/await has simplified asynchronous code, it doesn't offer the full su
 - Fluent, chainable interface
 - A rich set of built-in methods like `map`, `flatMap`, `catch`, `retry`, and many more
 - Built to work seamlessly with Swift's new `async/await` syntax
+- Test utilities to facilitate common `async/await` testing needs
 
 ## Installation
 
@@ -26,6 +29,21 @@ dependencies: [
 ]
 ```
 
+Then, add the Afluent target as a dependency to your package targets:
+
+```swift
+dependencies: [
+    .product(name: "Afluent", package: "Afluent"),
+]
+```
+
+For test targets where you'd like to use Afluent's testing utilities, add the AfluentTesting target as a dependency:
+
+```swift
+dependencies: [
+    .product(name: "AfluentTesting", package: "Afluent"),
+]
+```
 
 ## Usage
 

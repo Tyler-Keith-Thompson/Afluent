@@ -13,6 +13,7 @@ jobs:
     secrets:
       TOKEN: ${{ secrets.TOKEN }}
   release-afluent-testing:
+    needs: release-afluent # run serially
     uses: ./.github/workflows/docc-release.yml
     with:
       target: ${{ 'AfluentTesting' }}

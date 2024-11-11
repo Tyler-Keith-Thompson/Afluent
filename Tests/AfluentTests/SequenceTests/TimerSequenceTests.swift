@@ -136,7 +136,7 @@ struct TimerSequenceTests {
             }
 
             try await nextCalled
-            
+
             await testClock.advance(by: .milliseconds(10) * skew)
             try await wait(
                 until: await testOutput.output.count == expectedCount, timeout: .seconds(1))
@@ -254,17 +254,5 @@ private actor TestOutput<Value> {
 extension TestOutput where Value == TestClock<Duration>.Instant {
     init() {
         self.init(Value.self)
-    }
-}
-
-extension Task {
-    static func waitUntilScheduled(operation: sending @escaping @isolated(any) () async throws -> Success) async throws -> Task<Success, any Error> {
-        let sub = SingleValueSubject<Void>()
-        let t = Task<Success, any Error> {
-            try? sub.send()
-            return try await operation()
-        }
-        try await sub.execute()
-        return t
     }
 }

@@ -26,6 +26,7 @@ func wait<C: Clock>(
         }
     }
     while await condition() == false {
+        await Task.yield()
         try checkTimeout()
         try await clock.sleep(for: clock.minimumResolution)
     }

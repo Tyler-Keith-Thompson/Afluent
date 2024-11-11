@@ -32,17 +32,19 @@ dependencies: [
 Then, add the Afluent target as a dependency to your package targets:
 
 ```swift
-dependencies: [
-    .product(name: "Afluent", package: "Afluent"),
-]
+.target(name: "MyLib",
+        dependencies: [
+            .product(name: "Afluent", package: "Afluent"),
+        ])
 ```
 
 For test targets where you'd like to use Afluent's testing utilities, add the AfluentTesting target as a dependency:
 
 ```swift
-dependencies: [
-    .product(name: "AfluentTesting", package: "Afluent"),
-]
+.testTarget(name: "MyLibTests",
+            dependencies: [
+                .product(name: "AfluentTesting", package: "Afluent"),
+            ])
 ```
 
 ## Usage

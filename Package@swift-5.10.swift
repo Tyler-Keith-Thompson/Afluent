@@ -11,7 +11,10 @@ let package = Package(
     products: [
         .library(
             name: "Afluent",
-            targets: ["Afluent"])
+            targets: ["Afluent"]),
+        .library(
+            name: "AfluentTesting",
+            targets: ["AfluentTesting"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),

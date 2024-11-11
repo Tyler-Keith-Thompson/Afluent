@@ -9,9 +9,9 @@ jobs:
   release-afluent:
     uses: ./.github/workflows/docc-release.yml
     with:
-      target: ${{ "Afluent" }}
+      target: ${{ 'Afluent' }}
   release-afluent-testing:
     uses: ./.github/workflows/docc-release.yml
     with:
-      target: ${{ "AfluentTesting" }}
+      target: ${{ 'AfluentTesting' }}
  

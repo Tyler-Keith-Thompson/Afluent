@@ -10,8 +10,12 @@ jobs:
     uses: ./.github/workflows/docc-release.yml
     with:
       target: ${{ 'Afluent' }}
+    secrets:
+      TOKEN: ${{ secrets.TOKEN }}
   release-afluent-testing:
     uses: ./.github/workflows/docc-release.yml
     with:
       target: ${{ 'AfluentTesting' }}
+    secrets:
+      TOKEN: ${{ secrets.TOKEN }}
  

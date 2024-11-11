@@ -6,6 +6,9 @@ on:
       target:
         required: true
         type: string
+    secrets:
+      TOKEN:
+        required: true
 
 jobs:
   release:

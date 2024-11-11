@@ -19,7 +19,7 @@ struct TimerSequenceTests {
         let testClock = TestClock()
         let testOutput = TestOutput()
 
-        let task = Task {
+        let task = try await Task<Void, any Error>.waitUntilScheduled {
             for try await output in TimerSequence.publish(
                 every: .milliseconds(10), clock: testClock)
             {
@@ -50,7 +50,7 @@ struct TimerSequenceTests {
 
         let sequence = TimerSequence.publish(every: .milliseconds(10), clock: testClock)
 
-        let task1 = Task {
+        let task1 = try await Task<Void, any Error>.waitUntilScheduled {
             for try await output in sequence {
                 await testOutput1.append(output)
             }
@@ -59,7 +59,7 @@ struct TimerSequenceTests {
         await testClock.advance(by: .milliseconds(10))
         try await wait(until: await testOutput1.output.count == 1, timeout: .milliseconds(1))
 
-        let task2 = Task {
+        let task2 = try await Task<Void, any Error>.waitUntilScheduled {
             for try await output in sequence {
                 await testOutput2.append(output)
             }
@@ -125,7 +125,8 @@ struct TimerSequenceTests {
                 TimerSequence.publish(every: .milliseconds(10), clock: testClock)
                     .makeAsyncIterator())
 
-            let task = Task {
+            async let nextCalled: Void? = try await wrappedIterator.nextCalled.first()
+            let task = try await Task<Void, any Error>.waitUntilScheduled {
                 for _ in 0..<expectedCount {
                     if let output = try await wrappedIterator.next() {
                         await testOutput.append(output)
@@ -134,7 +135,8 @@ struct TimerSequenceTests {
                 }
             }
 
-            try await wrappedIterator.nextCalled.first()
+            try await nextCalled
+            
             await testClock.advance(by: .milliseconds(10) * skew)
             try await wait(
                 until: await testOutput.output.count == expectedCount, timeout: .seconds(1))
@@ -171,7 +173,7 @@ struct TimerSequenceTests {
         let initialWaitIntervals = 5
         let clockAdvanced = SingleValueSubject<Void>()
 
-        let task = Task {
+        let task = try await Task<Void, any Error>.waitUntilScheduled {
             var iterator = sequence.makeAsyncIterator()
             await testClock.advance(by: .milliseconds(10) * initialWaitIntervals)
             try clockAdvanced.send()
@@ -209,7 +211,7 @@ struct TimerSequenceTests {
 
         let taskCancelledSubject = SingleValueSubject<Void>()
 
-        let task = Task {
+        let task = try await Task<Void, any Error>.waitUntilScheduled {
             var iterator = TimerSequence.publish(every: .milliseconds(10), clock: testClock)
                 .makeAsyncIterator()
 
@@ -252,5 +254,17 @@ private actor TestOutput<Value> {
 extension TestOutput where Value == TestClock<Duration>.Instant {
     init() {
         self.init(Value.self)
+    }
+}
+
+extension Task {
+    static func waitUntilScheduled(operation: sending @escaping @isolated(any) () async throws -> Success) async throws -> Task<Success, any Error> {
+        let sub = SingleValueSubject<Void>()
+        let t = Task<Success, any Error> {
+            try? sub.send()
+            return try await operation()
+        }
+        try await sub.execute()
+        return t
     }
 }

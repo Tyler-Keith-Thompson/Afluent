@@ -28,7 +28,7 @@ jobs:
             echo "<html></html>" > ./docs/index.html
             cp -r ./docs-temp/Afluent.doccarchive ./docs/Afluent
             cp -r ./docs-temp/AfluentTesting.doccarchive ./docs/AfluentTesting
-            rm -rf ./docs-temp
+            ls -la ./docs/Afluent
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:

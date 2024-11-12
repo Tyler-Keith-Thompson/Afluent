@@ -17,7 +17,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Generate DocC Static Site
         run: |
-            swift package --allow-writing-to-directory ./docs \
+            mkdir ./docs
+            swift package --allow-writing-to-directory ./docs/$target \
               generate-documentation --target $target \
               --disable-indexing \
               --transform-for-static-hosting \
@@ -26,7 +27,7 @@ jobs:
               --source-service github \
               --source-service-base-url https://github.com/Tyler-Keith-Thompson/Afluent/blob/main \
               --checkout-path "$(pwd)" \
-              --output-path ./docs
+              --output-path ./docs/$target
         env:
           target: ${{ inputs.target }}
       - name: Deploy

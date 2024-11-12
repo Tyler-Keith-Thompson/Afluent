@@ -6,6 +6,7 @@
 //
 
 @_spi(Experimental) import Afluent
+import AfluentTesting
 import Atomics
 import Clocks
 import ConcurrencyExtras
@@ -19,7 +20,7 @@ struct TimerSequenceTests {
         let testClock = TestClock()
         let testOutput = TestOutput()
 
-        let task = try await Task<Void, any Error>.waitUntilScheduled {
+        let task = try await Task.waitUntilExecutionStarted {
             for try await output in TimerSequence.publish(
                 every: .milliseconds(10), clock: testClock)
             {
@@ -50,7 +51,7 @@ struct TimerSequenceTests {
 
         let sequence = TimerSequence.publish(every: .milliseconds(10), clock: testClock)
 
-        let task1 = try await Task<Void, any Error>.waitUntilScheduled {
+        let task1 = try await Task.waitUntilExecutionStarted {
             for try await output in sequence {
                 await testOutput1.append(output)
             }
@@ -59,7 +60,7 @@ struct TimerSequenceTests {
         await testClock.advance(by: .milliseconds(10))
         try await wait(until: await testOutput1.output.count == 1, timeout: .milliseconds(1))
 
-        let task2 = try await Task<Void, any Error>.waitUntilScheduled {
+        let task2 = try await Task.waitUntilExecutionStarted {
             for try await output in sequence {
                 await testOutput2.append(output)
             }
@@ -126,7 +127,7 @@ struct TimerSequenceTests {
                     .makeAsyncIterator())
 
             async let nextCalled: Void? = try await wrappedIterator.nextCalled.first()
-            let task = try await Task<Void, any Error>.waitUntilScheduled {
+            let task = try await Task.waitUntilExecutionStarted {
                 for _ in 0..<expectedCount {
                     if let output = try await wrappedIterator.next() {
                         await testOutput.append(output)
@@ -173,7 +174,7 @@ struct TimerSequenceTests {
         let initialWaitIntervals = 5
         let clockAdvanced = SingleValueSubject<Void>()
 
-        let task = try await Task<Void, any Error>.waitUntilScheduled {
+        let task = try await Task.waitUntilExecutionStarted {
             var iterator = sequence.makeAsyncIterator()
             await testClock.advance(by: .milliseconds(10) * initialWaitIntervals)
             try clockAdvanced.send()
@@ -211,7 +212,7 @@ struct TimerSequenceTests {
 
         let taskCancelledSubject = SingleValueSubject<Void>()
 
-        let task = try await Task<Void, any Error>.waitUntilScheduled {
+        let task = try await Task.waitUntilExecutionStarted {
             var iterator = TimerSequence.publish(every: .milliseconds(10), clock: testClock)
                 .makeAsyncIterator()
 

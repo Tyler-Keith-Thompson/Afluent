@@ -1,0 +1,36 @@
+name: DocC Release
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+    secrets:
+      TOKEN:
+        required: true
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate DocC Static Site
+        run: |
+            swift package --allow-writing-to-directory ./docs \
+              generate-documentation --target $target \
+              --disable-indexing \
+              --transform-for-static-hosting \
+              --hosting-base-path Afluent/ \
+              --include-extended-types \
+              --source-service github \
+              --source-service-base-url https://github.com/Tyler-Keith-Thompson/Afluent/blob/main \
+              --checkout-path "$(pwd)" \
+              --output-path ./docs
+        env:
+          target: ${{ inputs.target }}
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.TOKEN }}
+          publish_dir: ./docs

@@ -24,10 +24,12 @@ jobs:
               --source-service-base-url https://github.com/Tyler-Keith-Thompson/Afluent/blob/main \
               --checkout-path "$(pwd)" \
               --output-path ./docs
-            ls -la ./docs
-            ls -la ./docs/Afluent.doccarchive
+            mkdir public
+            echo "<html></html>" > public/index.html
+            rsync --recursive docs/Afluent.doccarchive public/Afluent
+            rsync --recursive docs/AfluentTesting.doccarchive public/AfluentTesting
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
+          publish_dir: ./public

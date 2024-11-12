@@ -3,7 +3,7 @@ name: DocC Release
 on:
   workflow_call:
     inputs:
-      target:
+      targets:
         required: true
         type: string
     secrets:

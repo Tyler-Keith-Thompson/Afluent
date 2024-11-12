@@ -26,8 +26,8 @@ jobs:
               --output-path ./docs-temp
             mkdir ./docs
             echo "<html></html>" > ./docs/index.html
-            rsync --recursive ./docs-temp/Afluent.doccarchive ./docs/Afluent
-            rsync --recursive ./docs-temp/AfluentTesting.doccarchive ./docs/AfluentTesting
+            cp -r ./docs-temp/Afluent.doccarchive ./docs/Afluent
+            cp -r ./docs-temp/AfluentTesting.doccarchive ./docs/AfluentTesting
             rm -rf ./docs-temp
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3

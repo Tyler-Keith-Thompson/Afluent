@@ -17,8 +17,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Generate DocC Static Site
         run: |
+            target_array=($(echo "$targets" | tr ',' '\n'))
             swift package --allow-writing-to-directory ./docs \
-              generate-documentation --target $target \
+              generate-documentation \
+              "${target_array[@]/#/--target=}" \
               --disable-indexing \
               --transform-for-static-hosting \
               --hosting-base-path Afluent/ \
@@ -28,7 +30,7 @@ jobs:
               --checkout-path "$(pwd)" \
               --output-path ./docs
         env:
-          target: ${{ inputs.target }}
+          targets: ${{ inputs.target }} # comma-separated list of targets
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:

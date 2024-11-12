@@ -144,7 +144,7 @@ If you're familiar with Combine and are looking to transition to Afluent, this g
 
 2. **Embrace the Differences**: Afluent does not have a customizable `Failure` type like publishers in Combine. Every `AsynchronousUnitOfWork` can throw a `CancellationError`, making the failure type always `Error`.
 
-3. **Use Documentation**: Afluent's [documentation](https://tyler-keith-thompson.github.io/Afluent/documentation/afluent/) is a valuable resource. Refer to it often as you transition.
+3. **Use Documentation**: Afluent's [documentation](https://tyler-keith-thompson.github.io/Afluent/Afluent/documentation/afluent/) is a valuable resource. Refer to it often as you transition.
 
 4. **Join the Community**: Engage with other Afluent users on GitHub. Sharing experiences and solutions can be beneficial.
 

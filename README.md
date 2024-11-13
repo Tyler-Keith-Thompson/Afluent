@@ -5,8 +5,8 @@
 
 
 Documentation:
-- [Afluent](https://tyler-keith-thompson.github.io/Afluent/documentation/afluent/)
-- [AfluentTesting](https://tyler-keith-thompson.github.io/Afluent/documentation/afluenttesting/)
+- [Afluent](https://tyler-keith-thompson.github.io/Afluent/Afluent/documentation/afluent/)
+- [AfluentTesting](https://tyler-keith-thompson.github.io/Afluent/AfluentTesting/documentation/afluenttesting/)
 
 Afluent is a Swift library that lives between [swift-async-algorithms](https://github.com/apple/swift-async-algorithms) and foundation, adding reactive operators to async/await and AsyncSequence. The goal of Afluent is to provide a reactive friendly operator style API to enhance Apple's offerings. As a consequence, Afluent will add features that Apple has either already built or is actively building.
 While async/await has simplified asynchronous code, it doesn't offer the full suite of operations for transforming, combining, and error-handling that Combine does. Afluent deliberately keeps as much of the Combine API as makes sense to make moving from Combine to Afluent much easier. As a consequence, you may have some minor symbol collisions when you import both Combine and Afluent in the same file.
@@ -144,7 +144,7 @@ If you're familiar with Combine and are looking to transition to Afluent, this g
 
 2. **Embrace the Differences**: Afluent does not have a customizable `Failure` type like publishers in Combine. Every `AsynchronousUnitOfWork` can throw a `CancellationError`, making the failure type always `Error`.
 
-3. **Use Documentation**: Afluent's [documentation](https://tyler-keith-thompson.github.io/Afluent/documentation/afluent/) is a valuable resource. Refer to it often as you transition.
+3. **Use Documentation**: Afluent's [documentation](https://tyler-keith-thompson.github.io/Afluent/Afluent/documentation/afluent/) is a valuable resource. Refer to it often as you transition.
 
 4. **Join the Community**: Engage with other Afluent users on GitHub. Sharing experiences and solutions can be beneficial.
 

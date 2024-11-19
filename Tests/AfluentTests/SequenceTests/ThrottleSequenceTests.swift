@@ -250,6 +250,10 @@ struct ThrottleSequenceTests {
             "123-456|-",
             "1  3    |"
         ),
+        (
+            "---1----2|-",
+            "   1    2 |"
+        ),
     ].enumerated().map { ($0.offset, $0.element.0, $0.element.1) }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
@@ -366,6 +370,10 @@ struct ThrottleSequenceTests {
         (
             "123-456|-",
             "1  2    |"
+        ),
+        (
+            "---1----2|-",
+            "   1    2 |"
         ),
     ].enumerated().map { ($0.offset, $0.element.0, $0.element.1) }
 

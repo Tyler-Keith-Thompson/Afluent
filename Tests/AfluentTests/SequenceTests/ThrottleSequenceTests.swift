@@ -191,24 +191,24 @@ struct ThrottleSequenceTests {
             " |"
         ),
         (
-            "1|",
-            "1|"
+            "1-|",
+            "1 |"
         ),
         (
-            "123|",
-            "1  |"
+            "123|-",
+            "1   |"
         ),
         (
-            "123-|",
-            "1  3|"
+            "123-|-",
+            "1  3 |"
         ),
         (
             "123e4-",
             "1    e"
         ),
         (
-            "1-23-|",
-            "1 2 3|"
+            "1-23-|-",
+            "1 2 3 |"
         ),
         (
             "1-23-e4-",
@@ -219,32 +219,32 @@ struct ThrottleSequenceTests {
             "1   e"
         ),
         (
-            "1-23456789-|",
-            "1 2       9|"
+            "1-23456789--|",
+            "1 2       9 |"
         ),
         (
-            "1-2-3-4-5-6-7-8-9|",
-            "1 2 3 4 5 6 7 8 9|"
+            "1-2-3-4-5-6-7-8-9-|",
+            "1 2 3 4 5 6 7 8 9-|"
         ),
         (
-            "123-45-67-89-|",
-            "1  3  5  7  9|"
+            "123-45-67-89--|",
+            "1  3  5  7  9 |"
         ),
         (
-            "1-2345`6789-|",
-            "1 2        9|"
+            "1-2345`6789--|",
+            "1 2        9 |"
         ),
         (
-            "1``2``3``4``5``6``7``8``9|",
-            "1  2  3  4  5  6  7  8  9|"
+            "1``2``3``4``5``6``7``8``9``|",
+            "1  2  3  4  5  6  7  8  9``|"
         ),
         (
-            "12345--6789-|",
-            "1    5 6   9|"
+            "12345--6789--|",
+            "1    5 6   9 |"
         ),
         (
-            "12345-67-89-|",
-            "1    5  7  9|"
+            "12345-67-89--|",
+            "1    5  7  9 |"
         ),
     ].enumerated().map { ($0.offset, $0.element.0, $0.element.1) }
 
@@ -304,24 +304,24 @@ struct ThrottleSequenceTests {
             " |"
         ),
         (
-            "1|",
-            "1|"
+            "1-|",
+            "1 |"
         ),
         (
-            "123|",
-            "1  |"
+            "123|-",
+            "1   |"
         ),
         (
-            "123-|",
-            "1  2|"
+            "123-|-",
+            "1  2 |"
         ),
         (
             "123e4-",
             "1    e"
         ),
         (
-            "1-23-|",
-            "1-2 3|"
+            "1-23-|-",
+            "1-2 3 |"
         ),
         (
             "1-23-e4-",
@@ -332,32 +332,32 @@ struct ThrottleSequenceTests {
             "1   e"
         ),
         (
-            "1-23456789-|",
-            "1 2       3|"
+            "1-23456789--|",
+            "1 2       3 |"
         ),
         (
-            "1-2-3-4-5-6-7-8-9|",
-            "1 2 3 4 5 6 7 8 9|"
+            "1-2-3-4-5-6-7-8-9-|",
+            "1 2 3 4 5 6 7 8 9 |"
         ),
         (
-            "123-45-67-89-|",
-            "1  2  4  6  8|"
+            "123-45-67-89--|",
+            "1  2  4  6  8 |"
         ),
         (
-            "1-2345`6789-|",
-            "1 2        3|"
+            "1-2345`6789--|",
+            "1 2        3 |"
         ),
         (
-            "1``2``3``4``5``6``7``8``9|",
-            "1  2  3  4  5  6  7  8  9|"
+            "1``2``3``4``5``6``7``8``9``|",
+            "1  2  3  4  5  6  7  8  9  |"
         ),
         (
-            "12345--6789-|",
-            "1    2 6   7|"
+            "12345--6789--|",
+            "1    2 6   7 |"
         ),
         (
-            "12345-67-89-|",
-            "1    2  6  8|"
+            "12345-67-89--|",
+            "1    2  6  8 |"
         ),
     ].enumerated().map { ($0.offset, $0.element.0, $0.element.1) }
 
@@ -444,6 +444,7 @@ struct ThrottleSequenceTests {
                 let expectedElements = expectedOutputForStep.compactMap { Int(String($0)) }
                 let expectedMinimumDuration = max(expectedElements.count - 1, 0) * 10
                 let expectError = expectedOutputForStep.contains("e")
+                let expectFinish = expectedOutputForStep.contains("|")
                 let failureDebugMessage: Comment = """
                     function: \(function)
                     test case: \(testCase)
@@ -456,6 +457,8 @@ struct ThrottleSequenceTests {
                 #expect(duration >= expectedMinimumDuration, failureDebugMessage)
                 let receivedError = errorThrown.load(ordering: .sequentiallyConsistent)
                 #expect(receivedError == expectError, failureDebugMessage)
+                let receivedFinish = finished.load(ordering: .sequentiallyConsistent)
+                #expect(receivedFinish == expectFinish, failureDebugMessage)
             }.result
         }
         continuation.finish()

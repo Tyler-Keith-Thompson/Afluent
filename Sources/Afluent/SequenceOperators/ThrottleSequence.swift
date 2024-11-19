@@ -80,6 +80,7 @@ extension AsyncSequences {
                         for try await element in upstream {
                             async let _ = state.setNext(element: element, useLatest: latest)
                         }
+                        await state.setFinish()
                     } catch {
                         await state.setError(error)
                     }
@@ -111,15 +112,6 @@ extension AsyncSequences {
 extension AsyncSequences.Throttle.AsyncIterator {
     /// An event from the upstream publisher
     private enum ElementEvent {
-        /// Creates either `emitted` or `finished`, depending on the optional value.
-        static func element(_ element: Element?) -> Self {
-            if let element {
-                return .emitted(element)
-            } else {
-                return .finished
-            }
-        }
-
         case emitted(Element)
         case error(Error)
         case finished
@@ -135,6 +127,11 @@ extension AsyncSequences.Throttle.AsyncIterator {
     }
 
     private actor SendableState: Sendable {
+        /// Sets the next element as "finished", overwriting any currently set element.
+        func setFinish() {
+            self._nextElement = .finished
+        }
+
         /// When an error occurs, sets the element that's currently staged to next, and stages the error.
         /// If no element is currently staged, the error is set as the next element.
         func setError(_ error: Error) {
@@ -144,11 +141,11 @@ extension AsyncSequences.Throttle.AsyncIterator {
         /// Sets the next element.
         /// If using latest, this element will be set for staging.
         /// If _not_ using latest, the element will be set for staging if no other element is already set.
-        func setNext(element: Element?, useLatest: Bool) {
+        func setNext(element: Element, useLatest: Bool) {
             if useLatest {
-                self._nextElement = .element(element)
+                self._nextElement = .emitted(element)
             } else if self._nextElement == nil {
-                self._nextElement = .element(element)
+                self._nextElement = .emitted(element)
             }
         }
 

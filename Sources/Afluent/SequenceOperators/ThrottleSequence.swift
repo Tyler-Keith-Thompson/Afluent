@@ -132,8 +132,7 @@ extension AsyncSequences.Throttle.AsyncIterator {
             self._nextElement = .finished
         }
 
-        /// When an error occurs, sets the element that's currently staged to next, and stages the error.
-        /// If no element is currently staged, the error is set as the next element.
+        /// When an error occurs, sets the next element as an error, overwriting any currently set element.
         func setError(_ error: Error) {
             self._nextElement = .error(error)
         }

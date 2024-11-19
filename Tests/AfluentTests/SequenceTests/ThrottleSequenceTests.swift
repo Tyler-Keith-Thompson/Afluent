@@ -453,29 +453,25 @@ struct ThrottleSequenceTests {
             }
 
             // At every element, assert correct elements
-            _ = await Task {
-                await Task.yield()
-                let elements = await test.elements
-                let expectedOutputForStep = expectedOutput.prefix(i + 1)
-                let expectedElements = expectedOutputForStep.compactMap { Int(String($0)) }
-                let expectedMinimumDuration = max(expectedElements.count - 1, 0) * 10
-                let expectError = expectedOutputForStep.contains("e")
-                let expectFinish = expectedOutputForStep.contains("|")
-                let failureDebugMessage: Comment = """
-                    function: \(function)
-                    test case: \(testCase)
-                    i: \(i)
-                    step: \(step)
-                    duration: \(advancedDuration.load(ordering: .sequentiallyConsistent))
-                    """
-                #expect(elements == expectedElements, failureDebugMessage)
-                let duration = advancedDuration.load(ordering: .sequentiallyConsistent)
-                #expect(duration >= expectedMinimumDuration, failureDebugMessage)
-                let receivedError = errorThrown.load(ordering: .sequentiallyConsistent)
-                #expect(receivedError == expectError, failureDebugMessage)
-                let receivedFinish = finished.load(ordering: .sequentiallyConsistent)
-                #expect(receivedFinish == expectFinish, failureDebugMessage)
-            }.result
+            let elements = await test.elements
+            let expectedOutputForStep = expectedOutput.prefix(i + 1)
+            let expectedElements = expectedOutputForStep.compactMap { Int(String($0)) }
+            let expectedMinimumDuration = max(expectedElements.count - 1, 0) * 10
+            let expectError = expectedOutputForStep.contains("e")
+            let expectFinish = expectedOutputForStep.contains("|")
+            lazy var failureDebugMessage: Comment = """
+                function: \(function)
+                test case: \(testCase)
+                i: \(i)
+                step: \(step)
+                """
+            #expect(elements == expectedElements, failureDebugMessage)
+            let duration = advancedDuration.load(ordering: .sequentiallyConsistent)
+            #expect(duration >= expectedMinimumDuration, failureDebugMessage)
+            let receivedError = errorThrown.load(ordering: .sequentiallyConsistent)
+            #expect(receivedError == expectError, failureDebugMessage)
+            let receivedFinish = finished.load(ordering: .sequentiallyConsistent)
+            #expect(receivedFinish == expectFinish, failureDebugMessage)
         }
         continuation.finish()
     }

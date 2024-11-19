@@ -23,14 +23,14 @@ extension AsyncSequences {
                 self.interval = interval
                 self.clock = clock
                 self.latest = latest
-                self.state = SendableState()
+                self.state = State()
             }
 
             private let upstream: Upstream
             private let interval: C.Duration
             private let clock: C
             private let latest: Bool
-            private let state: SendableState
+            private let state: State
             private var iterationTask: Task<Void, Never>?
 
             public mutating func next() async throws -> Element? {
@@ -126,7 +126,7 @@ extension AsyncSequences.Throttle.AsyncIterator {
         }
     }
 
-    private actor SendableState: Sendable {
+    private actor State: Sendable {
         /// Sets the next element as "finished", overwriting any currently set element.
         func setFinish() {
             self._nextElement = .finished

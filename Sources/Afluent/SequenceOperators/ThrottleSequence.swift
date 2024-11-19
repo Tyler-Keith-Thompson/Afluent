@@ -110,7 +110,7 @@ extension AsyncSequences {
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension AsyncSequences.Throttle.AsyncIterator {
-    /// An event from the upstream publisher
+    /// An event from the upstream sequence.
     private enum ElementEvent {
         case emitted(Element)
         case error(Error)

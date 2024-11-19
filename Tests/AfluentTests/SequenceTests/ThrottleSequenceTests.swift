@@ -176,27 +176,76 @@ struct ThrottleSequenceTests {
         // * 1-9 | Emit the values 1 through 9
         // * -   | Wait 10 milliseconds (the full throttle duration) and assert
         // * `   | Wait 5 milliseconds (half the throttle duration) and assert
-        // * .   | Assert with no delay
         // * e   | Emit an error
+        // * |   | Finish
         // OUTPUT LEGNED:
         // * 1-9 | Check for values 1 through 9
-        // * -   | Append 10 milliseconds (the full throttle duration) to total time waited
-        // * e   | Emit an error
-        ("-", ""),
-        ("1.", "1"),
-        ("123.", "1"),
-        ("123-", "13"),
-        ("123e4-", "1e"),
-        ("1-23-", "1-23"),
-        ("1-23-e4-", "1-23-e"),
-        ("123e-", "1e"),
-        ("1-23456789-", "1-29"),
-        ("1-2-3-4-5-6-7-8-9-", "1-2-3-4-5-6-7-8-9"),
-        ("123-45-67-89-", "13-5-7-9"),
-        ("1-2345`6789-", "1-2-9"),
-        ("1``2``3``4``5``6``7``8``9``", "1-2-3-4-5-6-7-8-9"),
-        ("12345--6789-", "15--69"),
-        ("12345-67-89-", "15-7-9"),
+        // * e   | Check for an error
+        // * |   | Check for finish
+        // * ' ' | No new elements at that step
+        // Validation:
+        // - Each step is validated
+        // - Alignment indicates what values should be present at the validation step
+        (
+            "-|",
+            " |"
+        ),
+        (
+            "1|",
+            "1|"
+        ),
+        (
+            "123|",
+            "1  |"
+        ),
+        (
+            "123-|",
+            "1  3|"
+        ),
+        (
+            "123e4-",
+            "1    e"
+        ),
+        (
+            "1-23-|",
+            "1 2 3|"
+        ),
+        (
+            "1-23-e4-",
+            "1 2 3  e"
+        ),
+        (
+            "123e-",
+            "1   e"
+        ),
+        (
+            "1-23456789-|",
+            "1 2       9|"
+        ),
+        (
+            "1-2-3-4-5-6-7-8-9|",
+            "1 2 3 4 5 6 7 8 9|"
+        ),
+        (
+            "123-45-67-89-|",
+            "1  3  5  7  9|"
+        ),
+        (
+            "1-2345`6789-|",
+            "1 2        9|"
+        ),
+        (
+            "1``2``3``4``5``6``7``8``9|",
+            "1  2  3  4  5  6  7  8  9|"
+        ),
+        (
+            "12345--6789-|",
+            "1    5 6   9|"
+        ),
+        (
+            "12345-67-89-|",
+            "1    5  7  9|"
+        ),
     ].enumerated().map { ($0.offset, $0.element.0, $0.element.1) }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
@@ -208,7 +257,8 @@ struct ThrottleSequenceTests {
             let (stream, continuation) = AsyncThrowingStream<Int, any Error>.makeStream()
             let testClock = TestClock()
             let test = ElementContainer<Int>()
-            let errors = ElementContainer<Error>()
+            let errorThrown = ManagedAtomic<Bool>(false)
+            let finished = ManagedAtomic<Bool>(false)
             let throttledStream = stream.throttle(
                 for: .milliseconds(10), clock: testClock, latest: true)
             let task = Task {
@@ -216,20 +266,20 @@ struct ThrottleSequenceTests {
                     for try await el in throttledStream {
                         await test.append(el)
                     }
+                    finished.store(true, ordering: .sequentiallyConsistent)
                 } catch {
-                    await errors.append(error)
+                    errorThrown.store(true, ordering: .sequentiallyConsistent)
                 }
             }
-            let advancedDuration = ManagedAtomic<Int>(0)
             await parseThrottleDSL(
                 testCase: testCase,
                 streamInput: streamInput,
                 expectedOutput: expectedOutput,
                 testClock: testClock,
-                advancedDuration: advancedDuration,
                 continuation: continuation,
                 test: test,
-                errors: errors)
+                errorThrown: errorThrown,
+                finished: finished)
             task.cancel()
         }
     }
@@ -240,25 +290,75 @@ struct ThrottleSequenceTests {
         // * -   | Wait 10 milliseconds (the full throttle duration) and assert
         // * `   | Wait 5 milliseconds (half the throttle duration) and assert
         // * e   | Emit an error
+        // * |   | Finish
         // OUTPUT LEGNED:
         // * 1-9 | Check for values 1 through 9
-        // * -   | Append 10 milliseconds (the full throttle duration) to total time waited
-        // * e   | Emit an error
-        ("-", ""),
-        ("1-", "1"),
-        ("123.", "1"),
-        ("123-", "12"),
-        ("123e4-", "1e"),
-        ("1-23-", "1-23"),
-        ("1-23-e4-", "1-23-e"),
-        ("123e-", "1e"),
-        ("1-23456789-", "1-23"),
-        ("1-2-3-4-5-6-7-8-9-", "1-2-3-4-5-6-7-8-9"),
-        ("123-45-67-89-", "12-4-6-8"),
-        ("1-2345`6789", "1-2-3"),
-        ("1``2``3``4``5``6``7``8``9``", "1-2-3-4-5-6-7-8-9"),
-        ("12345--6789-", "12--67"),
-        ("12345-67-89-", "12-6-8"),
+        // * e   | Check for an error
+        // * |   | Check for finish
+        // * ' ' | No new elements at that step
+        // Validation:
+        // - Each step is validated
+        // - Alignment indicates what values should be present at the validation step
+        (
+            "-|",
+            " |"
+        ),
+        (
+            "1|",
+            "1|"
+        ),
+        (
+            "123|",
+            "1  |"
+        ),
+        (
+            "123-|",
+            "1  2|"
+        ),
+        (
+            "123e4-",
+            "1    e"
+        ),
+        (
+            "1-23-|",
+            "1-2 3|"
+        ),
+        (
+            "1-23-e4-",
+            "1-2 3  e"
+        ),
+        (
+            "123e-",
+            "1   e"
+        ),
+        (
+            "1-23456789-|",
+            "1 2       3|"
+        ),
+        (
+            "1-2-3-4-5-6-7-8-9|",
+            "1 2 3 4 5 6 7 8 9|"
+        ),
+        (
+            "123-45-67-89-|",
+            "1  2  4  6  8|"
+        ),
+        (
+            "1-2345`6789-|",
+            "1 2        3|"
+        ),
+        (
+            "1``2``3``4``5``6``7``8``9|",
+            "1  2  3  4  5  6  7  8  9|"
+        ),
+        (
+            "12345--6789-|",
+            "1    2 6   7|"
+        ),
+        (
+            "12345-67-89-|",
+            "1    2  6  8|"
+        ),
     ].enumerated().map { ($0.offset, $0.element.0, $0.element.1) }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
@@ -270,7 +370,8 @@ struct ThrottleSequenceTests {
             let (stream, continuation) = AsyncThrowingStream<Int, any Error>.makeStream()
             let testClock = TestClock()
             let test = ElementContainer<Int>()
-            let errors = ElementContainer<Error>()
+            let errorThrown = ManagedAtomic<Bool>(false)
+            let finished = ManagedAtomic<Bool>(false)
             let throttledStream = stream.throttle(
                 for: .milliseconds(10), clock: testClock, latest: false)
             let task = Task {
@@ -278,20 +379,20 @@ struct ThrottleSequenceTests {
                     for try await el in throttledStream {
                         await test.append(el)
                     }
+                    finished.store(true, ordering: .sequentiallyConsistent)
                 } catch {
-                    await errors.append(error)
+                    errorThrown.store(true, ordering: .sequentiallyConsistent)
                 }
             }
-            let advancedDuration = ManagedAtomic<Int>(0)
             await parseThrottleDSL(
                 testCase: testCase,
                 streamInput: streamInput,
                 expectedOutput: expectedOutput,
                 testClock: testClock,
-                advancedDuration: advancedDuration,
                 continuation: continuation,
                 test: test,
-                errors: errors)
+                errorThrown: errorThrown,
+                finished: finished)
             task.cancel()
         }
     }
@@ -300,69 +401,62 @@ struct ThrottleSequenceTests {
     fileprivate func parseThrottleDSL(
         testCase: Int,
         streamInput: String, expectedOutput: String, testClock: TestClock<Duration>,
-        advancedDuration: ManagedAtomic<Int>,
         continuation: AsyncThrowingStream<Int, any Error>.Continuation,
         test: ElementContainer<Int>,
-        errors: ElementContainer<Error>
+        errorThrown: ManagedAtomic<Bool>,
+        finished: ManagedAtomic<Bool>,
+        function: StaticString = #function
     ) async {
+        #expect(
+            streamInput.count == expectedOutput.count,
+            """
+            Input:  "\(streamInput)"
+            Output: "\(expectedOutput)"
+            """)
+
+        let advancedDuration = ManagedAtomic<Int>(0)
+
         for (i, step) in streamInput.enumerated() {
             if step == "-" {
                 await testClock.advance(by: .milliseconds(10))
-                await Task.yield()
+                await Task.megaYield()
                 advancedDuration.wrappingIncrement(by: 10, ordering: .sequentiallyConsistent)
             } else if step == "`" {
                 await testClock.advance(by: .milliseconds(5))
-                await Task.yield()
+                await Task.megaYield()
                 advancedDuration.wrappingIncrement(by: 5, ordering: .sequentiallyConsistent)
             } else if let val = Int(String(step)) {
                 continuation.yield(val)
+                await Task.megaYield()
             } else if step.lowercased() == "e" {
                 continuation.yield(with: .failure(TestError.upstreamError))
-            } else if step == "." {
-                await Task.yield()
+                await Task.megaYield()
+            } else if step == "|" {
+                continuation.finish()
+                await Task.megaYield()
             }
 
-            // At every halt point, assert correct elements
-            if step == "-" || step == "`" || step == "." {
-                _ = await Task {
-                    await Task.yield()
-                    let elements = await test.elements
-                    // Parse the expected DSL, this is tricky because you have to sort of calculate how far in time to go to understand what the expected result is
-                    let (total, expected, hasError) = expectedOutput.reduce(
-                        into: (total: 0, expected: [Int](), hasError: false)
-                    ) { partialResult, character in
-                        guard
-                            partialResult.total
-                                < advancedDuration.load(ordering: .sequentiallyConsistent)
-                        else {
-                            return
-                        }
-                        if let element = Int(String(character)) {
-                            partialResult.expected.append(element)
-                        }
-                        switch character {
-                            case "-":
-                                partialResult.total += 10
-                            case "`":
-                                partialResult.total += 5
-                            case "e":
-                                partialResult.hasError = true
-                            default: break
-                        }
-                    }
-                    let failureDebugMessage: Comment = """
-                        test case: \(testCase)
-                        i: \(i)
-                        step: \(step)
-                        duration: \(advancedDuration.load(ordering: .sequentiallyConsistent))
-                        total: \(total)
-                        """
-                    #expect(elements == expected, failureDebugMessage)
-                    if hasError {
-                        #expect(await errors.elements.count == 1, failureDebugMessage)
-                    }
-                }.result
-            }
+            // At every element, assert correct elements
+            _ = await Task {
+                await Task.yield()
+                let elements = await test.elements
+                let expectedOutputForStep = expectedOutput.prefix(i + 1)
+                let expectedElements = expectedOutputForStep.compactMap { Int(String($0)) }
+                let expectedMinimumDuration = max(expectedElements.count - 1, 0) * 10
+                let expectError = expectedOutputForStep.contains("e")
+                let failureDebugMessage: Comment = """
+                    function: \(function)
+                    test case: \(testCase)
+                    i: \(i)
+                    step: \(step)
+                    duration: \(advancedDuration.load(ordering: .sequentiallyConsistent))
+                    """
+                #expect(elements == expectedElements, failureDebugMessage)
+                let duration = advancedDuration.load(ordering: .sequentiallyConsistent)
+                #expect(duration >= expectedMinimumDuration, failureDebugMessage)
+                let receivedError = errorThrown.load(ordering: .sequentiallyConsistent)
+                #expect(receivedError == expectError, failureDebugMessage)
+            }.result
         }
         continuation.finish()
     }

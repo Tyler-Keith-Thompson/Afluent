@@ -18,90 +18,163 @@ extension AsyncSequences {
         let latest: Bool
 
         public struct AsyncIterator: AsyncIteratorProtocol {
-            typealias Instant = C.Instant
+            init(upstream: Upstream, interval: C.Duration, clock: C, latest: Bool) {
+                self.upstream = upstream
+                self.interval = interval
+                self.clock = clock
+                self.latest = latest
+                self.state = State()
+            }
 
-            var upstream: Upstream
-            let interval: C.Duration
-            let clock: C
-            let latest: Bool
-
-            var iterator: AsyncThrowingStream<(Element?, Element?), Error>.Iterator?
-            let state = State()
+            private let upstream: Upstream
+            private let interval: C.Duration
+            private let clock: C
+            private let latest: Bool
+            private let state: State
+            private var iterationTask: Task<Void, Never>?
 
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
 
-                if iterator == nil {
-                    iterator = AsyncThrowingStream<(Element?, Element?), Error> {
-                        [clock, interval, upstream, state] continuation in
-
-                        let intervalTask = DeferredTask {
-                            guard let intervalStartInstant = state.startInstant else { return }
-                            state.hasStartedInterval = true
-
-                            let intervalEndInstant = intervalStartInstant.advanced(by: interval)
-                            try await clock.sleep(until: intervalEndInstant, tolerance: nil)
-
-                            let firstElement = state.firstElement
-                            let latestElement = state.latestElement
-
-                            continuation.yield((firstElement, latestElement))
-
-                            state.firstElement = nil
-                            state.hasStartedInterval = false
-                        }
-
-                        let iterationTask = Task {
-                            do {
-                                try Task.checkCancellation()
-                                for try await el in upstream {
-                                    try Task.checkCancellation()
-                                    if !state.hasSeenFirstElement {
-                                        continuation.yield((el, el))
-                                        state.hasSeenFirstElement = true
-                                        continue
-                                    }
-                                    if state.firstElement == nil {
-                                        state.startInstant = clock.now
-                                        state.firstElement = el
-                                        intervalTask.run()
-                                    }
-                                    state.latestElement = el
-                                }
-                                if state.hasStartedInterval {
-                                    continuation.yield((state.firstElement, state.latestElement))
-                                }
-                                continuation.finish()
-                            } catch {
-                                if state.hasStartedInterval {
-                                    continuation.yield((state.firstElement, state.latestElement))
-                                }
-                                continuation.finish(throwing: error)
-                            }
-                        }
-
-                        continuation.onTermination = { _ in
-                            // Clean up any running tasks if the upstream is terminated.
-                            // We are unable to write a test to specifically target this behavior but it should be kept in place to ensure there are no breaking edge cases.
-                            intervalTask.cancel()
-                            iterationTask.cancel()
-                        }
-
-                    }.makeAsyncIterator()
+                if await state.finished {
+                    return nil
                 }
 
-                while let (firstElement, latestElement) = try await iterator?.next() {
+                return try await nextUpstreamElement()
+            }
+
+            private mutating func nextUpstreamElement() async throws -> Element? {
+                await startIterationIfNecessary()
+                try await waitForNextInterval()
+                while true {
+                    await Task.yield()
                     try Task.checkCancellation()
-                    return latest ? latestElement : firstElement
+                    if let nextElement = await state.consumeNextElement(at: clock.now) {
+                        switch nextElement {
+                            case .emitted(let element):
+                                return element
+                            case .error(let error):
+                                cancelTask()
+                                throw error
+                            case .finished:
+                                cancelTask()
+                                return nil
+                        }
+                    }
                 }
+            }
 
-                return nil
+            private mutating func cancelTask() {
+                self.iterationTask?.cancel()
+            }
+
+            private mutating func startIterationIfNecessary() async {
+                guard iterationTask == nil else { return }
+
+                let upstream = self.upstream
+                let latest = self.latest
+                let state = self.state
+
+                self.iterationTask = Task {
+                    do {
+                        for try await element in upstream {
+                            async let _ = state.setNext(element: element, useLatest: latest)
+                        }
+                        await state.setFinish()
+                    } catch {
+                        await state.setError(error)
+                    }
+                }
+                await Task.yield()
+            }
+
+            private func waitForNextInterval() async throws {
+                guard let lastElementEmittedInstant = await state.lastElementEmittedInstant else {
+                    return
+                }
+                let nextInstant = lastElementEmittedInstant.advanced(by: interval)
+                try await clock.sleep(until: nextInstant, tolerance: nil)
+                await Task.yield()
             }
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(upstream: upstream, interval: interval, clock: clock, latest: latest)
+            AsyncIterator(
+                upstream: upstream,
+                interval: interval,
+                clock: clock,
+                latest: latest)
         }
+    }
+}
+
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+extension AsyncSequences.Throttle.AsyncIterator {
+    /// An event from the upstream sequence.
+    private enum ElementEvent {
+        case emitted(Element)
+        case error(Error)
+        case finished
+
+        /// Returns `true` if either `finished` or `error`.
+        var isFinished: Bool {
+            switch self {
+                case .emitted: return false
+                case .error: return true
+                case .finished: return true
+            }
+        }
+    }
+
+    private actor State: Sendable {
+        /// Sets the next element as "finished", overwriting any currently set element.
+        func setFinish() {
+            self._nextElement = .finished
+        }
+
+        /// When an error occurs, sets the next element as an error, overwriting any currently set element.
+        func setError(_ error: Error) {
+            self._nextElement = .error(error)
+        }
+
+        /// Sets the next element.
+        /// If using latest, this element will be set for staging.
+        /// If _not_ using latest, the element will be set for staging if no other element is already set.
+        func setNext(element: Element, useLatest: Bool) {
+            if useLatest {
+                self._nextElement = .emitted(element)
+            } else if self._nextElement == nil {
+                self._nextElement = .emitted(element)
+            }
+        }
+
+        /// Consumes the element that's next, if present.
+        /// If no element is present, then `nil` is returned, meaning we're still waiting on an event from the upstream.
+        /// Calling this function also sets the `lastElementEmittedInstant` to the passed instant.
+        func consumeNextElement(at instant: C.Instant) -> ElementEvent? {
+            guard let nextElement = self._nextElement else {
+                return nil
+            }
+            self._nextElement = nil
+            self._finished = nextElement.isFinished
+            self._lastElementEmittedInstant = instant
+            return nextElement
+        }
+
+        /// The last instant an element was emitted, if an element has already been emitted.
+        /// This value is `nil` if no element has been emitted yet.
+        var lastElementEmittedInstant: C.Instant? {
+            _lastElementEmittedInstant
+        }
+
+        /// Indicates whether the upstream has finished with `nil` or an error.
+        var finished: Bool {
+            _finished
+        }
+
+        private var _nextElement: ElementEvent?
+        private var _lastElementEmittedInstant: C.Instant?
+        private var _finished = false
     }
 }
 
@@ -115,42 +188,5 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
         -> AsyncSequences.Throttle<Self, C>
     {
         AsyncSequences.Throttle(upstream: self, interval: interval, clock: clock, latest: latest)
-    }
-}
-
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-extension AsyncSequences.Throttle {
-    class State: @unchecked Sendable {
-        private var _hasSeenFirstElement: Bool = false
-        var hasSeenFirstElement: Bool {
-            get { lock.protect { _hasSeenFirstElement } }
-            set { lock.protect { _hasSeenFirstElement = newValue } }
-        }
-
-        private var _hasStartedInterval: Bool = false
-        var hasStartedInterval: Bool {
-            get { lock.protect { _hasStartedInterval } }
-            set { lock.protect { _hasStartedInterval = newValue } }
-        }
-
-        private var _firstElement: Element?
-        var firstElement: Element? {
-            get { lock.protect { _firstElement } }
-            set { lock.protect { _firstElement = newValue } }
-        }
-
-        private var _latestElement: Element?
-        var latestElement: Element? {
-            get { lock.protect { _latestElement } }
-            set { lock.protect { _latestElement = newValue } }
-        }
-
-        private var _startInstant: C.Instant?
-        var startInstant: C.Instant? {
-            get { lock.protect { _startInstant } }
-            set { lock.protect { _startInstant = newValue } }
-        }
-
-        private let lock = NSRecursiveLock()
     }
 }

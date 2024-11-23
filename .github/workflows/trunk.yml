@@ -11,6 +11,12 @@ jobs:
     container: swift:6.0
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('Package.resolved', '*/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
       - name: Run TESTS
         run: swift test --use-integrated-swift-driver
   deploy:
@@ -27,7 +33,7 @@ jobs:
       id: bump_version
       uses: anothrNick/github-tag-action@1.67.0
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
         WITH_V: false
         DEFAULT_BUMP: patch
         RELEASE_BRANCHES: main
@@ -37,5 +43,5 @@ jobs:
       with:
         tag_name: ${{ steps.bump_version.outputs.new_tag }}
         name: Release ${{ steps.bump_version.outputs.new_tag }}
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.TOKEN }}
         discussion_category_name: Releases

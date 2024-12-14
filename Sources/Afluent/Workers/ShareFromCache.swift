@@ -8,6 +8,8 @@
 import Foundation
 
 extension AsynchronousUnitOfWork {
+    private typealias CachedWork = Workers.Share<Workers.HandleEvents<Self, Success>, Success>
+
     func _shareFromCache(
         _ cache: AUOWCache, strategy: AUOWCache.Strategy, hasher: inout Hasher, fileId: String = "",
         function: String = "", line: UInt = 0, column: UInt = 0
@@ -17,22 +19,45 @@ extension AsynchronousUnitOfWork {
         hasher.combine(line)
         hasher.combine(column)
         let key = hasher.finalize()
+
+        let workToReturn: CachedWork
+
         switch strategy {
             case .cacheUntilCompletionOrCancellation:
-                return cache.retrieveOrCreate(
-                    unitOfWork: handleEvents(
-                        receiveOutput: { [weak cache] _ in
-                            cache?.clearAsynchronousUnitOfWork(withKey: key)
-                        },
-                        receiveError: { [weak cache] _ in
-                            cache?.clearAsynchronousUnitOfWork(withKey: key)
-                        },
-                        receiveCancel: { [weak cache] in
-                            cache?.clearAsynchronousUnitOfWork(withKey: key)
-                        }
-                    ).share(),
-                    keyedBy: key)
+                workToReturn =
+                    cache.retrieveOrCreate(
+                        unitOfWork: handleEvents(
+                            receiveOutput: { [weak cache] _ in
+                                cache?.clearAsynchronousUnitOfWork(withKey: key)
+                            },
+                            receiveError: { [weak cache] _ in
+                                cache?.clearAsynchronousUnitOfWork(withKey: key)
+                            },
+                            receiveCancel: { [weak cache] in
+                                cache?.clearAsynchronousUnitOfWork(withKey: key)
+                            }
+                        ).share(),
+                        keyedBy: key) as! CachedWork  // force unwrap since share() returns an opaque type
+            case .cancelAndRestart:
+                if let cachedWork = cache.retrieve(keyedBy: key) as? CachedWork {
+                    cachedWork.cancel()
+                }
+                workToReturn =
+                    cache.create(
+                        unitOfWork: handleEvents(
+                            receiveOutput: { [weak cache] _ in
+                                cache?.clearAsynchronousUnitOfWork(withKey: key)
+                            },
+                            receiveError: { [weak cache] _ in
+                                cache?.clearAsynchronousUnitOfWork(withKey: key)
+                            },
+                            receiveCancel: { [weak cache] in
+                                cache?.clearAsynchronousUnitOfWork(withKey: key)
+                            }
+                        ).share(),
+                        keyedBy: key) as! CachedWork  // force unwrap since share() returns an opaque type
         }
+        return workToReturn
     }
 
     /// Shares data from the given cache based on a specified caching strategy and additional context information.

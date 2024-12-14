@@ -16,6 +16,24 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
 
     public init() {}
 
+    func retrieve(
+        keyedBy key: Int
+    ) -> (any AsynchronousUnitOfWork & AnySendableReference)? {
+        lock.lock()
+        let fromCache = cache[key]
+        lock.unlock()
+        return fromCache
+    }
+
+    func create<A: AsynchronousUnitOfWork & AnySendableReference>(
+        unitOfWork: A, keyedBy key: Int
+    ) -> A {
+        lock.lock()
+        cache[key] = unitOfWork
+        lock.unlock()
+        return unitOfWork
+    }
+
     func retrieveOrCreate<A: AsynchronousUnitOfWork & AnySendableReference>(
         unitOfWork: A, keyedBy key: Int
     ) -> A {
@@ -50,5 +68,6 @@ extension AsynchronousUnitOfWorkCache {
         /// With the `.cacheUntilCompletionOrCancellation` strategy, the cache
         /// retains the result until the unit of work completes or is cancelled.
         case cacheUntilCompletionOrCancellation
+        case cancelAndRestart
     }
 }

@@ -204,4 +204,57 @@ struct ShareFromCacheTests {
             #expect(callCount == 1)
         }
     }
+
+    @Test func sharingFromCacheCancelAndRestartCancelsInFlightRequest() async throws {
+        try await withMainSerialExecutor {
+            let cache = AUOWCache()
+            let clock = TestClock()
+
+            @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
+                DeferredTask {
+                    UUID().uuidString
+                }
+                .delay(for: .milliseconds(10), clock: clock)
+                .shareFromCache(cache, strategy: .cancelAndRestart)
+            }
+
+            async let _r1 = Result { try await unitOfWork().execute() }
+            async let _r2 = Result { try await unitOfWork().execute() }
+
+            await clock.advance(by: .milliseconds(11))
+            let r1 = await _r1
+            let r2 = await _r2
+
+            #expect(throws: CancellationError.self) {
+                try r1.get()
+            }
+            _ = try r2.get()
+        }
+    }
+
+    @Test func sharingFromCacheCancelAndRestartAfterCompletion() async throws {
+        try await withMainSerialExecutor {
+            let cache = AUOWCache()
+            let clock = TestClock()
+
+            @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
+                DeferredTask {
+                    UUID().uuidString
+                }
+                .delay(for: .milliseconds(10), clock: clock)
+                .shareFromCache(cache, strategy: .cancelAndRestart)
+            }
+
+            async let _r1 = Result { try await unitOfWork().execute() }
+            await clock.advance(by: .milliseconds(11))
+            async let _r2 = Result { try await unitOfWork().execute() }
+            await clock.advance(by: .milliseconds(11))
+
+            let r1 = await _r1
+            let r2 = await _r2
+
+            _ = try r1.get()
+            _ = try r2.get()
+        }
+    }
 }

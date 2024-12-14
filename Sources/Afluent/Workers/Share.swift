@@ -38,6 +38,11 @@ extension Workers {
         public nonisolated func run() {
             Task { try await task.value }
         }
+
+        public nonisolated func cancel() {
+            state.cancel()
+            Task { await task.cancel() }
+        }
     }
 }
 

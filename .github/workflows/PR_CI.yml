@@ -25,12 +25,6 @@ jobs:
     container: swift:${{ matrix.swift-version }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
-        with:
-          path: .build
-          key: ${{ runner.os }}-spm-${{ hashFiles('Package.resolved', '*/Package.resolved') }}
-          restore-keys: |
-            ${{ runner.os }}-spm-
       - name: Run build
         run: swift build
     if: ${{ github.event_name == 'workflow_dispatch' }} # Only runs on manual trigger

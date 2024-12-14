@@ -204,4 +204,46 @@ struct ShareFromCacheTests {
             #expect(callCount == 1)
         }
     }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test func sharingFromCacheWithManyKeys() async throws {
+        try await withMainSerialExecutor {
+            actor Test {
+                var callCount = 0
+
+                func increment() {
+                    callCount += 1
+                }
+            }
+            let test = Test()
+            let cache = AUOWCache()
+            let clock = TestClock()
+
+            @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
+                DeferredTask {
+                    await test.increment()
+                    return UUID().uuidString
+                }
+                .delay(for: .milliseconds(10), clock: clock)
+                .shareFromCache(
+                    cache, strategy: .cacheUntilCompletionOrCancellation, keys: 1, 2, "a", "b",
+                    true, false)
+            }
+
+            let uow = unitOfWork()
+            async let d1 = uow.execute()
+            #expect(!cache.cache.isEmpty)
+            async let d2 = DeferredTask {}
+                .delay(for: .milliseconds(5), clock: clock)
+                .flatMap { unitOfWork() }
+                .execute()
+
+            await clock.advance(by: .milliseconds(11))
+            _ = try await d1
+            _ = try await d2
+
+            let callCount = await test.callCount
+            #expect(callCount == 1)
+        }
+    }
 }

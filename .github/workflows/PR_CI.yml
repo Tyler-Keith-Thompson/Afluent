@@ -26,5 +26,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run build
-        run: swift build
+        run: rm Package.resolved && swift build
     if: ${{ github.event_name == 'workflow_dispatch' }} # Only runs on manual trigger

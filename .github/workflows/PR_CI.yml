@@ -1,4 +1,4 @@
-name: CI
+name: PR_CI
 
 on: [ workflow_dispatch, pull_request ]
 
@@ -16,3 +16,15 @@ jobs:
             ${{ runner.os }}-spm-
       - name: Run TESTS
         run: swift test --use-integrated-swift-driver
+  
+  manual-swift-regression-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        swift-version: ["5.9", "5.10"]
+    container: swift:${{ matrix.swift-version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run build
+        run: rm Package.resolved && swift build
+    if: ${{ github.event_name == 'workflow_dispatch' }} # Only runs on manual trigger

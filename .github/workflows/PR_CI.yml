@@ -50,3 +50,4 @@ jobs:
             -scheme Afluent-Package \
             -destination '${{ matrix.destination }}' \
             clean build
+    if: ${{ github.event_name == 'workflow_dispatch' }} # Only runs on manual trigger

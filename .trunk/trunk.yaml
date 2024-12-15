@@ -1,0 +1,5 @@
+merge: 
+  required_statuses:
+    - test
+    - swift-regression-tests
+    - apple-platform-regression-tests

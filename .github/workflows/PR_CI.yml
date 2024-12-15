@@ -33,7 +33,7 @@ jobs:
     runs-on: macos-15
     strategy:
       matrix:
-        destination: ["platform=macOS", "platform=iOS", "platform=tvOS", "platform=watchOS", "platform=visionOS"]
+        destination: ["platform=macOS", "platform=iOS Simulator", "platform=tvOS Simulator", "platform=watchOS Simulator", "platform=visionOS Simulator"]
     steps:
       - uses: actions/checkout@v4
       - name: Build and Test for ${{ matrix.destination }}

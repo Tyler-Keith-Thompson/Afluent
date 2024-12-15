@@ -1,6 +1,11 @@
-name: PR_CI
+name: Run Required Checks
+run-name: PR Checks for ${{ github.ref_name }}
 
-on: [ workflow_dispatch, pull_request ]
+# Trigger jobs whenever Trunk Merge Queue tests a PR using a `trunk-merge/` branch
+on:
+  push:
+    branches:
+      - trunk-merge/**
 
 jobs:
   test:
@@ -16,8 +21,7 @@ jobs:
             ${{ runner.os }}-spm-
       - name: Run TESTS
         run: swift test --use-integrated-swift-driver
-  
-  manual-swift-regression-tests:
+  swift-regression-tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -29,7 +33,7 @@ jobs:
         run: rm Package.resolved && swift build
     if: ${{ github.event_name == 'workflow_dispatch' }} # Only runs on manual trigger
 
-  manual-apple-platform-regression-tests:
+  apple-platform-regression-tests:
     runs-on: macos-15
     strategy:
       matrix:

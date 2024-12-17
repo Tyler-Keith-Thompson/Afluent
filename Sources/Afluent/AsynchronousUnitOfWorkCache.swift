@@ -68,6 +68,7 @@ extension AsynchronousUnitOfWorkCache {
         /// With the `.cacheUntilCompletionOrCancellation` strategy, the cache
         /// retains the result until the unit of work completes or is cancelled.
         case cacheUntilCompletionOrCancellation
+        /// This strategy indicates that any existing work should be cancelled before restarting the upstream work again.
         case cancelAndRestart
     }
 }

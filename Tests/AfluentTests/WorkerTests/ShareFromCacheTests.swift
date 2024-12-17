@@ -46,7 +46,8 @@ struct ShareFromCacheTests {
                     let uow = unitOfWork()
                     let key = try #require(cache.cache.keys.first)
                     let o1 = try ObjectIdentifier(#require(cache.cache[key]))
-                    let o2 = try ObjectIdentifier(#require(uow as AnyObject))
+                    let o2 = try ObjectIdentifier(
+                        #require(uow as? AnyAsynchronousUnitOfWork<String>).upstream as AnyObject)
                     #expect(o1 == o2)
                     return uow
                 }

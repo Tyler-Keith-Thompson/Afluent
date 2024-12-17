@@ -20,7 +20,7 @@ extension AsynchronousUnitOfWork {
         hasher.combine(column)
         let key = hasher.finalize()
 
-        let workToReturn: CachedWork
+        let workToReturn: AnyAsynchronousUnitOfWork<Success>
 
         switch strategy {
             case .cacheUntilCompletionOrCancellation:
@@ -37,7 +37,8 @@ extension AsynchronousUnitOfWork {
                                 cache?.clearAsynchronousUnitOfWork(withKey: key)
                             }
                         ).share(),
-                        keyedBy: key) as! CachedWork  // force unwrap since share() returns an opaque type
+                        keyedBy: key
+                    ).eraseToAnyUnitOfWork()
             case .cancelAndRestart:
                 if let cachedWork = cache.retrieve(keyedBy: key) as? CachedWork {
                     cachedWork.cancel()
@@ -55,7 +56,8 @@ extension AsynchronousUnitOfWork {
                                 cache?.clearAsynchronousUnitOfWork(withKey: key)
                             }
                         ).share(),
-                        keyedBy: key) as! CachedWork  // force unwrap since share() returns an opaque type
+                        keyedBy: key
+                    ).eraseToAnyUnitOfWork()
         }
         return workToReturn
     }

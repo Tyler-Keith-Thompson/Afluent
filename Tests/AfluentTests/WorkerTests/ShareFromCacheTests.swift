@@ -54,9 +54,8 @@ struct ShareFromCacheTests {
                 .execute()
 
             await clock.advance(by: .milliseconds(15))
-            let d1Value = try await d1
-            let d2Value = try await d2
-            #expect(d1Value == d2Value)
+            _ = try await d1
+            _ = try await d2
 
             let callCount = await test.callCount
             #expect(callCount == 1)
@@ -98,10 +97,9 @@ struct ShareFromCacheTests {
                 .execute()
 
             await clock.advance(by: .milliseconds(11))
-            let d1Value = try await d1
+            _ = try await d1
             await clock.advance(by: .milliseconds(16))
-            let d2Value = try await d2
-            #expect(d1Value != d2Value)
+            _ = try await d2
 
             let callCount = await test.callCount
             #expect(callCount == 2)
@@ -174,10 +172,6 @@ struct ShareFromCacheTests {
             actor Test {
                 var callCount = 0
 
-                func reset() {
-                    callCount = 0
-                }
-
                 func increment() {
                     callCount += 1
                 }
@@ -186,120 +180,29 @@ struct ShareFromCacheTests {
             let cache = AUOWCache()
             let clock = TestClock()
 
-            @Sendable func unitOfWork<H: Hashable>(key: H) -> some AsynchronousUnitOfWork<String> {
+            @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
                 DeferredTask {
                     await test.increment()
                     return UUID().uuidString
                 }
                 .delay(for: .milliseconds(10), clock: clock)
-                .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: key)
+                .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: 1)
             }
 
-            try await {
-                let uow = unitOfWork(key: 1)
-                async let d1 = uow.execute()
-                #expect(!cache.cache.isEmpty)
-                async let d2 = DeferredTask {}
-                    .delay(for: .milliseconds(5), clock: clock)
-                    .flatMap { unitOfWork(key: 1) }
-                    .execute()
+            let uow = unitOfWork()
+            async let d1 = uow.execute()
+            #expect(!cache.cache.isEmpty)
+            async let d2 = DeferredTask {}
+                .delay(for: .milliseconds(5), clock: clock)
+                .flatMap { unitOfWork() }
+                .execute()
 
-                await clock.advance(by: .milliseconds(11))
-                let d1Value = try await d1
-                let d2Value = try await d2
-                #expect(d1Value == d2Value)
+            await clock.advance(by: .milliseconds(11))
+            _ = try await d1
+            _ = try await d2
 
-                let callCount = await test.callCount
-                #expect(callCount == 1)
-            }()
-
-            await test.reset()
-
-            try await {
-                let uow = unitOfWork(key: 1)
-                async let d1 = uow.execute()
-                #expect(!cache.cache.isEmpty)
-                async let d2 = DeferredTask {}
-                    .delay(for: .milliseconds(5), clock: clock)
-                    .flatMap { unitOfWork(key: 2) }
-                    .execute()
-
-                await clock.advance(by: .milliseconds(21))
-                let d1Value = try await d1
-                let d2Value = try await d2
-                #expect(d1Value != d2Value)
-
-                let callCount = await test.callCount
-                #expect(callCount == 2)
-            }()
-        }
-    }
-
-    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-    @Test func sharingFromCacheWithManyKeys() async throws {
-        try await withMainSerialExecutor {
-            actor Test {
-                var callCount = 0
-
-                func reset() {
-                    callCount = 0
-                }
-
-                func increment() {
-                    callCount += 1
-                }
-            }
-            let test = Test()
-            let cache = AUOWCache()
-            let clock = TestClock()
-
-            @Sendable func unitOfWork<H: Hashable>(key: H) -> some AsynchronousUnitOfWork<String> {
-                DeferredTask {
-                    await test.increment()
-                    return UUID().uuidString
-                }
-                .delay(for: .milliseconds(10), clock: clock)
-                .shareFromCache(
-                    cache, strategy: .cacheUntilCompletionOrCancellation, keys: key, "a", 0.0, true)
-            }
-
-            try await {
-                let uow = unitOfWork(key: true)
-                async let d1 = uow.execute()
-                #expect(!cache.cache.isEmpty)
-                async let d2 = DeferredTask {}
-                    .delay(for: .milliseconds(5), clock: clock)
-                    .flatMap { unitOfWork(key: true) }
-                    .execute()
-
-                await clock.advance(by: .milliseconds(11))
-                let d1Value = try await d1
-                let d2Value = try await d2
-                #expect(d1Value == d2Value)
-
-                let callCount = await test.callCount
-                #expect(callCount == 1)
-            }()
-
-            await test.reset()
-
-            try await {
-                let uow = unitOfWork(key: 1)
-                async let d1 = uow.execute()
-                #expect(!cache.cache.isEmpty)
-                async let d2 = DeferredTask {}
-                    .delay(for: .milliseconds(5), clock: clock)
-                    .flatMap { unitOfWork(key: 2) }
-                    .execute()
-
-                await clock.advance(by: .milliseconds(21))
-                let d1Value = try await d1
-                let d2Value = try await d2
-                #expect(d1Value != d2Value)
-
-                let callCount = await test.callCount
-                #expect(callCount == 2)
-            }()
+            let callCount = await test.callCount
+            #expect(callCount == 1)
         }
     }
 

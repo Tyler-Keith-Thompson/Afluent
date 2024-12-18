@@ -17,22 +17,47 @@ extension AsynchronousUnitOfWork {
         hasher.combine(line)
         hasher.combine(column)
         let key = hasher.finalize()
+
+        let workToReturn: AnyAsynchronousUnitOfWork<Success>
+
         switch strategy {
             case .cacheUntilCompletionOrCancellation:
-                return cache.retrieveOrCreate(
-                    unitOfWork: handleEvents(
-                        receiveOutput: { [weak cache] _ in
-                            cache?.clearAsynchronousUnitOfWork(withKey: key)
-                        },
-                        receiveError: { [weak cache] _ in
-                            cache?.clearAsynchronousUnitOfWork(withKey: key)
-                        },
-                        receiveCancel: { [weak cache] in
-                            cache?.clearAsynchronousUnitOfWork(withKey: key)
-                        }
-                    ).share(),
-                    keyedBy: key)
+                workToReturn =
+                    cache.retrieveOrCreate(
+                        unitOfWork: handleEvents(
+                            receiveOutput: { [weak cache] _ in
+                                cache?.clearAsynchronousUnitOfWork(withKey: key)
+                            },
+                            receiveError: { [weak cache] _ in
+                                cache?.clearAsynchronousUnitOfWork(withKey: key)
+                            },
+                            receiveCancel: { [weak cache] in
+                                cache?.clearAsynchronousUnitOfWork(withKey: key)
+                            }
+                        ).share(),
+                        keyedBy: key
+                    ).eraseToAnyUnitOfWork()
+            case .cancelAndRestart:
+                if let cachedWork = cache.retrieve(keyedBy: key) {
+                    cachedWork.cancel()
+                }
+                workToReturn =
+                    cache.create(
+                        unitOfWork: handleEvents(
+                            receiveOutput: { [weak cache] _ in
+                                cache?.clearAsynchronousUnitOfWork(withKey: key)
+                            },
+                            receiveError: { [weak cache] _ in
+                                cache?.clearAsynchronousUnitOfWork(withKey: key)
+                            },
+                            receiveCancel: { [weak cache] in
+                                cache?.clearAsynchronousUnitOfWork(withKey: key)
+                            }
+                        ).share(),
+                        keyedBy: key
+                    ).eraseToAnyUnitOfWork()
         }
+        return workToReturn
     }
 
     /// Shares data from the given cache based on a specified caching strategy and additional context information.

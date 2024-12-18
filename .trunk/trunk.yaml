@@ -1,3 +1,4 @@
+version: 0.1
 merge: 
   required_statuses:
     - test

@@ -8,8 +8,6 @@
 import Foundation
 
 extension AsynchronousUnitOfWork {
-    private typealias CachedWork = Workers.Share<Workers.HandleEvents<Self, Success>, Success>
-
     func _shareFromCache(
         _ cache: AUOWCache, strategy: AUOWCache.Strategy, hasher: inout Hasher, fileId: String = "",
         function: String = "", line: UInt = 0, column: UInt = 0
@@ -40,7 +38,7 @@ extension AsynchronousUnitOfWork {
                         keyedBy: key
                     ).eraseToAnyUnitOfWork()
             case .cancelAndRestart:
-                if let cachedWork = cache.retrieve(keyedBy: key) as? CachedWork {
+                if let cachedWork = cache.retrieve(keyedBy: key) {
                     cachedWork.cancel()
                 }
                 workToReturn =

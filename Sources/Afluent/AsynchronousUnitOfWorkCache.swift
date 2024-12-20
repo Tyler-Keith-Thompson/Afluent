@@ -8,15 +8,18 @@
 import Foundation
 
 public typealias AUOWCache = AsynchronousUnitOfWorkCache
-typealias AnySendableReference = AnyObject & Sendable
+public typealias AnySendableReference = AnyObject & Sendable
 
+/// A cache for asynchronous unit of work types.
+/// A stored unit of work should be both `Sendable` and a reference type (e.g. a unit of work shared via the ``AsynchronousUnitOfWork/share()`` operator).
 public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
     let lock = NSRecursiveLock()
     var cache = [Int: any AsynchronousUnitOfWork & AnySendableReference]()
 
     public init() {}
 
-    func retrieve(
+    /// Returns a stored unit of work for the given key, if it exists in the cache.
+    public func retrieve(
         keyedBy key: Int
     ) -> (any AsynchronousUnitOfWork & AnySendableReference)? {
         lock.lock()
@@ -25,7 +28,8 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
         return fromCache
     }
 
-    func create<A: AsynchronousUnitOfWork & AnySendableReference>(
+    /// Creates a new cached unit of work for the given key.
+    public func create<A: AsynchronousUnitOfWork & AnySendableReference>(
         unitOfWork: A, keyedBy key: Int
     ) -> A {
         lock.lock()
@@ -34,7 +38,8 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
         return unitOfWork
     }
 
-    func retrieveOrCreate<A: AsynchronousUnitOfWork & AnySendableReference>(
+    /// Either retrieves a stored unit of work for the given key, or creates a new one if no current one exists.
+    public func retrieveOrCreate<A: AsynchronousUnitOfWork & AnySendableReference>(
         unitOfWork: A, keyedBy key: Int
     ) -> A {
         lock.lock()
@@ -48,7 +53,7 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
         return unitOfWork
     }
 
-    func clearAsynchronousUnitOfWork(withKey key: Int) {
+    public func clearAsynchronousUnitOfWork(withKey key: Int) {
         lock.lock()
         defer { lock.unlock() }
         cache.removeValue(forKey: key)
@@ -59,16 +64,5 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
         defer { lock.unlock() }
         cache.values.forEach { $0.cancel() }
         cache.removeAll()
-    }
-}
-
-extension AsynchronousUnitOfWorkCache {
-    /// `Strategy` represents the available caching strategies for the `AsynchronousUnitOfWorkCache`.
-    public enum Strategy {
-        /// With the `.cacheUntilCompletionOrCancellation` strategy, the cache
-        /// retains the result until the unit of work completes or is cancelled.
-        case cacheUntilCompletionOrCancellation
-        /// This strategy indicates that any existing work should be cancelled before restarting the upstream work again.
-        case cancelAndRestart
     }
 }

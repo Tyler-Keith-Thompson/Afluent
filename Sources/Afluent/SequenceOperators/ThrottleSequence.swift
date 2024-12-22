@@ -46,21 +46,21 @@ extension AsyncSequences {
             private mutating func nextUpstreamElement() async throws -> Element? {
                 await startIterationIfNecessary()
                 try await waitForNextInterval()
-                while true {
-                    await Task.yield()
-                    try Task.checkCancellation()
-                    if let nextElement = await state.consumeNextElement(at: clock.now) {
-                        switch nextElement {
-                            case .emitted(let element):
-                                return element
-                            case .error(let error):
-                                cancelTask()
-                                throw error
-                            case .finished:
-                                cancelTask()
-                                return nil
-                        }
-                    }
+
+                await Task.yield()
+                try Task.checkCancellation()
+
+                let clock = self.clock
+                let nextElement = await state.consumeNextElement(at: { clock.now })
+                switch nextElement {
+                    case .emitted(let element):
+                        return element
+                    case .error(let error):
+                        cancelTask()
+                        throw error
+                    case .finished:
+                        cancelTask()
+                        return nil
                 }
             }
 
@@ -129,36 +129,53 @@ extension AsyncSequences.Throttle.AsyncIterator {
     private actor State: Sendable {
         /// Sets the next element as "finished", overwriting any currently set element.
         func setFinish() {
-            self._nextElement = .finished
+            if self._nextElement.alreadySent {
+                self._nextElement = .init()
+            }
+            try! self._nextElement.send(.finished)
         }
 
         /// When an error occurs, sets the next element as an error, overwriting any currently set element.
         func setError(_ error: Error) {
-            self._nextElement = .error(error)
+            if self._nextElement.alreadySent {
+                self._nextElement = .init()
+            }
+            try! self._nextElement.send(.error(error))
         }
 
         /// Sets the next element.
         /// If using latest, this element will be set for staging.
         /// If _not_ using latest, the element will be set for staging if no other element is already set.
         func setNext(element: Element, useLatest: Bool) {
-            if useLatest {
-                self._nextElement = .emitted(element)
-            } else if self._nextElement == nil {
-                self._nextElement = .emitted(element)
+            let alreadySent = self._nextElement.alreadySent
+            if useLatest || alreadySent == false {
+                if alreadySent {
+                    self._nextElement = .init()
+                }
+                try! self._nextElement.send(.emitted(element))
             }
         }
 
         /// Consumes the element that's next, if present.
         /// If no element is present, then `nil` is returned, meaning we're still waiting on an event from the upstream.
         /// Calling this function also sets the `lastElementEmittedInstant` to the passed instant.
-        func consumeNextElement(at instant: C.Instant) -> ElementEvent? {
-            guard let nextElement = self._nextElement else {
-                return nil
+        func consumeNextElement(at instant: @escaping @Sendable () -> C.Instant) async
+            -> ElementEvent
+        {
+            let element: ElementEvent = await _consumeNextElement()
+            self._nextElement = .init()
+            self._lastElementEmittedInstant = instant()
+            self._finished = element.isFinished
+            return element
+        }
+
+        private func _consumeNextElement() async -> ElementEvent {
+            do {
+                let _nextElement = self._nextElement
+                return try await _nextElement.execute()
+            } catch {
+                return .error(error)
             }
-            self._nextElement = nil
-            self._finished = nextElement.isFinished
-            self._lastElementEmittedInstant = instant
-            return nextElement
         }
 
         /// The last instant an element was emitted, if an element has already been emitted.
@@ -172,7 +189,11 @@ extension AsyncSequences.Throttle.AsyncIterator {
             _finished
         }
 
-        private var _nextElement: ElementEvent?
+        // using a SingleValueSubject means that we need to re-init the subject every time we want to send a new value
+        // this _seems_ like it may introduce a race condition, but it does not
+        // this is because the _nextElement subject will just await whatever has been sent or will be sent
+        // even if the actor's _nextValue property happens to be set while a previously-set _nextValue is still awaiting
+        private var _nextElement = SingleValueSubject<ElementEvent>()
         private var _lastElementEmittedInstant: C.Instant?
         private var _finished = false
     }

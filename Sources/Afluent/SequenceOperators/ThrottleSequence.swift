@@ -145,7 +145,7 @@ extension AsyncSequences.Throttle.AsyncIterator {
 
         /// Sets the next element.
         /// If using latest, this element will be set for staging.
-        /// If _not_ using latest, the element will be set for staging if no other element is already set.
+        /// If _not_ using latest, the element will be set if no other element is already set.
         func setNext(element: Element, useLatest: Bool) {
             let alreadySent = self._nextElement.alreadySent
             if useLatest || alreadySent == false {
@@ -156,26 +156,23 @@ extension AsyncSequences.Throttle.AsyncIterator {
             }
         }
 
-        /// Consumes the element that's next, if present.
-        /// If no element is present, then `nil` is returned, meaning we're still waiting on an event from the upstream.
-        /// Calling this function also sets the `lastElementEmittedInstant` to the passed instant.
+        /// Waits to consume the element that's next.
+        /// Will continue to wait indefinitely on the upstream to emit an event until either an element, error, or finish is received.
+        /// Calling this function also sets the `lastElementEmittedInstant` at the time the next element is received, using the passed `instant` function.
         func consumeNextElement(at instant: @escaping @Sendable () -> C.Instant) async
             -> ElementEvent
         {
-            let element: ElementEvent = await _consumeNextElement()
+            let element: ElementEvent
+            do {
+                element = try await self._nextElement.execute()
+            } catch {
+                element = .error(error)
+            }
+
             self._nextElement = .init()
             self._lastElementEmittedInstant = instant()
             self._finished = element.isFinished
             return element
-        }
-
-        private func _consumeNextElement() async -> ElementEvent {
-            do {
-                let _nextElement = self._nextElement
-                return try await _nextElement.execute()
-            } catch {
-                return .error(error)
-            }
         }
 
         /// The last instant an element was emitted, if an element has already been emitted.

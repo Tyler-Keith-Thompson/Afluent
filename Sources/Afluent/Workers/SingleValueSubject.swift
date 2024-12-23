@@ -23,6 +23,12 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
 
     private let _lock = NSRecursiveLock()
     public let state = TaskState<Success>()
+    var alreadySent: Bool {
+        switch subjectState {
+            case .sentValue, .sentError: return true
+            case .noValue, .hasContinuation: return false
+        }
+    }
     private var subjectState = State.noValue
 
     /// Creates a new `SingleValueSubject`.

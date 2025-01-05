@@ -1,4 +1,4 @@
-![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/Tyler-keith-thompson/Afluent/trunk.yml) ![GitHub](https://img.shields.io/github/license/Tyler-keith-thompson/Afluent) [![swift-version](https://img.shields.io/badge/swift-5.8-brightgreen.svg)](https://github.com/apple/swift) [![xcode-version](https://img.shields.io/badge/xcode-14+-brightgreen)](https://developer.apple.com/xcode/)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/Tyler-keith-thompson/Afluent/trunk-branch.yml) ![GitHub](https://img.shields.io/github/license/Tyler-keith-thompson/Afluent) [![swift-version](https://img.shields.io/badge/swift-5.9-brightgreen.svg)](https://github.com/apple/swift) [![xcode-version](https://img.shields.io/badge/xcode-15+-brightgreen)](https://developer.apple.com/xcode/)
 
 # Afluent
 ![AfluentLogo](https://github.com/Tyler-Keith-Thompson/Afluent/assets/33705774/ba1b24b2-cd70-4c9c-824a-e89ee89348a8)
@@ -25,7 +25,7 @@ Add the Afluent package to your target dependencies in `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/Tyler-Keith-Thompson/Afluent.git", from: "0.3.0")
+    .package(url: "https://github.com/Tyler-Keith-Thompson/Afluent.git", from: "1.0.0")
 ]
 ```
 

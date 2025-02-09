@@ -158,4 +158,42 @@ struct ShareTests {
             try r3.get()
         }
     }
+
+    @Test func sharedTask_cancelsUpstreamWhenCancelled_whenErased() async throws {
+        let clock = TestClock()
+        let startedSleeping = SingleValueSubject<Void>()
+
+        let t = DeferredTask {
+            async let _sleep = Result { try await Task.sleep(for: .milliseconds(10), clock: clock) }
+            try startedSleeping.send()
+            let sleep = await _sleep
+            #expect(throws: CancellationError.self) {
+                try sleep.get()
+            }
+            return UUID().uuidString
+        }.share()
+            .eraseToAnyUnitOfWork()
+
+        async let _r1 = Result { try await t.execute() }
+        async let _r2 = Result { try await t.execute() }
+        async let _r3 = Result { try await t.execute() }
+
+        try await startedSleeping.execute()
+        t.cancel()
+        await clock.advance(by: .milliseconds(11))
+
+        let r1 = await _r1
+        let r2 = await _r2
+        let r3 = await _r3
+
+        #expect(throws: CancellationError.self) {
+            try r1.get()
+        }
+        #expect(throws: CancellationError.self) {
+            try r2.get()
+        }
+        #expect(throws: CancellationError.self) {
+            try r3.get()
+        }
+    }
 }

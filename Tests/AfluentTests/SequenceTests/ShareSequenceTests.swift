@@ -326,17 +326,6 @@ func throwOn<T: Equatable>(_ toThrowOn: T, _ value: T) throws -> T {
     return value
 }
 
-extension Array where Element: Sendable {
-    fileprivate var async: AsyncStream<Element> {
-        AsyncStream<Element> {
-            for item in self {
-                $0.yield(item)
-            }
-            $0.finish()
-        }
-    }
-}
-
 extension RangeReplaceableCollection {
     fileprivate init<Source: AsyncSequence>(_ source: Source) async rethrows
     where Source.Element == Element {

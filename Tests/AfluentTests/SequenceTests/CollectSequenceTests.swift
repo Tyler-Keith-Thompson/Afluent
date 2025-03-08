@@ -37,10 +37,6 @@ struct CollectSequenceTests {
     }
 
     @Test func testCollectWithSequenceThrowingError() async throws {
-        enum TestError: Error, Equatable {
-            case someError
-        }
-
         let errorSequence = AsyncThrowingStream<Int, Error> { continuation in
             continuation.finish(throwing: TestError.someError)
         }
@@ -49,17 +45,6 @@ struct CollectSequenceTests {
             Issue.record("Collect should throw the error encountered in the sequence")
         } catch {
             #expect(error as? TestError == .someError, "Collect should throw the correct error")
-        }
-    }
-}
-
-extension Array where Element: Sendable {
-    fileprivate var async: AsyncStream<Element> {
-        AsyncStream { continuation in
-            for element in self {
-                continuation.yield(element)
-            }
-            continuation.finish()
         }
     }
 }

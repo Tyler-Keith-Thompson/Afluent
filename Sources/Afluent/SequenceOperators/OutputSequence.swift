@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    public struct OutputOne<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable {
+    public struct OutputAt<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream
         let index: Int
@@ -43,9 +43,13 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence where Self: Sendable {
-
-    public func output(at index: Int) -> AsyncSequences.OutputOne<Self> {
-        AsyncSequences.OutputOne(upstream: self, index: index)
+    
+    /// Returns a sequence containing a specific indexed element.
+    /// If the sequence finishes normally or with an error before emitting the specified element, then the sequence doesn’t produce any elements.
+    /// - Parameter index: The index that indicates the element needed.
+    /// - Returns: A sequence containing a specific indexed element.
+    public func output(at index: Int) -> AsyncSequences.OutputAt<Self> {
+        AsyncSequences.OutputAt(upstream: self, index: index)
     }
     
 }

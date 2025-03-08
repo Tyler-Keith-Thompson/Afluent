@@ -38,13 +38,10 @@ struct CollectSequenceTests {
 
     @Test func testCollectWithSequenceThrowingError() async throws {
         let errorSequence = AsyncThrowingStream<Int, Error> { continuation in
-            continuation.finish(throwing: TestError.someError)
+            continuation.finish(throwing: GeneralError.e1)
         }
-        do {
+        await #expect(throws: GeneralError.e1, performing: {
             _ = try await errorSequence.collect().first()
-            Issue.record("Collect should throw the error encountered in the sequence")
-        } catch {
-            #expect(error as? TestError == .someError, "Collect should throw the correct error")
-        }
+        })
     }
 }

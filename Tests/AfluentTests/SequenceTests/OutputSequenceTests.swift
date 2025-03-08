@@ -31,9 +31,9 @@ struct OutputSequenceTests {
     
     @Test func testOutputAtWithSequenceThrowingError() async throws {
         let errorSequence = AsyncThrowingStream<Int, Error> { continuation in
-            continuation.finish(throwing: TestError.someError)
+            continuation.finish(throwing: GeneralError.e1)
         }
-        await #expect(throws: TestError.someError, performing: {
+        await #expect(throws: GeneralError.e1, performing: {
             _ = try await errorSequence.output(at: 0).first()
         })
     }

@@ -29,7 +29,7 @@ struct OutputSequenceTests {
         #expect(result == nil)
     }
     
-    @Test func testOutputWithSequenceThrowingError() async throws {
+    @Test func testOutputAtWithSequenceThrowingError() async throws {
         let errorSequence = AsyncThrowingStream<Int, Error> { continuation in
             continuation.finish(throwing: TestError.someError)
         }

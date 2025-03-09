@@ -38,4 +38,30 @@ struct OutputSequenceTests {
         })
     }
     
+    @Test func testOutputAtCancellation() async throws {
+        let (stream, _) = makeDelayedSequence()
+        
+        let task = Task.detached {
+            try await stream.output(at: 4).first()
+        }
+        
+        try? await Task.sleep(for: .seconds(2))
+        
+        task.cancel()
+        let result = try await task.value
+        #expect(result == nil)
+    }
+    
+    private func makeDelayedSequence() -> (AsyncThrowingStream<Int, Error>, Task<Void, Never>) {
+        let (stream, continuation) = AsyncThrowingStream.makeStream(of: Int.self)
+        let task = Task.detached {
+            for number in [0, 3, 5] {
+                try? await Task.sleep(for: .seconds(1))
+                continuation.yield(number)
+            }
+            continuation.finish(throwing: GeneralError.e1)
+        }
+        
+        return (stream, task)
+    }
 }

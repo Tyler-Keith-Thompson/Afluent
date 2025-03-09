@@ -16,21 +16,20 @@ extension AsyncSequences {
         public struct AsyncIterator: AsyncIteratorProtocol {
             var upstreamIterator: Upstream.AsyncIterator
             let index: Int
-            var finished = false
             var nextIndex = 0
 
             public mutating func next() async throws -> Element? {
-                try Task.checkCancellation()
-                guard !finished else { return nil }
+//                try Task.checkCancellation()
+                guard nextIndex <= index else { return nil }
                 while let next = try await upstreamIterator.next() {
-                    try Task.checkCancellation()
+                    Swift.print("iter \(nextIndex)")
+//                    try Task.checkCancellation()
                     if nextIndex == index {
-                        defer { finished = true }
+                        nextIndex &+= 1
                         return next
                     }
-                    nextIndex += 1
+                    nextIndex &+= 1
                 }
-                defer { finished = true }
                 return nil
             }
         }

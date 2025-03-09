@@ -39,29 +39,23 @@ struct OutputSequenceTests {
     }
     
     @Test func testOutputAtCancellation() async throws {
-        let (stream, _) = makeDelayedSequence()
+        let (stream, continuation) = AsyncThrowingStream.makeStream(of: Int.self)
         
-        let task = Task.detached {
-            try await stream.output(at: 4).first()
+        let task = Task {
+            let result = try await stream.output(at: 4).first()
+            #expect(result == nil)
+            return result
         }
         
-        try? await Task.sleep(for: .seconds(2))
-        
+        continuation.yield(0)
         task.cancel()
+        
+        // Give task cancellation time to propagate.
+        try await Task.sleep(for: .milliseconds(10))
+        continuation.finish(throwing: GeneralError.e1)
+        
         let result = try await task.value
         #expect(result == nil)
     }
     
-    private func makeDelayedSequence() -> (AsyncThrowingStream<Int, Error>, Task<Void, Never>) {
-        let (stream, continuation) = AsyncThrowingStream.makeStream(of: Int.self)
-        let task = Task.detached {
-            for number in [0, 3, 5] {
-                try? await Task.sleep(for: .seconds(1))
-                continuation.yield(number)
-            }
-            continuation.finish(throwing: GeneralError.e1)
-        }
-        
-        return (stream, task)
-    }
 }

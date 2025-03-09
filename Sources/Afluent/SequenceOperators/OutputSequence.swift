@@ -19,11 +19,8 @@ extension AsyncSequences {
             var nextIndex = 0
 
             public mutating func next() async throws -> Element? {
-//                try Task.checkCancellation()
                 guard nextIndex <= index else { return nil }
                 while let next = try await upstreamIterator.next() {
-                    Swift.print("iter \(nextIndex)")
-//                    try Task.checkCancellation()
                     if nextIndex == index {
                         nextIndex &+= 1
                         return next

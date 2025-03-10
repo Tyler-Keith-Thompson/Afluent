@@ -8,6 +8,7 @@
 import Afluent
 import Foundation
 import Testing
+import ConcurrencyExtras
 
 struct OutputSequenceTests {
     
@@ -51,7 +52,8 @@ struct OutputSequenceTests {
         task.cancel()
         
         // Give task cancellation time to propagate.
-        try await Task.sleep(for: .milliseconds(10))
+        await Task.megaYield()
+        
         continuation.finish(throwing: GeneralError.e1)
         
         let result = try await task.value

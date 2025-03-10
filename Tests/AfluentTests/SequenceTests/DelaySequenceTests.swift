@@ -130,14 +130,3 @@ struct DelaySequenceTests {
         }
     }
 }
-
-extension Array where Element: Sendable {
-    fileprivate var async: AsyncStream<Element> {
-        AsyncStream { continuation in
-            for element in self {
-                continuation.yield(element)
-            }
-            continuation.finish()
-        }
-    }
-}

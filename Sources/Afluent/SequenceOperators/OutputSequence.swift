@@ -36,6 +36,54 @@ extension AsyncSequences {
         }
     }
     
+    public struct OutputIn<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable {
+        public typealias Element = Upstream.Element
+        
+        let upstream: Upstream
+        let range: OutputAnyIntRange
+
+        public struct AsyncIterator: AsyncIteratorProtocol {
+            var upstreamIterator: Upstream.AsyncIterator
+            let range: OutputAnyIntRange
+            var nextIndex = 0
+
+            public mutating func next() async throws -> Element? {
+                guard range.exceeds(nextIndex) == false else { return nil }
+                while let next = try await upstreamIterator.next() {
+                    if range.contains(nextIndex) {
+                        nextIndex &+= 1
+                        return next
+                    }
+                    nextIndex &+= 1
+                }
+                return nil
+            }
+        }
+
+        public func makeAsyncIterator() -> AsyncIterator {
+            AsyncIterator(upstreamIterator: upstream.makeAsyncIterator(), range: range)
+        }
+    }
+    
+    internal struct OutputAnyIntRange: Sendable {
+        /// Checks whether range conteins specifies index.
+        let contains: @Sendable (Int) -> Bool
+        /// Checks whether specified index exceeds range bounds.
+        let exceeds: @Sendable (Int) -> Bool
+        
+        static func make<R>(_ range: R) -> Self where R : RangeExpression, R.Bound == Int, R: Sendable {
+            let exceeds: @Sendable (Int) -> Bool
+            switch range {
+            case let range as Range<Int>: exceeds = { $0 >= range.upperBound }
+            case let range as PartialRangeUpTo<Int>: exceeds = { $0 >= range.upperBound }
+            case let range as PartialRangeThrough<Int>: exceeds = { $0 > range.upperBound }
+            case let range as ClosedRange<Int>: exceeds = { $0 > range.upperBound }
+            default: exceeds = { _ in false }
+            }
+            return .init(contains: range.contains, exceeds: exceeds)
+        }
+    }
+    
 }
 
 extension AsyncSequence where Self: Sendable {
@@ -48,4 +96,24 @@ extension AsyncSequence where Self: Sendable {
         AsyncSequences.OutputAt(upstream: self, index: index)
     }
     
+    /// Returns an async sequence that contains, in order, the elements of the base sequence specified by the range.
+    ///
+    /// ### Discussion:
+    /// Optimized to be used with built-in range types. Completes normally after returning all elements.
+    /// 
+    /// ### Example:
+    /// ```swift
+    ///  let originalSequence = [0, 3, 5, 7, 9].async
+    ///  for try await element in originalSequence.output(in: 1..<4) {
+    ///      print("\(element)")
+    ///  }
+    ///  // Prints 3, 5, 7
+    /// ```
+    ///
+    /// - Parameter range: A range that indicates which elements to include.
+    /// - Returns: WTF
+    public func output<R>(in range: R) -> AsyncSequences.OutputIn<Self> where R : RangeExpression, R.Bound == Int, R: Sendable {
+        AsyncSequences.OutputIn(upstream: self,
+                                range: AsyncSequences.OutputAnyIntRange.make(range))
+    }
 }

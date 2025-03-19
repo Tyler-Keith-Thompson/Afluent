@@ -1,4 +1,4 @@
-#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)
+#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS) || swift(>=6.0)
     //
     //  URLSessionAdditions.swift
     //
@@ -7,6 +7,9 @@
     //
 
     import Foundation
+    #if canImport(FoundationNetworking)
+        import FoundationNetworking
+    #endif
 
     extension URLSession {
         /// Returns a deferred data task that wraps a URL session data task for a given URL.

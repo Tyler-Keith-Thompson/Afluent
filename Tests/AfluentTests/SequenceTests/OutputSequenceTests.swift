@@ -123,25 +123,4 @@ struct OutputSequenceTests {
         #expect(result == nil)
     }
     
-    @Test func testOutputAnyIntRange() {
-        let range = 0..<2
-        var sut = AsyncSequences.OutputAnyIntRange.make(range)
-        #expect(sut.contains(1))
-        #expect(sut.exceeds(2))
-        
-        let closedRange = 0...1
-        sut = AsyncSequences.OutputAnyIntRange.make(closedRange)
-        #expect(sut.contains(1))
-        #expect(sut.exceeds(2))
-        
-        let partialRangeUpTo = ..<2
-        sut = AsyncSequences.OutputAnyIntRange.make(partialRangeUpTo)
-        #expect(sut.contains(1))
-        #expect(sut.exceeds(2))
-        
-        let partialRangeThroug = ...1
-        sut = AsyncSequences.OutputAnyIntRange.make(partialRangeThroug)
-        #expect(sut.contains(1))
-        #expect(sut.exceeds(2))
-    }
 }

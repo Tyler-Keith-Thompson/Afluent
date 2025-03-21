@@ -80,7 +80,7 @@ extension AsyncSequence where Self: Sendable {
     /// Returns an async sequence that contains, in order, the elements of the base sequence specified by the range.
     ///
     /// ### Discussion:
-    /// Optimized to be used with built-in range types. Completes normally after returning all elements.
+    /// Completes normally after range is exhausted.
     /// 
     /// ### Example:
     /// ```swift

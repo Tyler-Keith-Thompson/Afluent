@@ -16,7 +16,7 @@
 //  Modified by Tyler Thompson on 9/29/24.
 //
 
-@_spi(Experimental) extension AsyncSequence where Self: Sendable, Element: Sendable {
+extension AsyncSequence where Self: Sendable, Element: Sendable {
     public func broadcast() -> AsyncBroadcastSequence<Self> {
         AsyncBroadcastSequence(self)
     }
@@ -26,7 +26,7 @@
     }
 }
 
-@_spi(Experimental) public struct AsyncBroadcastSequence<Base: AsyncSequence>: Sendable
+public struct AsyncBroadcastSequence<Base: AsyncSequence>: Sendable
 where Base: Sendable, Base.Element: Sendable {
     struct State: Sendable {
         enum Terminal {
@@ -201,7 +201,7 @@ where Base: Sendable, Base.Element: Sendable {
     }
 }
 
-@_spi(Experimental) extension AsyncBroadcastSequence: AsyncSequence {
+extension AsyncBroadcastSequence: AsyncSequence {
     public typealias Element = Base.Element
 
     public struct Iterator: AsyncIteratorProtocol {
@@ -259,4 +259,4 @@ where Base: Sendable, Base.Element: Sendable {
 }
 
 @available(*, unavailable)
-@_spi(Experimental) extension AsyncBroadcastSequence.Iterator: Sendable {}
+extension AsyncBroadcastSequence.Iterator: Sendable {}

@@ -5,7 +5,7 @@
 //  Created by Annalise Mariottini on 11/9/24.
 //
 
-@_spi(Experimental) import Afluent
+import Afluent
 import AfluentTesting
 import Atomics
 import Clocks

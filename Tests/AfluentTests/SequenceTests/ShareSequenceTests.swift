@@ -16,7 +16,7 @@
 //  Modified by Tyler Thompson on 9/29/24.
 //
 
-@_spi(Experimental) import Afluent
+import Afluent
 import Testing
 
 @Suite struct ShareSequenceTests {

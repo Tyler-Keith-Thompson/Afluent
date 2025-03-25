@@ -8,7 +8,6 @@
 /// A subject that broadcasts its current value and all subsequent values to multiple consumers.
 /// It can also handle completion events, including normal termination and failure with an error.
 /// This is an `AsyncSequence` that allows multiple tasks to asynchronously consume values and mimics Combine's CurrentValueSubject.
-@_spi(Experimental)
 public final class CurrentValueSubject<Element: Sendable>: AsyncSequence, @unchecked Sendable {
     class State: @unchecked Sendable {
         private let lock = Lock.allocate()
@@ -116,7 +115,7 @@ public final class CurrentValueSubject<Element: Sendable>: AsyncSequence, @unche
     }
 }
 
-@_spi(Experimental) extension CurrentValueSubject {
+extension CurrentValueSubject {
     /// Represents the completion event of a subject, which can either succeed or fail with an error.
     public enum Completion<Failure: Error> {
         case finished

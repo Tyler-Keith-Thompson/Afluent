@@ -7,7 +7,7 @@
 
 import Foundation
 
-@_spi(Experimental) public final class AsyncSequenceCache: @unchecked Sendable {
+public final class AsyncSequenceCache: @unchecked Sendable {
     let lock = NSRecursiveLock()
     var cache = [Int: any AsyncSequence]()
 
@@ -42,7 +42,7 @@ import Foundation
 
 extension AsyncSequenceCache {
     /// `Strategy` represents the available caching strategies for the `AsyncSequenceCache`.
-    @_spi(Experimental) public enum Strategy {
+    public enum Strategy {
         /// With the `.cacheUntilCompletionOrCancellation` strategy, the cache
         /// retains the result until the sequence completes or is canceled.
         case cacheUntilCompletionOrCancellation

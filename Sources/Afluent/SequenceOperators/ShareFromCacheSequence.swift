@@ -46,7 +46,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///   - line: The line number where this function is called. Defaults to `#line`.
     ///   - column: The column where this function is called. Defaults to `#column`.
     /// - Returns: An asynchronous unit of work encapsulating the operation's success or failure.
-    @_spi(Experimental) public func shareFromCache(
+    public func shareFromCache(
         _ cache: AsyncSequenceCache, strategy: AsyncSequenceCache.Strategy,
         fileId: String = #fileID,
         function: String = #function, line: UInt = #line, column: UInt = #column
@@ -64,7 +64,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///   - strategy: The caching strategy to use.
     ///   - keys: One or more hashable keys used to look up the data in the cache.
     /// - Returns: An asynchronous unit of work encapsulating the operation's success or failure.
-    @_spi(Experimental) public func shareFromCache<H0: Hashable>(
+    public func shareFromCache<H0: Hashable>(
         _ cache: AsyncSequenceCache, strategy: AsyncSequenceCache.Strategy, keys k0: H0
     ) -> AsyncBroadcastSequence<AsyncSequences.HandleEvents<Self>> {
         var hasher = Hasher()
@@ -79,7 +79,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///   - strategy: The caching strategy to use.
     ///   - keys: One or more hashable keys used to look up the data in the cache.
     /// - Returns: An asynchronous unit of work encapsulating the operation's success or failure.
-    @_spi(Experimental) public func shareFromCache<H0: Hashable, H1: Hashable>(
+    public func shareFromCache<H0: Hashable, H1: Hashable>(
         _ cache: AsyncSequenceCache, strategy: AsyncSequenceCache.Strategy, keys k0: H0, _ k1: H1
     ) -> AsyncBroadcastSequence<AsyncSequences.HandleEvents<Self>> {
         var hasher = Hasher()
@@ -95,7 +95,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///   - strategy: The caching strategy to use.
     ///   - keys: One or more hashable keys used to look up the data in the cache.
     /// - Returns: An asynchronous unit of work encapsulating the operation's success or failure.
-    @_spi(Experimental) public func shareFromCache<H0: Hashable, H1: Hashable, H2: Hashable>(
+    public func shareFromCache<H0: Hashable, H1: Hashable, H2: Hashable>(
         _ cache: AsyncSequenceCache, strategy: AsyncSequenceCache.Strategy, keys k0: H0, _ k1: H1,
         _ k2: H2
     ) -> AsyncBroadcastSequence<AsyncSequences.HandleEvents<Self>> {
@@ -113,7 +113,6 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///   - strategy: The caching strategy to use.
     ///   - keys: One or more hashable keys used to look up the data in the cache.
     /// - Returns: An asynchronous unit of work encapsulating the operation's success or failure.
-    @_spi(Experimental)
     public func shareFromCache<H0: Hashable, H1: Hashable, H2: Hashable, H3: Hashable>(
         _ cache: AsyncSequenceCache, strategy: AsyncSequenceCache.Strategy, keys k0: H0, _ k1: H1,
         _ k2: H2, _ k3: H3
@@ -133,7 +132,6 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///   - strategy: The caching strategy to use.
     ///   - keys: One or more hashable keys used to look up the data in the cache.
     /// - Returns: An asynchronous unit of work encapsulating the operation's success or failure.
-    @_spi(Experimental)
     public func shareFromCache<
         H0: Hashable, H1: Hashable, H2: Hashable, H3: Hashable, H4: Hashable
     >(
@@ -157,7 +155,6 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///   - strategy: The caching strategy to use.
     ///   - keys: One or more hashable keys used to look up the data in the cache.
     /// - Returns: An asynchronous unit of work encapsulating the operation's success or failure.
-    @_spi(Experimental)
     public func shareFromCache<
         H0: Hashable, H1: Hashable, H2: Hashable, H3: Hashable, H4: Hashable, H5: Hashable
     >(
@@ -182,7 +179,6 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///   - strategy: The caching strategy to use.
     ///   - keys: One or more hashable keys used to look up the data in the cache.
     /// - Returns: An asynchronous unit of work encapsulating the operation's success or failure.
-    @_spi(Experimental)
     public func shareFromCache<
         H0: Hashable, H1: Hashable, H2: Hashable, H3: Hashable, H4: Hashable, H5: Hashable,
         H6: Hashable
@@ -209,7 +205,6 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///   - strategy: The caching strategy to use.
     ///   - keys: One or more hashable keys used to look up the data in the cache.
     /// - Returns: An asynchronous unit of work encapsulating the operation's success or failure.
-    @_spi(Experimental)
     public func shareFromCache<
         H0: Hashable, H1: Hashable, H2: Hashable, H3: Hashable, H4: Hashable, H5: Hashable,
         H6: Hashable, H7: Hashable
@@ -237,7 +232,6 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///   - strategy: The caching strategy to use.
     ///   - keys: One or more hashable keys used to look up the data in the cache.
     /// - Returns: An asynchronous unit of work encapsulating the operation's success or failure.
-    @_spi(Experimental)
     public func shareFromCache<
         H0: Hashable, H1: Hashable, H2: Hashable, H3: Hashable, H4: Hashable, H5: Hashable,
         H6: Hashable, H7: Hashable, H8: Hashable
@@ -266,7 +260,6 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///   - strategy: The caching strategy to use.
     ///   - keys: One or more hashable keys used to look up the data in the cache.
     /// - Returns: An asynchronous unit of work encapsulating the operation's success or failure.
-    @_spi(Experimental)
     public func shareFromCache<
         H0: Hashable, H1: Hashable, H2: Hashable, H3: Hashable, H4: Hashable, H5: Hashable,
         H6: Hashable, H7: Hashable, H8: Hashable, H9: Hashable

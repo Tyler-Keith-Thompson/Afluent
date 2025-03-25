@@ -159,12 +159,6 @@ Remember, while Afluent and Combine have similarities, they are distinct librari
   **1. How can I contribute to Afluent or report issues?**  
   Afluent is hosted on GitHub. You can fork the repository, make changes, and submit a pull request. For reporting issues, open a new issue on the GitHub repository with a detailed description.
 
-  **2. Why isn't there a `share` operator for sequences?**  
-  Afluent strives to not interfere with ongoing work from Apple. The desire for multicast or share functionality has been strong in the community and the [swift-async-algorithms team is working on a broadcast operator to help](https://github.com/apple/swift-async-algorithms). It's also worth noting that solving this problem is non-trivial, like timing operations. As a consequence, the Afluent team prefers to leave that complexity to Apple to manage.
-
-  **3. If you won't build `share` why did you build `Deferred`?**  
-  It's worth noting that the async algorithms team introduced a `deferred` global function that operates similarly to Afluent's `Deferred` sequence. The reason Afluent implemented this was because of the ease of implementation coupled with the more immediate need. At the time of writing Async Algorithms will not release `deferred` until v1.1 and Afluent can fill the gap easily until that happens. 
-
   **4. Why is it Afluent and not Affluent?**
   Async/Await + Fluent == Afluent
 

@@ -9,7 +9,6 @@
 /// Unlike `CurrentValueSubject`, `PassthroughSubject` does not retain the most recent value.
 /// It only sends values as they are emitted, meaning consumers will only receive values that are sent after they start listening.
 /// This is an `AsyncSequence` that allows multiple tasks to asynchronously consume values and mimics Combine's PassthroughSubject.
-@_spi(Experimental)
 public final class PassthroughSubject<Element: Sendable>: AsyncSequence, @unchecked Sendable {
     private class State: @unchecked Sendable {
         private let lock = Lock.allocate()
@@ -76,7 +75,7 @@ public final class PassthroughSubject<Element: Sendable>: AsyncSequence, @unchec
     }
 }
 
-@_spi(Experimental) extension PassthroughSubject {
+extension PassthroughSubject {
     /// Represents the completion event of a subject, which can either succeed or fail with an error.
     public enum Completion<Failure: Error> {
         case finished

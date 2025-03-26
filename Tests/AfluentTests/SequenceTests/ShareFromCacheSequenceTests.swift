@@ -5,7 +5,7 @@
 //  Created by Tyler Thompson on 10/19/24.
 //
 
-@_spi(Experimental) @testable import Afluent
+@testable import Afluent
 import Clocks
 import ConcurrencyExtras
 import Foundation

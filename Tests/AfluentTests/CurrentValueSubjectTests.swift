@@ -5,7 +5,7 @@
 //  Created by Tyler Thompson on 10/12/24.
 //
 
-@_spi(Experimental) import Afluent
+import Afluent
 import Testing
 
 struct CurrentValueSubjectTests {

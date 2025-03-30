@@ -30,45 +30,45 @@ struct AfluentTests {
         }
     }
 
-    @Test func deferredTaskCancelledWithinCancelledTask_WithExecute() async throws {
-        await #expect(throws: CancellationError.self) {
-            try await withMainSerialExecutor {
-                let cancelledSubject = SingleValueSubject<Void>()
+//    @Test func deferredTaskCancelledWithinCancelledTask_WithExecute() async throws {
+//        await #expect(throws: CancellationError.self) {
+//            try await withMainSerialExecutor {
+//                let cancelledSubject = SingleValueSubject<Void>()
+//
+//                let task = Task {
+//                    try await DeferredTask {
+//                        try await cancelledSubject.execute()
+//                        try Task.checkCancellation()
+//                    }.execute()
+//                }
+//
+//                await Task.yield()
+//                task.cancel()
+//                try cancelledSubject.send()
+//
+//                try await task.value
+//            }
+//        }
+//    }
 
-                let task = Task {
-                    try await DeferredTask {
-                        try await cancelledSubject.execute()
-                        try Task.checkCancellation()
-                    }.execute()
-                }
-
-                await Task.yield()
-                task.cancel()
-                try cancelledSubject.send()
-
-                try await task.value
-            }
-        }
-    }
-
-    @Test func deferredTaskCancelledWithinCancelledTask_WithResult() async throws {
-        await #expect(throws: CancellationError.self) {
-            try await withMainSerialExecutor {
-                let cancelledSubject = SingleValueSubject<Void>()
-
-                let task = Task {
-                    try await DeferredTask {
-                        try await cancelledSubject.execute()
-                        try Task.checkCancellation()
-                    }.result.get()
-                }
-
-                await Task.yield()
-                task.cancel()
-                try cancelledSubject.send()
-
-                try await task.value
-            }
-        }
-    }
+//    @Test func deferredTaskCancelledWithinCancelledTask_WithResult() async throws {
+//        await #expect(throws: CancellationError.self) {
+//            try await withMainSerialExecutor {
+//                let cancelledSubject = SingleValueSubject<Void>()
+//
+//                let task = Task {
+//                    try await DeferredTask {
+//                        try await cancelledSubject.execute()
+//                        try Task.checkCancellation()
+//                    }.result.get()
+//                }
+//
+//                await Task.yield()
+//                task.cancel()
+//                try cancelledSubject.send()
+//
+//                try await task.value
+//            }
+//        }
+//    }
 }

@@ -6,13 +6,14 @@ import Foundation
 /// - Parameters:
 ///   - Success: The type of data the unit of work will produce if it succeeds.
 /// - NOTE: All units of work have the potential of throwing an error, because they can all be canceled
-public protocol AsynchronousUnitOfWork<Success>: Sendable where Success: Sendable {
+public protocol AsynchronousUnitOfWork<Success, Failure>: Sendable where Success: Sendable, Failure: Error {
     /// The type of data the unit of work will produce if it succeeds.
     associatedtype Success
+    associatedtype Failure
 
-    var state: TaskState<Success> { get }
+    var state: TaskState<Success, Failure> { get }
     /// The result of the operation (will execute the task)
-    var result: Result<Success, Error> { get async throws }
+    var result: Result<Success, Failure> { get async throws }
 
     /// Executes the task with an optional task priority.
     func run(priority: TaskPriority?)
@@ -35,14 +36,14 @@ public protocol AsynchronousUnitOfWork<Success>: Sendable where Success: Sendabl
     #endif
 
     /// Only useful when creating operators, defines the async function that should execute when the operator executes
-    @Sendable func _operation() async throws -> AsynchronousOperation<Success>
+    @Sendable func _operation() async throws -> AsynchronousOperation<Success, Failure>
 
     /// Cancel the task, even if it hasn't begun yet.
     func cancel()
 }
 
 extension AsynchronousUnitOfWork {
-    public var result: Result<Success, Error> {
+    public var result: Result<Success, Failure> {
         get async throws {
             await withTaskCancellationHandler {
                 await state.createTask(priority: nil, operation: operation).result
@@ -104,7 +105,7 @@ extension AsynchronousUnitOfWork {
 }
 
 /// Reference to an operation that an operator would execute
-public actor AsynchronousOperation<Success: Sendable> {
+public actor AsynchronousOperation<Success: Sendable, Failure: Error> {
     private let operation: @Sendable () async throws -> Success
     public init(operation: @Sendable @escaping () async throws -> Success) {
         self.operation = operation
@@ -115,9 +116,9 @@ public actor AsynchronousOperation<Success: Sendable> {
     }
 }
 
-public final class TaskState<Success: Sendable>: @unchecked Sendable {
+public final class TaskState<Success: Sendable, Failure: Error>: @unchecked Sendable {
     private let lock = NSRecursiveLock()
-    private var tasks = [Task<Success, Error>]()
+    private var tasks = [Task<Success, Failure>]()
 
     private let _isCancelled = ManagedAtomic<Bool>(false)
 
@@ -135,7 +136,7 @@ public final class TaskState<Success: Sendable>: @unchecked Sendable {
             operation: @Sendable @escaping () async throws -> Success
         ) -> Task<Success, Error> {
             guard !isCancelled else {
-                let task = Task<Success, Error> { throw CancellationError() }
+                let task = Task<Success, Failure> { throw CancellationError() }
                 task.cancel()
                 return task
             }

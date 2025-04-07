@@ -19,7 +19,8 @@ struct TimeoutErrorTests {
     @Test func testTimeoutErrorDescription() async {
         let duration = Duration.seconds(3)
         let error = TimeoutError.timedOut(duration: duration)
-        #expect((error.errorDescription != nil), "Timed out after waiting \(duration)")
+        let description = #require(error.errorDescription)
+        #expect(description == "Timed out after waiting \(duration)")
     }
 
     @Test func testStaticTimedOutIsZeroDuration() async {

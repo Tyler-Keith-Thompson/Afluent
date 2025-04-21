@@ -19,7 +19,7 @@ struct TimeoutErrorTests {
     @Test func testTimeoutErrorDescription() async {
         let duration = Duration.seconds(3)
         let error = TimeoutError.timedOut(duration: duration)
-        let description = #require(error.errorDescription)
+        let description = try #require(error.errorDescription)
         #expect(description == "Timed out after waiting \(duration)")
     }
 

@@ -43,7 +43,7 @@ jobs:
         - "platform=iOS Simulator,name=iPad mini (A17 Pro),OS=18.2"
         - "platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=18.1"
         - "platform=visionOS Simulator,name=Apple Vision Pro,OS=2.0"
-        - "platform=watchOS Simulator,name=Apple Watch Ultra 2 (49mm),OS=10.5"
+        - "platform=watchOS Simulator,name=Apple Watch Ultra 2 (49mm),OS=11.5"
     steps:
       - uses: actions/checkout@v4
       - name: Build and Test for ${{ matrix.destination }}

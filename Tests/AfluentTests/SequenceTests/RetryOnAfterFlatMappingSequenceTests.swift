@@ -31,10 +31,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
             .retry(retryCount, on: Err.e1) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }
@@ -65,10 +63,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
             .retry(0, on: Err.e1) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }
@@ -99,10 +95,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
             .retry(on: Err.e1) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }
@@ -132,10 +126,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             }
             .toAsyncSequence()
             .retry(10, on: Err.e1) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }
@@ -167,10 +159,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
             .retry(.byCount(retryCount), on: Err.e1) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }
@@ -201,10 +191,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
             .retry(.byCount(0), on: Err.e1) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }
@@ -234,10 +222,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             }
             .toAsyncSequence()
             .retry(.byCount(10), on: Err.e1) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }
@@ -269,10 +255,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
             .retry(retryCount, on: Err.self) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }
@@ -303,10 +287,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
             .retry(0, on: Err.self) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }
@@ -337,10 +319,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
             .retry(on: Err.self) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }
@@ -370,10 +350,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             }
             .toAsyncSequence()
             .retry(10, on: Err.self) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }
@@ -405,10 +383,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
             .retry(.byCount(retryCount), on: Err.self) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }
@@ -439,10 +415,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             .toAsyncSequence()
             .map { _ in throw Err.e1 }
             .retry(.byCount(0), on: Err.self) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }
@@ -472,10 +446,8 @@ struct RetryOnAfterFlatMappingSequenceTests {
             }
             .toAsyncSequence()
             .retry(.byCount(10), on: Err.self) { _ in
-                DeferredTask {
-                    await test.append("flatMap")
-                }
-                .toAsyncSequence()
+                await test.append("flatMap")
+                return Just(())
             }
             .first()
         }

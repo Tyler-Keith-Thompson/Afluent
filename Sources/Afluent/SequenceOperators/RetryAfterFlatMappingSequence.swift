@@ -310,7 +310,7 @@ extension AsyncSequence where Self: Sendable {
             upstream: self, strategy: .byCount(retries), transform: transform)
     }
 
-    /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
+    /// Retries the upstream `AsyncSequence` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
     ///
     /// - Parameters:
     ///   - retries: The maximum number of times to retry the upstream, defaulting to 1.
@@ -325,7 +325,7 @@ extension AsyncSequence where Self: Sendable {
             upstream: self, strategy: .byCount(retries), error: error, transform: transform)
     }
 
-    /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
+    /// Retries the upstream `AsyncSequence` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
     ///
     /// - Parameters:
     ///   - strategy: The strategy to use when retrying
@@ -340,7 +340,7 @@ extension AsyncSequence where Self: Sendable {
             upstream: self, strategy: strategy, error: error, transform: transform)
     }
     
-    /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
+    /// Retries the upstream `AsyncSequence` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
     ///
     /// - Parameters:
     ///   - retries: The maximum number of times to retry the upstream, defaulting to 1.
@@ -355,7 +355,7 @@ extension AsyncSequence where Self: Sendable {
             upstream: self, strategy: .byCount(retries), error: error, transform: transform)
     }
 
-    /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
+    /// Retries the upstream `AsyncSequence` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
     ///
     /// - Parameters:
     ///   - strategy: The strategy to use when retrying

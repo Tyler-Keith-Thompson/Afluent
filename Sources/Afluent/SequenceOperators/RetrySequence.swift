@@ -149,6 +149,79 @@ extension AsyncSequences {
 
         public nonisolated func makeAsyncIterator() -> RetryOn<Upstream, Failure, Strategy> { self }
     }
+    
+    public final actor RetryOnCast<
+        Upstream: AsyncSequence & Sendable, Failure: Error, Strategy: RetryStrategy
+    >: AsyncSequence, AsyncIteratorProtocol, Sendable where Upstream.Element: Sendable {
+        public typealias Element = Upstream.Element
+        private final class State: @unchecked Sendable {
+            let lock = NSRecursiveLock()
+            let upstream: Upstream
+            let error: Failure.Type
+
+            private var _iterator: Upstream.AsyncIterator?
+            var iterator: Upstream.AsyncIterator {
+                get {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    guard let _iterator else {
+                        let val = upstream.makeAsyncIterator()
+                        self._iterator = val
+                        return val
+                    }
+                    return _iterator
+                }
+                set {
+                    lock.lock()
+                    defer { lock.unlock() }
+                    _iterator = newValue
+                }
+            }
+
+            init(upstream: Upstream, failure: Failure.Type) {
+                self.upstream = upstream
+                error = failure
+            }
+        }
+
+        private let state: State
+        private let strategy: Strategy
+
+        init(upstream: Upstream, strategy: Strategy, error: Failure.Type) {
+            state = State(
+                upstream: upstream,
+                failure: error)
+            self.strategy = strategy
+        }
+
+        private nonisolated func advanceAndSet(iterator: Upstream.AsyncIterator) async throws
+            -> Upstream.Element?
+        {
+            var copy = iterator
+            let next = try await copy.next()
+            state.iterator = copy
+            return next
+        }
+
+        public func next() async throws -> Upstream.Element? {
+            do {
+                try Task.checkCancellation()
+                return try await advanceAndSet(iterator: state.iterator)
+            } catch {
+                try error.throwIf(CancellationError.self)
+                    .throwIf(not: state.error)
+
+                if try await strategy.handle(error: error) {
+                    state.iterator = state.upstream.makeAsyncIterator()
+                    return try await next()
+                } else {
+                    throw error
+                }
+            }
+        }
+
+        public nonisolated func makeAsyncIterator() -> RetryOnCast<Upstream, Failure, Strategy> { self }
+    }
 }
 
 extension AsyncSequence where Self: Sendable, Element: Sendable {
@@ -187,5 +260,20 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
         -> AsyncSequences.RetryOn<Self, E, RetryByCountStrategy>
     {
         AsyncSequences.RetryOn(upstream: self, strategy: .byCount(retries), error: error)
+    }
+    
+    /// Retries the upstream `AsyncSequence` up to a specified number of times only when a specific error occurs.
+    ///
+    /// - Parameters:
+    ///   - retries: The maximum number of times to retry the upstream, defaulting to 1.
+    ///   - error: The specific error type that should trigger a retry if a cast succeeds.
+    ///
+    /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on the specified error up to the specified number of times.
+    /// - Important: Not every `AsyncSequence` can be retried, for this to work the sequence has to implement an iterator that doesn't preserve state across various creations.
+    /// - Note: `AsyncStream` and `AsyncThrowingStream` are notable sequences which cannot be retried on their own.
+    public func retry<E: Error>(_ retries: UInt = 1, on error: E.Type)
+        -> AsyncSequences.RetryOnCast<Self, E, RetryByCountStrategy>
+    {
+        AsyncSequences.RetryOnCast(upstream: self, strategy: .byCount(retries), error: error)
     }
 }

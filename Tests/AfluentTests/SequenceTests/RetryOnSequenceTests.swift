@@ -125,4 +125,120 @@ struct RetryOnSequenceTests {
         let copy = await test.arr
         #expect(UInt(copy.count) == 1)
     }
+    
+    @Test func taskCanRetryADefinedNumberOfTimesOnCast() async throws {
+        enum Err: Error, Equatable {
+            case e1
+        }
+        actor Test {
+            var arr = [String]()
+            func append(_ str: String) {
+                arr.append(str)
+            }
+        }
+
+        let test = Test()
+        let retryCount = UInt.random(in: 2...10)
+
+        let t = Task {
+            try await DeferredTask {
+                await test.append("called")
+            }
+            .toAsyncSequence()
+            .map { _ in throw Err.e1 }
+            .retry(retryCount, on: Err.self)
+            .first()
+        }
+
+        _ = await t.result
+
+        let copy = await test.arr
+        #expect(UInt(copy.count) == retryCount + 1)
+    }
+
+    @Test func taskCanRetryZero_DoesNothingOnCast() async throws {
+        enum Err: Error, Equatable {
+            case e1
+        }
+        actor Test {
+            var arr = [String]()
+            func append(_ str: String) {
+                arr.append(str)
+            }
+        }
+
+        let test = Test()
+
+        let t = Task {
+            try await DeferredTask {
+                await test.append("called")
+            }
+            .toAsyncSequence()
+            .map { _ in throw Err.e1 }
+            .retry(0, on: Err.self)
+            .first()
+        }
+
+        _ = await t.result
+
+        let copy = await test.arr
+        #expect(UInt(copy.count) == 1)
+    }
+
+    @Test func taskCanRetryDefaultsToOnceOnCast() async throws {
+        enum Err: Error, Equatable {
+            case e1
+        }
+        actor Test {
+            var arr = [String]()
+            func append(_ str: String) {
+                arr.append(str)
+            }
+        }
+
+        let test = Test()
+
+        let t = Task {
+            try await DeferredTask {
+                await test.append("called")
+            }
+            .toAsyncSequence()
+            .map { _ in throw Err.e1 }
+            .retry(on: Err.self)
+            .first()
+        }
+
+        _ = await t.result
+
+        let copy = await test.arr
+        #expect(UInt(copy.count) == 2)
+    }
+
+    @Test func taskCanRetryWithoutError_DoesNothingOnCast() async throws {
+        enum Err: Error, Equatable {
+            case e1
+        }
+        actor Test {
+            var arr = [String]()
+            func append(_ str: String) {
+                arr.append(str)
+            }
+        }
+
+        let test = Test()
+
+        let t = Task {
+            try await DeferredTask {
+                await test.append("called")
+            }
+            .toAsyncSequence()
+            .retry(10, on: Err.self)
+            .first()
+        }
+
+        _ = await t.result
+
+        let copy = await test.arr
+        #expect(UInt(copy.count) == 1)
+    }
 }

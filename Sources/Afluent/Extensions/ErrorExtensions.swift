@@ -16,6 +16,14 @@ extension Error {
             throw self
         }
     }
+    
+    @discardableResult func throwIf<E: Error>(not error: E.Type) throws -> E {
+        if let unwrappedError = (self as? E) {
+            return unwrappedError
+        } else {
+            throw self
+        }
+    }
 
     @discardableResult func throwIf<E: Error & Equatable>(_ error: E) throws -> Self {
         if let unwrappedError = (self as? E) {

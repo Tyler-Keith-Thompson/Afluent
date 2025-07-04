@@ -292,7 +292,7 @@ extension AsyncSequence where Self: Sendable {
     ///
     /// ## Example: Refreshing an access token on a 401 HTTP error before retrying the main request
     ///
-    /// ```
+    /// ```swift
     /// let mainRequest = URLSession.shared.dataTaskAsyncSequence(for: URLRequest(url: URL(string: "https://api.example.com/data")!))
     ///
     /// let retriedSequence = mainRequest.retry(.byCount(3)) { error in
@@ -328,7 +328,7 @@ extension AsyncSequence where Self: Sendable {
     ///
     /// ## Example: Refreshing tokens before retrying a network call
     ///
-    /// ```
+    /// ```swift
     /// let retriedSequence = myAsyncSequence.retry(3) { error in
     ///     DeferredTask {
     ///         if let authError = error as? MyAuthError {
@@ -360,7 +360,7 @@ extension AsyncSequence where Self: Sendable {
     ///
     /// ## Example: Retry only on a specific error with side effect
     ///
-    /// ```
+    /// ```swift
     /// let retried = myAsyncSequence.retry(3, on: MyError.tokenExpired) { error in
     ///     DeferredTask {
     ///         try await refreshAuthToken()
@@ -391,7 +391,7 @@ extension AsyncSequence where Self: Sendable {
     ///
     /// ## Example: Custom retry on error with side effect
     ///
-    /// ```
+    /// ```swift
     /// let retried = myAsyncSequence.retry(.byCount(3), on: MyError.tokenExpired) { error in
     ///     DeferredTask {
     ///         try await refreshAuthToken()
@@ -422,7 +422,7 @@ extension AsyncSequence where Self: Sendable {
     ///
     /// ## Example: Retry on error cast with side effect
     ///
-    /// ```
+    /// ```swift
     /// let retried = myAsyncSequence.retry(3, on: MyError.self) { error in
     ///     DeferredTask {
     ///         try await refreshAuthToken()
@@ -454,7 +454,7 @@ extension AsyncSequence where Self: Sendable {
     ///
     /// ## Example: Custom retry on casted error with side effect
     ///
-    /// ```
+    /// ```swift
     /// let retried = myAsyncSequence.retry(.byCount(3), on: MyError.self) { error in
     ///     DeferredTask {
     ///         try await refreshAuthToken()

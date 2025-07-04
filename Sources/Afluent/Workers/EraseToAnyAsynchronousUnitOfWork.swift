@@ -64,7 +64,7 @@ extension AsynchronousUnitOfWork {
     /// Use this method when you need to store or pass around an `AsynchronousUnitOfWork` without exposing its underlying type, such as when collecting heterogeneous unit of work instances in a single array.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// struct User: Sendable {}
     /// let original: some AsynchronousUnitOfWork<User> = DeferredTask { User() }
     /// let erased: AnyAsynchronousUnitOfWork<User> = original.eraseToAnyUnitOfWork()

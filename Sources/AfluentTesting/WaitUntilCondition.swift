@@ -52,7 +52,7 @@ public func wait(
 /// - Throws: `TimeoutError.timedOut` if the timeout duration is exceeded before the condition becomes `true`.
 ///
 /// ## Example
-/// ```
+/// ```swift
 /// let clock = TestClock()
 /// var isDone = false
 /// Task {

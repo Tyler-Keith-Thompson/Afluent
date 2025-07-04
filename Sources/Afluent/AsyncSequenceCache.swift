@@ -11,7 +11,7 @@ import Foundation
 /// This cache is commonly used with the `shareFromCache` operator to reuse sequences.
 ///
 /// ## Example
-/// ```
+/// ```swift
 /// let cache = AsyncSequenceCache()
 /// let sequence = fetchData() // Some async sequence
 /// let shared = sequence.shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "myKey")

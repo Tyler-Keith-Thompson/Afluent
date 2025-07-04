@@ -42,7 +42,7 @@ extension AsyncSequence where Self: Sendable {
     /// Use this to assert that a sequence is infallible, propagating values and terminating with a fatal error if any error occurs.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let numbers = AsyncStream<Int> { continuation in
     ///     continuation.yield(1)
     ///     continuation.yield(2)

@@ -19,7 +19,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to safely pass both a value and an object into a closure, without retaining the object.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// final class MyController: Sendable {}
     /// let controller = MyController()
     /// let combined = DeferredTask { 42 }

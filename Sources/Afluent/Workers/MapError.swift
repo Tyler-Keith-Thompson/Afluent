@@ -41,7 +41,7 @@ extension AsynchronousUnitOfWork {
     /// This function allows you to modify or replace the error produced by the current unit of work. It's useful for converting between error types or adding additional context to errors.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// enum MyError: Error { case network, wrapped(Error) }
     /// let task = DeferredTask { throw URLError(.notConnectedToInternet) }
     ///     .mapError { error in
@@ -66,7 +66,7 @@ extension AsynchronousUnitOfWork {
     /// This function allows you to modify or replace a specific error produced by the current unit of work. If the error produced matches the provided error, the transform closure is applied; otherwise, the original error is propagated unchanged.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// enum MyError: Error, Equatable { case network, other }
     /// let task = DeferredTask { throw MyError.network }
     ///     .mapError(MyError.network) { error in

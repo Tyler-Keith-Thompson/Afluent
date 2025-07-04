@@ -11,7 +11,7 @@ extension RetryStrategy where Self == RetryByCountStrategy {
     /// Use this strategy with operators like `.retry(strategy:)` to control how many times an operation will be retried.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// try await DeferredTask { /* some fallible work */ }
     ///     .retry(strategy: .byCount(3))
     ///     .execute()
@@ -26,7 +26,7 @@ extension RetryStrategy where Self == RetryByCountStrategy {
 /// This strategy retries an operation a specified number of times before giving up.
 ///
 /// ## Example
-/// ```
+/// ```swift
 /// try await DeferredTask { /* some fallible work */ }
 ///     .retry(strategy: .byCount(3))
 ///     .execute()

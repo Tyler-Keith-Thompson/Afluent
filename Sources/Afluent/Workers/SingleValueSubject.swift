@@ -12,7 +12,7 @@ import Foundation
 /// `SingleValueSubject` is an `AsynchronousUnitOfWork` that you manually complete once, making it useful for integrating legacy, delegate, or callback-style APIs into modern async workflows.
 ///
 /// ## Example: Bridging a delegate to async/await
-/// ```
+/// ```swift
 /// final class MyDelegate: NSObject, SomeLegacyDelegate {
 ///     let subject = SingleValueSubject<Data>()
 ///     func didReceive(data: Data) { try? subject.send(data) }

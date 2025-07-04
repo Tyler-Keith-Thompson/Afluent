@@ -159,7 +159,7 @@ extension AsynchronousUnitOfWork {
     /// This is useful for injecting retry-dependent side effects (such as refreshing tokens) before attempting another run.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// try await DeferredTask { try await fetchData() }
     ///     .retry(.byCount(3)) { error in
     ///         DeferredTask { try await refreshCredentials() }
@@ -182,7 +182,7 @@ extension AsynchronousUnitOfWork {
     /// Retries this unit of work up to a specified number of times, running an async side effect before each retry.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// try await DeferredTask { try await fetchData() }
     ///     .retry(3) { error in
     ///         DeferredTask { try await refreshCredentials() }
@@ -206,7 +206,7 @@ extension AsynchronousUnitOfWork {
     /// Retries this unit of work up to the specified number of times only when the error matches, running an async side effect before retrying.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// enum NetworkError: Error, Equatable { case unauthorized }
     /// try await DeferredTask { throw NetworkError.unauthorized }
     ///     .retry(3, on: NetworkError.unauthorized) { _ in
@@ -232,7 +232,7 @@ extension AsynchronousUnitOfWork {
     /// Retries this unit of work up to the specified number of times only when the error matches, running an async side effect before retrying.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// enum NetworkError: Error, Equatable { case unauthorized }
     /// try await DeferredTask { throw NetworkError.unauthorized }
     ///     .retry(.byCount(3), on: NetworkError.unauthorized) { _ in
@@ -258,7 +258,7 @@ extension AsynchronousUnitOfWork {
     /// Retries this unit of work up to the specified number of times only when the error is of the given type, running an async side effect before retrying.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// enum NetworkError: Error { case unauthorized }
     /// try await DeferredTask { throw NetworkError.unauthorized }
     ///     .retry(3, on: NetworkError.self) { _ in
@@ -284,7 +284,7 @@ extension AsynchronousUnitOfWork {
     /// Retries this unit of work up to the specified number of times only when the error is of the given type, running an async side effect before retrying.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// enum NetworkError: Error { case unauthorized }
     /// try await DeferredTask { throw NetworkError.unauthorized }
     ///     .retry(.byCount(3), on: NetworkError.self) { _ in

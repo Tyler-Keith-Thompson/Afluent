@@ -16,7 +16,7 @@ public typealias AnySendableReference = AnyObject & Sendable
 ///
 /// Use this cache to avoid redundant execution of identical units of work, especially those that are expensive or should only be performed once for a given key.
 /// ## Example
-/// ```
+/// ```swift
 /// let cache = AUOWCache()
 /// let work = DeferredTask { await fetchUser() }
 ///     .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "user42")

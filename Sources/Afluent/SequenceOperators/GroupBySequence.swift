@@ -72,7 +72,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Warning: This operator stores each group in a dictionary. If the number of unique keys is very large or unbounded, memory usage may increase significantly.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for await (key, group) in Just(1).groupBy { $0 % 2 } {
     ///     print("Key: \(key)")
     ///     for try await value in group {

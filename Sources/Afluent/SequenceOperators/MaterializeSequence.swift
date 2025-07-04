@@ -58,7 +58,7 @@ extension AsyncSequence where Self: Sendable {
     /// Use this to handle elements, errors, and completion uniformly as events.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for await event in Just(1).materialize() {
     ///     switch event {
     ///     case .element(let value): print("Element: \(value)")

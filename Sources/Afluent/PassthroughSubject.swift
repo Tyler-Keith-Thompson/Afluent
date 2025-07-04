@@ -11,7 +11,7 @@
 /// This is an `AsyncSequence` that allows multiple tasks to asynchronously consume values and mimics Combine's PassthroughSubject.
 ///
 /// ## Example
-/// ```
+/// ```swift
 /// let subject = PassthroughSubject<Int>()
 ///
 /// Task {

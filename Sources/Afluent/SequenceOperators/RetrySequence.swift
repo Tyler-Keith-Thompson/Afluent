@@ -232,7 +232,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// Not all `AsyncSequence`s can be retried. For example, `AsyncStream` and `AsyncThrowingStream` cannot be retried on their own.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// actor CallCounter {
     ///     private(set) var count = 0
     ///     func increment() -> Int {
@@ -276,7 +276,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// Not all `AsyncSequence`s can be retried. For example, `AsyncStream` and `AsyncThrowingStream` cannot be retried on their own.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// actor CallCounter {
     ///     private(set) var count = 0
     ///     func increment() -> Int {
@@ -320,7 +320,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// Not all `AsyncSequence`s can be retried. For example, `AsyncStream` and `AsyncThrowingStream` cannot be retried on their own.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// actor CallCounter {
     ///     private(set) var count = 0
     ///     func increment() -> Int {
@@ -372,7 +372,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// Not all `AsyncSequence`s can be retried. For example, `AsyncStream` and `AsyncThrowingStream` cannot be retried on their own.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// actor CallCounter {
     ///     private(set) var count = 0
     ///     func increment() -> Int {

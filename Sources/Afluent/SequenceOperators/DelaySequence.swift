@@ -76,7 +76,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// The default clock is `SuspendingClock`.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for try await value in Just(1).delay(for: .seconds(1), tolerance: .milliseconds(100)) {
     ///     print(value)
     /// }
@@ -96,7 +96,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///   - clock: The clock to use for timing the delay.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for try await value in Just(1).delay(for: .seconds(1), clock: ContinuousClock()) {
     ///     print(value)
     /// }

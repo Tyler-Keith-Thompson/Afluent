@@ -48,7 +48,7 @@ extension AsynchronousUnitOfWork {
     /// Adds a timeout to this unit of work, cancelling it if it does not complete within the specified duration.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// try await DeferredTask { try await fetchData() }
     ///     .timeout(.seconds(5))
     ///     .execute()
@@ -71,7 +71,7 @@ extension AsynchronousUnitOfWork {
     /// Adds a timeout to this unit of work, cancelling it if it does not complete in time, measured against the given clock.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let clock = SuspendingClock()
     /// try await DeferredTask { try await fetchData() }
     ///     .timeout(.seconds(2), clock: clock, tolerance: .milliseconds(100))

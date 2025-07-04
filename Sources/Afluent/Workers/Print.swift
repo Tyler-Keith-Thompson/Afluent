@@ -13,7 +13,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator for debugging or observing the lifecycle and values of an asynchronous unit of work. Output is sent to the standard output (console).
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// try await DeferredTask { 42 }
     ///     .print("[Example]")
     ///     .execute()

@@ -62,7 +62,7 @@ extension AsyncSequence where Self: Sendable {
     /// Use this to encode values into a data format (such as JSON) before further processing or output.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// struct Person: Encodable { let name: String }
     /// for try await data in Just(Person(name: "Alice")).encode(encoder: JSONEncoder()) {
     ///     print(data) // Encoded JSON data

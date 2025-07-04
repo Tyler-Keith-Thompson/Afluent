@@ -79,7 +79,7 @@ extension AsyncSequence {
     ///   - transform: Transforms each element into an `AsyncSequence`.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for try await value in Just(1).flatMap(maxSubscriptions: .unlimited) { i in Just(i * 2) } {
     ///     print(value) // Prints: 2
     /// }

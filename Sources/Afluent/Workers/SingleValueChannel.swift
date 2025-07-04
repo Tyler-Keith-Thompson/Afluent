@@ -12,7 +12,7 @@ import Foundation
 /// `SingleValueChannel` is an `AsynchronousUnitOfWork` that can be manually completed exactly once, making it ideal for integrating legacy or delegate/callback APIs with modern async workflows.
 ///
 /// ## Example: Bridging a callback to async/await
-/// ```
+/// ```swift
 /// func fetchData(url: URL) async throws -> Data {
 ///     let channel = SingleValueChannel<Data>()
 ///     let task = URLSession.shared.dataTask(with: url) { data, _, error in

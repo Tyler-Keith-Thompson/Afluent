@@ -13,7 +13,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to convert an optional result into a non-optional one, failing the operation with your custom error if no value is present.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// enum MyError: Error { case missing }
     /// let result = try await DeferredTask { Int?.none }
     ///     .unwrap(orThrow: MyError.missing)

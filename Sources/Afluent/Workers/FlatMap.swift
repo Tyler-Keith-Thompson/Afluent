@@ -39,7 +39,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to chain dependent asynchronous operations, where the output of the first is needed to create the second.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let profile = try await DeferredTask { try await fetchUser() }
     ///     .flatMap { user in DeferredTask { try await fetchProfile(for: user) } }
     ///     .execute()
@@ -60,7 +60,7 @@ extension AsynchronousUnitOfWork {
     /// This is convenient for chaining side-effectful async operations where the upstream does not yield a value.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let value = try await DeferredTask { }
     ///     .flatMap { DeferredTask { 42 } }
     ///     .execute()

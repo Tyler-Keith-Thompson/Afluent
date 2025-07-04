@@ -37,7 +37,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to guarantee a non-optional result from an asynchronous unit of work that may emit `nil`.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let result = try await DeferredTask { Int?.none }
     ///     .replaceNil(with: 42)
     ///     .execute()

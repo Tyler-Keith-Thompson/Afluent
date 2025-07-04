@@ -45,7 +45,7 @@ extension AsyncSequence where Self: Sendable {
     /// - Important: Be cautious using `collect()` on sequences that emit a large number of elements or never complete, as this can lead to high memory usage.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for try await values in Just(1).collect() {
     ///     print(values) // Prints: [1]
     /// }

@@ -45,7 +45,7 @@ extension AsyncSequence where Self: Sendable {
     /// Use this to emit a fallback value instead of propagating an error downstream.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let stream = Just(1).map { _ in throw MyError() }
     /// for await value in stream.replaceError(with: 42) {
     ///     print(value) // Prints: 42

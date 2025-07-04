@@ -68,7 +68,7 @@ extension AsyncSequence where Self: Sendable {
     /// Use this to observe or act on events like output, error, completion, or cancellation.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for try await value in Just(1).handleEvents(receiveOutput: { print("Saw value: \($0)") }) {
     ///     print("Received: \(value)")
     /// }

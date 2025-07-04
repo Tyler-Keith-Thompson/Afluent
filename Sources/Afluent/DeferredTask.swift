@@ -19,7 +19,7 @@ import Foundation
 /// ## Example
 ///
 /// Basic usage with `execute()` to start and await the operation:
-/// ```
+/// ```swift
 /// let deferred = DeferredTask<Int> {
 ///     try await Task.sleep(nanoseconds: 1_000_000_000)
 ///     return 42
@@ -29,7 +29,7 @@ import Foundation
 /// ```
 ///
 /// Accessing the result via the `result` property (an async property that awaits completion):
-/// ```
+/// ```swift
 /// let deferred = DeferredTask<Int> {
 ///     10 * 5
 /// }
@@ -38,7 +38,7 @@ import Foundation
 /// ```
 ///
 /// Running the operation without awaiting its result immediately, via `run()`:
-/// ```
+/// ```swift
 /// let deferred = DeferredTask<Int> {
 ///     7 + 3
 /// }
@@ -47,7 +47,7 @@ import Foundation
 /// ```
 ///
 /// Subscribing to the task's events using `subscribe()`:
-/// ```
+/// ```swift
 /// let deferred = DeferredTask<String> {
 ///     "Hello, World!"
 /// }
@@ -62,7 +62,7 @@ import Foundation
 /// ```
 ///
 /// Storing the subscription in a collection for lifecycle management:
-/// ```
+/// ```swift
 /// var cancellables = Set<AnyCancellable>()
 /// let deferred = DeferredTask<Void> {
 ///     print("Task executed")
@@ -71,7 +71,7 @@ import Foundation
 /// ```
 ///
 /// Chaining with operators:
-/// ```
+/// ```swift
 /// let result = try await DeferredTask { 21 }
 ///     .map { $0 * 2 }
 ///     .execute() // result is 42

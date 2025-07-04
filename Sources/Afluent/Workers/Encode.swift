@@ -55,7 +55,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator when you want to transform an encodable output (such as a model or primitive value) into an encoded form (like Data) using a given encoder (e.g., JSONEncoder).
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// struct Person: Encodable { let name: String }
     /// let work = DeferredTask { Person(name: "Alice") }
     /// let encoded: some AsynchronousUnitOfWork<Data> = work.encode(encoder: JSONEncoder())

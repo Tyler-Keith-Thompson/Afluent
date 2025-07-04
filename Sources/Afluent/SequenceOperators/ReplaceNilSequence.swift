@@ -44,7 +44,7 @@ extension AsyncSequence where Self: Sendable {
     /// Use this to emit a fallback value whenever the upstream emits `nil`.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let stream = AsyncStream<Int?> { continuation in
     ///     continuation.yield(1)
     ///     continuation.yield(nil)

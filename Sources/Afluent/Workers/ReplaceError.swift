@@ -38,7 +38,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to recover from errors by substituting a default value, making the unit of work non-throwing for downstream consumers.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// enum MyError: Error { case network }
     /// let value = try await DeferredTask { throw MyError.network }
     ///     .replaceError(with: 0)

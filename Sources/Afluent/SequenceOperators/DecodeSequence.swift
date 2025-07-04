@@ -63,7 +63,7 @@ extension AsyncSequence where Self: Sendable {
     /// Use this to decode values from upstream elements (such as encoded JSON) to a concrete type.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// struct Person: Decodable { let name: String }
     /// let json = try JSONEncoder().encode(Person(name: "Alice"))
     /// for try await person in Just(json).decode(type: Person.self, decoder: JSONDecoder()) {

@@ -64,7 +64,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to integrate single-value asynchronous operations into sequence-based workflows, or to use sequence algorithms and idioms with a single result.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for try await value in DeferredTask { 42 }.toAsyncSequence() {
     ///     print(value) // prints 42
     /// }

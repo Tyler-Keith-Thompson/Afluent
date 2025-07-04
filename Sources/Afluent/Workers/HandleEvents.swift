@@ -70,7 +70,7 @@ extension AsynchronousUnitOfWork {
     /// on errors, or cancellation.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// try await DeferredTask { try await fetchUser() }
     ///     .handleEvents(
     ///         receiveOperation: { print("About to start") },

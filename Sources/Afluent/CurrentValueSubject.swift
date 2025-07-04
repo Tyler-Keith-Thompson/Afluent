@@ -10,7 +10,7 @@
 /// This is an `AsyncSequence` that allows multiple tasks to asynchronously consume values and mimics Combine's CurrentValueSubject.
 ///
 /// ## Example
-/// ```
+/// ```swift
 /// let subject = CurrentValueSubject(0)
 ///
 /// Task {

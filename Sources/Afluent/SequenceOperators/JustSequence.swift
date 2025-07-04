@@ -13,7 +13,7 @@ extension AsyncSequences {
     /// Use `Just` to create a sequence that yields one value and then finishes, often for testing, composition, or as a source of a single known value.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for await value in Just(1) {
     ///     print(value) // Prints: 1
     /// }

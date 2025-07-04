@@ -52,7 +52,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to avoid duplicate work when multiple parts of your code need the result of the same asynchronous operation.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let sharedTask = DeferredTask { UUID() }
     ///     .share()
     ///

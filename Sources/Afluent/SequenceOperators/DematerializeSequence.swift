@@ -43,7 +43,7 @@ extension AsyncSequence where Self: Sendable {
     /// This is the inverse of `materialize()`. Use it to recover values and errors from a sequence of events.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for try await value in Just(1).materialize().dematerialize() {
     ///     print(value) // Prints: 1
     /// }

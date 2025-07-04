@@ -18,7 +18,7 @@ extension Task where Failure == Error {
     /// - Returns: The spawned `Task` running the specified operation.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// @Sendable func fetchData() async throws -> String {
     ///     // Simulates network request
     ///     try await Task.sleep(nanoseconds: 1_000_000_000)

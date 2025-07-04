@@ -97,7 +97,7 @@ extension AsynchronousUnitOfWork {
     /// Zips the result of this unit of work with another, producing a tuple of both results when both complete.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let zipped = DeferredTask { "a" }
     ///     .zip(DeferredTask { 42 })
     /// let (str, num) = try await zipped.execute()
@@ -115,7 +115,7 @@ extension AsynchronousUnitOfWork {
     /// Zips the result of this unit of work with another and applies a transform function.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let zipped = DeferredTask { "a" }
     ///     .zip(DeferredTask { 42 }) { (str, num) in
     ///         "\(str): \(num)"
@@ -142,7 +142,7 @@ extension AsynchronousUnitOfWork {
     /// Zips the result of this unit of work with two other asynchronous units of work, producing a tuple of all three results.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let zipped = DeferredTask { "a" }
     ///     .zip(DeferredTask { 42 }, DeferredTask { true })
     /// let (str, num, bool) = try await zipped.execute()
@@ -162,7 +162,7 @@ extension AsynchronousUnitOfWork {
     /// Zips the result of this unit of work with two others and applies a transform function.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let zipped = DeferredTask { "a" }
     ///     .zip(DeferredTask { 42 }, DeferredTask { true }) { (str, num, bool) in
     ///         "\(str): \(num), flag is \(bool)"
@@ -191,7 +191,7 @@ extension AsynchronousUnitOfWork {
     /// Zips the result of this unit of work with three other asynchronous units of work, producing a tuple of all four results.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let zipped = DeferredTask { "a" }
     ///     .zip(DeferredTask { 42 }, DeferredTask { true }, DeferredTask { 3.14 })
     /// let (str, num, bool, pi) = try await zipped.execute()
@@ -214,7 +214,7 @@ extension AsynchronousUnitOfWork {
     /// Zips the result of this unit of work with three others and applies a transform function.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let zipped = DeferredTask { "a" }
     ///     .zip(DeferredTask { 42 }, DeferredTask { true }, DeferredTask { 3.14 }) { (str, num, bool, pi) in
     ///         "\(str): \(num), flag is \(bool), π is \(pi)"

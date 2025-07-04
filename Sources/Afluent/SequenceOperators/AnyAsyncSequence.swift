@@ -70,7 +70,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// Use this to hide the underlying concrete type of an async sequence when you need to pass it generically.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let stream = AsyncStream<Int> { continuation in
     ///     continuation.yield(1)
     ///     continuation.yield(2)

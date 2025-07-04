@@ -124,7 +124,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to control retry behavior with custom or built-in strategies, mirroring the power and flexibility of the AsyncSequence retry operator.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// try await DeferredTask { try await fetchData() }
     ///     .retry(.byCount(3))
     ///     .execute()
@@ -139,7 +139,7 @@ extension AsynchronousUnitOfWork {
     /// Retries this unit of work up to the specified number of times on failure.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// try await DeferredTask { try await fetchData() }
     ///     .retry(3)
     ///     .execute()
@@ -154,7 +154,7 @@ extension AsynchronousUnitOfWork {
     /// Retries this unit of work up to the specified number of times, but only when the error matches the given equatable error.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// enum NetworkError: Error, Equatable { case offline, timeout }
     /// try await DeferredTask { throw NetworkError.offline }
     ///     .retry(3, on: NetworkError.offline)
@@ -174,7 +174,7 @@ extension AsynchronousUnitOfWork {
     /// Retries this unit of work up to the specified number of times, but only when the error is of the given type.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// enum NetworkError: Error { case offline, timeout }
     /// try await DeferredTask { throw NetworkError.timeout }
     ///     .retry(3, on: NetworkError.self)

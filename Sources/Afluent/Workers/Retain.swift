@@ -44,7 +44,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator when you want to prevent repeated side effects or recomputation by caching the result of the first execution.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// var runCount = 0
     /// let task = DeferredTask { runCount += 1; return 42 }
     ///     .retain()

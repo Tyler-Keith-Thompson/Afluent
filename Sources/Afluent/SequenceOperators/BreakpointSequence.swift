@@ -18,7 +18,7 @@ extension AsyncSequence where Self: Sendable {
     ///   - receiveError: Closure called with each error. Return `true` to trigger a breakpoint. Default is `nil`.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let numbers = AsyncStream<Int> { continuation in
     ///     continuation.yield(1)
     ///     continuation.yield(42)
@@ -48,7 +48,7 @@ extension AsyncSequence where Self: Sendable {
     /// Introduces a breakpoint into the async sequence when an error occurs.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let stream = AsyncStream<Int> { continuation in
     ///     continuation.finish(throwing: MyError())
     /// }

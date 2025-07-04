@@ -15,7 +15,7 @@ extension AsyncSequence where Self: Sendable {
     /// - Parameter prefix: A string to prefix each log message with. Default is an empty string.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for try await value in Just(1).print("MyPrefix") {
     ///     // Prints lifecycle events and value to the console with prefix "MyPrefix"
     /// }

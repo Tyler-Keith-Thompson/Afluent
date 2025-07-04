@@ -19,7 +19,7 @@ where Self == RetryByBackoffStrategy<ExponentialBackoffStrategy<ContinuousClock>
     /// This convenience function can be used with operators such as `.retry(strategy:)`.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// try await DeferredTask { /* some fallible work */ }
     ///     .retry(strategy: .backoff(.exponential(base: 2, maxCount: 3)))
     ///     .execute()
@@ -36,7 +36,7 @@ where Self == RetryByBackoffStrategy<ExponentialBackoffStrategy<ContinuousClock>
 /// This actor manages retry attempts with a configurable `BackoffStrategy` and clock. It determines delays between retries using this strategy.
 ///
 /// ## Example
-/// ```
+/// ```swift
 /// try await DeferredTask { /* some fallible work */ }
 ///     .retry(strategy: .backoff(.exponential(base: 2, maxCount: 3)))
 ///     .execute()
@@ -74,7 +74,7 @@ public actor RetryByBackoffStrategy<Strategy: BackoffStrategy>: RetryStrategy {
 /// Conforming types provide logic to determine the delay between retry attempts using a clock and a duration unit.
 ///
 /// ## Example
-/// ```
+/// ```swift
 /// struct MyStrategy: BackoffStrategy {
 ///     func backoff<T: BinaryInteger>(clock: ContinuousClock, durationUnit: @escaping ClockDurationUnit<ContinuousClock, T>) async throws -> Bool {
 ///         try await clock.sleep(for: durationUnit(1))

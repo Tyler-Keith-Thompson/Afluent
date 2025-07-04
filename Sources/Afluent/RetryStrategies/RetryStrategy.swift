@@ -11,7 +11,7 @@
 /// This protocol also allows executing any pre-retry logic, such as logging or cleanup, before attempting a retry.
 ///
 /// ## Example
-/// ```
+/// ```swift
 /// actor AlwaysRetryOnce: RetryStrategy {
 ///     private var hasRetried = false
 ///     func handle(error: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws -> Bool {

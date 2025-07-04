@@ -42,7 +42,7 @@ extension AsyncSequence where Self: Sendable {
     /// This is useful for converting between error types or adding additional context to errors.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// enum NetworkError: Error { case timeout }
     /// enum UserError: Error { case displayMessage(String) }
     /// let throwing = Just(1).map { _ in throw NetworkError.timeout }
@@ -64,7 +64,7 @@ extension AsyncSequence where Self: Sendable {
     /// Transforms a specific error value produced by the sequence using the provided closure.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// enum NetworkError: Error, Equatable { case timeout }
     /// enum UserError: Error { case displayMessage(String) }
     /// let throwing = Just(1).map { _ in throw NetworkError.timeout }

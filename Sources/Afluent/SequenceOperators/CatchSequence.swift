@@ -58,7 +58,7 @@ extension AsyncSequence where Self: Sendable {
     /// Catches any errors emitted by the upstream `AsyncSequence` and handles them using the provided closure.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for try await value in Just(1).catch { _ in Just(0) } {
     ///     print(value)
     /// }
@@ -73,7 +73,7 @@ extension AsyncSequence where Self: Sendable {
     /// Catches a specific type of error emitted by the upstream `AsyncSequence` and handles them using the provided closure.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for try await value in Just(1).catch(MyError()) { _ in Just(0) } {
     ///     print(value)
     /// }
@@ -93,7 +93,7 @@ extension AsyncSequence where Self: Sendable {
     /// Tries to catch any errors emitted by the upstream `AsyncSequence` and handles them using the provided throwing closure.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for try await value in Just(1).tryCatch { _ in Just(0) } {
     ///     print(value)
     /// }
@@ -108,7 +108,7 @@ extension AsyncSequence where Self: Sendable {
     /// Tries to catch a specific type of error emitted by the upstream `AsyncSequence` and handles them using the provided throwing closure.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// for try await value in Just(1).tryCatch(MyError()) { _ in Just(0) } {
     ///     print(value)
     /// }

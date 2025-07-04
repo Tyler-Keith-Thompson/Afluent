@@ -27,7 +27,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to ensure that the same cache entry is used for identical call sites, preventing duplicate work and sharing cached results.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let cache = AUOWCache()
     /// let shared = DeferredTask { UUID() }
     ///     .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation)
@@ -61,7 +61,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to share or de-duplicate expensive work based on custom, hashable cache keys.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let cache = AUOWCache()
     /// let shared = DeferredTask { UUID() }
     ///     .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "user42")
@@ -90,7 +90,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to share or de-duplicate expensive work based on custom, hashable cache keys.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let cache = AUOWCache()
     /// let shared = DeferredTask { UUID() }
     ///     .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "user", 42)
@@ -120,7 +120,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to share or de-duplicate expensive work based on custom, hashable cache keys.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let cache = AUOWCache()
     /// let shared = DeferredTask { UUID() }
     ///     .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "user", 42, "session")
@@ -151,7 +151,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to share or de-duplicate expensive work based on custom, hashable cache keys.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let cache = AUOWCache()
     /// let shared = DeferredTask { UUID() }
     ///     .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "user", 42, "session", 1)
@@ -183,7 +183,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to share or de-duplicate expensive work based on custom, hashable cache keys.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let cache = AUOWCache()
     /// let shared = DeferredTask { UUID() }
     ///     .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "user", 42, "session", 1, "extra")
@@ -219,7 +219,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to share or de-duplicate expensive work based on custom, hashable cache keys.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let cache = AUOWCache()
     /// let shared = DeferredTask { UUID() }
     ///     .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "user", 42, "session", 1, "extra", 99)
@@ -256,7 +256,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to share or de-duplicate expensive work based on custom, hashable cache keys.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let cache = AUOWCache()
     /// let shared = DeferredTask { UUID() }
     ///     .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "user", 42, "session", 1, "extra", 99, "flag")
@@ -295,7 +295,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to share or de-duplicate expensive work based on custom, hashable cache keys.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let cache = AUOWCache()
     /// let shared = DeferredTask { UUID() }
     ///     .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "user", 42, "session", 1, "extra", 99, "flag", true)
@@ -335,7 +335,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to share or de-duplicate expensive work based on custom, hashable cache keys.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let cache = AUOWCache()
     /// let shared = DeferredTask { UUID() }
     ///     .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "user", 42, "session", 1, "extra", 99, "flag", true, 1000)
@@ -376,7 +376,7 @@ extension AsynchronousUnitOfWork {
     /// Use this operator to share or de-duplicate expensive work based on custom, hashable cache keys.
     ///
     /// ## Example
-    /// ```
+    /// ```swift
     /// let cache = AUOWCache()
     /// let shared = DeferredTask { UUID() }
     ///     .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "user", 42, "session", 1, "extra", 99, "flag", true, 1000, false)

@@ -8,9 +8,16 @@
 import Foundation
 
 extension AsyncSequence where Self: Sendable {
-    /// Discards the output values from the upstream `AsyncSequence`.
+    /// Transforms each output value from the upstream sequence into `Void`.
     ///
-    /// - Returns: An `AsyncSequence` of type `Void` that emits a completion event when the upstream completes.
+    /// Use this to ignore the payload of each element, but still receive an event for every value.
+    ///
+    /// ## Example
+    /// ```
+    /// for await _ in Just(1).discardOutput() {
+    ///     // Loop runs once for each element, but value is always Void
+    /// }
+    /// ```
     public func discardOutput() -> AsyncMapSequence<Self, Void> {
         map { _ in }
     }

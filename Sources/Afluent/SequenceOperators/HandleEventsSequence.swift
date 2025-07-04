@@ -8,6 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
+    /// Used as the implementation detail for the ``AsyncSequence/handleEvents(receiveMakeIterator:receiveNext:receiveOutput:receiveError:receiveComplete:receiveCancel:)`` operator.
     public struct HandleEvents<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream
@@ -62,18 +63,28 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence where Self: Sendable {
-    /// Adds side-effects to the receiving events of the upstream `AsyncSequence`.
+    /// Adds side-effects to the lifetime events of the sequence.
+    ///
+    /// Use this to observe or act on events like output, error, completion, or cancellation.
+    ///
+    /// ## Example
+    /// ```
+    /// for try await value in Just(1).handleEvents(receiveOutput: { print("Saw value: \($0)") }) {
+    ///     print("Received: \(value)")
+    /// }
+    /// ```
     ///
     /// - Parameters:
-    ///   - receiveMakeIterator: A closure that is invoked when the an iterator is requested from this sequence.
+    ///   - receiveMakeIterator: A closure that is invoked when an iterator is requested from this sequence.
     ///   - receiveNext: A closure that is invoked when the next element is requested from this sequence. The closure can throw errors.
     ///   - receiveOutput: A closure that is invoked when the upstream emits a successful output. The closure can throw errors.
     ///   - receiveError: A closure that is invoked when the upstream emits an error. The closure can throw errors.
-    ///   - receiveCancel: A closure that is invoked when the unit of work is cancelled. The closure can throw errors.
+    ///   - receiveComplete: A closure that is invoked when the upstream completes. The closure can throw errors.
+    ///   - receiveCancel: A closure that is invoked when the sequence is cancelled. The closure can throw errors.
     ///
-    /// - Returns: An `AsynchronousUnitOfWork` that performs the side-effects for the specified receiving events.
+    /// - Returns: An async sequence that performs the side-effects for the specified events.
     ///
-    /// - Note: The returned `AsynchronousUnitOfWork` forwards all receiving events from the upstream unit of work.
+    /// - Note: The returned sequence forwards all events from the upstream.
     public func handleEvents(
         @_implicitSelfCapture receiveMakeIterator: (@Sendable () -> Void)? = nil,
         @_inheritActorContext @_implicitSelfCapture receiveNext: (
@@ -98,3 +109,4 @@ extension AsyncSequence where Self: Sendable {
             receiveComplete: receiveComplete, receiveCancel: receiveCancel)
     }
 }
+

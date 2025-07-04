@@ -8,16 +8,26 @@
 import Foundation
 
 extension AsyncSequence where Self: Sendable {
-    /// Introduces a breakpoint into the async sequence.
+    /// Introduces a conditional breakpoint into the async sequence.
     ///
-    /// This function allows you to introduce conditional breakpoints based on the output or error of the async sequence.
-    /// If the provided conditions are met, a `SIGTRAP` signal is raised, pausing execution in a debugger.
+    /// Use this to pause execution in a debugger when a specified output or error condition is met.
+    /// If the provided closure returns `true`, a `SIGTRAP` signal is raised.
     ///
     /// - Parameters:
-    ///   - receiveOutput: A closure that takes the successful output of the sequence. If this closure returns `true`, a breakpoint is triggered. Default is `nil`.
-    ///   - receiveError: A closure that takes any error produced by the sequence. If this closure returns `true`, a breakpoint is triggered. Default is `nil`.
+    ///   - receiveOutput: Closure called with each output. Return `true` to trigger a breakpoint. Default is `nil`.
+    ///   - receiveError: Closure called with each error. Return `true` to trigger a breakpoint. Default is `nil`.
     ///
-    /// - Returns: An asynchronous unit of work with the breakpoint conditions applied.
+    /// ## Example
+    /// ```
+    /// let numbers = AsyncStream<Int> { continuation in
+    ///     continuation.yield(1)
+    ///     continuation.yield(42)
+    ///     continuation.finish()
+    /// }
+    /// for try await value in numbers.breakpoint(receiveOutput: { $0 == 42 }) {
+    ///     print(value)
+    /// }
+    /// ```
     @_transparent @_alwaysEmitIntoClient @inlinable public func breakpoint(
         receiveOutput: (@Sendable (Element) async throws -> Bool)? = nil,
         receiveError: (@Sendable (Error) async throws -> Bool)? = nil
@@ -37,9 +47,15 @@ extension AsyncSequence where Self: Sendable {
 
     /// Introduces a breakpoint into the async sequence when an error occurs.
     ///
-    /// This function triggers a `SIGTRAP` signal, pausing execution in a debugger, whenever the async sequence produces an error.
-    ///
-    /// - Returns: An `AsyncSequence` with the breakpoint-on-error condition applied.
+    /// ## Example
+    /// ```
+    /// let stream = AsyncStream<Int> { continuation in
+    ///     continuation.finish(throwing: MyError())
+    /// }
+    /// for try await value in stream.breakpointOnError() {
+    ///     print(value)
+    /// }
+    /// ```
     @_transparent @_alwaysEmitIntoClient @inlinable public func breakpointOnError()
         -> AsyncSequences.HandleEvents<Self>
     {

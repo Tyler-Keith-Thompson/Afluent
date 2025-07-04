@@ -8,6 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
+    /// Used as the implementation detail for the ``AsyncSequence/replaceError(with:)`` operator.
     public struct ReplaceError<Upstream: AsyncSequence & Sendable, Output: Sendable>: AsyncSequence,
         Sendable
     where Upstream.Element == Output {
@@ -39,11 +40,17 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence where Self: Sendable {
-    /// Replaces any errors from the upstream `AsyncSequence` with the provided value.
+    /// Replaces any error from the sequence with the provided value.
     ///
-    /// - Parameter value: The value to emit upon encountering an error.
+    /// Use this to emit a fallback value instead of propagating an error downstream.
     ///
-    /// - Returns: An `AsyncSequence` that emits the specified value instead of failing when the upstream fails.
+    /// ## Example
+    /// ```
+    /// let stream = Just(1).map { _ in throw MyError() }
+    /// for await value in stream.replaceError(with: 42) {
+    ///     print(value) // Prints: 42
+    /// }
+    /// ```
     public func replaceError(with value: Element) -> AsyncSequences.ReplaceError<Self, Element>
     where Element: Sendable {
         AsyncSequences.ReplaceError(upstream: self, newOutput: value)

@@ -8,6 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
+    /// Used as the implementation detail for the ``AsyncSequence/replaceNil(with:)`` operator.
     public struct ReplaceNil<Upstream: AsyncSequence & Sendable, Output: Sendable>: AsyncSequence,
         Sendable
     where Upstream.Element == Output? {
@@ -38,13 +39,25 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence where Self: Sendable {
-    /// Replaces any `nil` values from the upstream `AsyncSequence` with the provided non-nil value.
+    /// Replaces any `nil` values from the sequence with the provided non-nil value.
     ///
-    /// - Parameter value: The value to emit when the upstream emits `nil`.
+    /// Use this to emit a fallback value whenever the upstream emits `nil`.
     ///
-    /// - Returns: An `AsyncSequence` that emits the specified value instead of `nil` when the upstream emits `nil`.
+    /// ## Example
+    /// ```
+    /// let stream = AsyncStream<Int?> { continuation in
+    ///     continuation.yield(1)
+    ///     continuation.yield(nil)
+    ///     continuation.yield(3)
+    ///     continuation.finish()
+    /// }
+    /// for await value in stream.replaceNil(with: 42) {
+    ///     print(value) // Prints: 1, 42, 3
+    /// }
+    /// ```
     public func replaceNil<E>(with value: E) -> AsyncSequences.ReplaceNil<Self, E>
     where Element == E? {
         AsyncSequences.ReplaceNil(upstream: self, newOutput: value)
     }
 }
+

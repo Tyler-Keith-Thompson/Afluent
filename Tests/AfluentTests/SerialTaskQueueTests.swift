@@ -114,9 +114,18 @@ struct SerialTaskQueueTests {
             try await withMainSerialExecutor {
                 let sub = SingleValueSubject<Void>()
                 let cancelationSubject = SingleValueSubject<Void>()
-                var queue: SerialTaskQueue? = SerialTaskQueue()
+                actor StateHolder {
+                    var queue: SerialTaskQueue? = SerialTaskQueue()
+                    func deinitQueue() {
+                        queue = nil
+                    }
+                    func getQueue() throws -> SerialTaskQueue {
+                        try #require(queue)
+                    }
+                }
+                let stateHolder = StateHolder()
                 let executed = ManagedAtomic(false)
-                async let _: Void = try await #require(queue).queue {
+                async let _: Void = try await stateHolder.getQueue().queue {
                     try sub.send()
                     try await cancelationSubject.execute()
                     try Task.checkCancellation()
@@ -125,7 +134,7 @@ struct SerialTaskQueueTests {
                 }
                 await Task.yield()
                 try await sub.execute()
-                queue = nil
+                await stateHolder.deinitQueue()
                 try cancelationSubject.send()
                 let actual = executed.load(ordering: .sequentiallyConsistent)
                 #expect(actual == false)

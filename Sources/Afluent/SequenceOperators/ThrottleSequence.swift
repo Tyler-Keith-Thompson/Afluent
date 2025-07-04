@@ -198,10 +198,71 @@ extension AsyncSequences.Throttle.AsyncIterator {
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension AsyncSequence where Self: Sendable, Element: Sendable {
-    /// Emits either the first or latest element received during a specified amount of time.
-    /// - Parameter interval: The interval of time in which to observe and emit either the first or latest element.
-    /// - Parameter latest: If `true`, emits the latest element in the time interval.  If `false`, emits the first element in the time interval.
-    /// - Note: The first element in upstream will always be returned immediately.  Once a second element is received, then the clock will begin for the given time interval and return the first or latest element once completed.
+    /// Allows only one element to pass through during each specified interval, emitting either the first or the latest element seen in that period.
+    ///
+    /// This operator suppresses elements from the upstream async sequence during each interval, emitting only one element per interval:
+    /// - If `latest` is `false`, it emits the first element received immediately and then ignores subsequent elements until the interval completes.
+    /// - If `latest` is `true`, it emits the first element immediately, then during the interval it tracks element updates, emitting only the most recent one at the interval’s end.
+    ///
+    /// Elements arriving during an interval beyond the emitted one are suppressed, allowing controlled pacing of element emission.
+    ///
+    /// - Parameters:
+    ///   - interval: The length of time to wait between emissions.
+    ///   - clock: The clock used to measure time intervals and perform sleeps.
+    ///   - latest: A Boolean flag determining which element to emit during each interval:
+    ///     - `false` emits the first element seen in the interval.
+    ///     - `true` emits the latest element seen during the interval.
+    ///
+    /// - Returns: An async sequence that emits throttled elements from the upstream sequence.
+    ///
+    /// ## Example
+    ///
+    /// The following example creates an `AsyncStream` that emits the current date every second,
+    /// then applies a throttle with a 3-second interval, showing both `latest: false` and `latest: true`.
+    ///
+    /// ```swift
+    /// import Foundation
+    /// import _Concurrency
+    ///
+    /// let stream = AsyncStream<Date> { continuation in
+    ///     Task {
+    ///         while true {
+    ///             continuation.yield(Date())
+    ///             try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// // Throttle with latest: false (emit the first element immediately, then suppress others during the interval)
+    /// Task {
+    ///     print("Throttle with latest: false")
+    ///     for await date in stream.throttle(for: .seconds(3), clock: ContinuousClock(), latest: false) {
+    ///         print("Emitted (first): \(date)")
+    ///     }
+    /// }
+    ///
+    /// // Throttle with latest: true (emit the first element immediately, then emit the latest element at interval end)
+    /// Task {
+    ///     print("Throttle with latest: true")
+    ///     for await date in stream.throttle(for: .seconds(3), clock: ContinuousClock(), latest: true) {
+    ///         print("Emitted (latest): \(date)")
+    ///     }
+    /// }
+    ///
+    /// /*
+    /// Sample output for latest: false:
+    /// Throttle with latest: false
+    /// Emitted (first): 2025-07-04 12:00:00 +0000
+    /// Emitted (first): 2025-07-04 12:00:03 +0000
+    /// Emitted (first): 2025-07-04 12:00:06 +0000
+    ///
+    /// Sample output for latest: true:
+    /// Throttle with latest: true
+    /// Emitted (latest): 2025-07-04 12:00:00 +0000
+    /// Emitted (latest): 2025-07-04 12:00:02 +0000
+    /// Emitted (latest): 2025-07-04 12:00:05 +0000
+    /// */
+    /// ```
     public func throttle<C: Clock>(for interval: C.Duration, clock: C, latest: Bool)
         -> AsyncSequences.Throttle<Self, C>
     {

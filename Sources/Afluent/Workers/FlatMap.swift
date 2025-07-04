@@ -34,13 +34,20 @@ extension Workers {
 }
 
 extension AsynchronousUnitOfWork {
-    /// Transforms the successful output values from the upstream `AsynchronousUnitOfWork` using the provided asynchronous transformation closure.
+    /// Transforms the successful output value from the upstream unit of work by applying an asynchronous transformation, returning the result of a new unit of work.
     ///
-    /// - Parameter transform: An asynchronous closure that takes a successful output value and returns another `AsynchronousUnitOfWork`.
+    /// Use this operator to chain dependent asynchronous operations, where the output of the first is needed to create the second.
     ///
-    /// - Returns: An `AsynchronousUnitOfWork` emitting the successful output values from the new `AsynchronousUnitOfWork` created by the transformation.
+    /// ## Example
+    /// ```
+    /// let profile = try await DeferredTask { try await fetchUser() }
+    ///     .flatMap { user in DeferredTask { try await fetchProfile(for: user) } }
+    ///     .execute()
+    /// ```
     ///
-    /// - Note: The returned `AsynchronousUnitOfWork` will fail if either the upstream unit of work or the transformation closure fails.
+    /// - Parameter transform: An asynchronous closure that takes the upstream value and returns a new unit of work.
+    /// - Returns: An `AsynchronousUnitOfWork` emitting the successful output of the downstream unit of work.
+    /// - Note: The returned unit of work fails if either the upstream or the transformation closure fails.
     public func flatMap<D: AsynchronousUnitOfWork>(
         @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (Success)
             async throws -> D
@@ -48,14 +55,20 @@ extension AsynchronousUnitOfWork {
         Workers.FlatMap(upstream: self, transform: transform)
     }
 
-    /// Transforms the successful output values from the upstream `AsynchronousUnitOfWork` using the provided asynchronous transformation closure.
-    /// This overload is specialized for `AsynchronousUnitOfWork` types that have `Void` as their `Success` type.
+    /// Transforms a unit of work that emits `Void` by applying an asynchronous closure that produces a new unit of work.
     ///
-    /// - Parameter transform: An asynchronous closure that returns another `AsynchronousUnitOfWork`.
+    /// This is convenient for chaining side-effectful async operations where the upstream does not yield a value.
     ///
-    /// - Returns: An `AsynchronousUnitOfWork` emitting the successful output values from the new `AsynchronousUnitOfWork` created by the transformation.
+    /// ## Example
+    /// ```
+    /// let value = try await DeferredTask { }
+    ///     .flatMap { DeferredTask { 42 } }
+    ///     .execute()
+    /// ```
     ///
-    /// - Note: The returned `AsynchronousUnitOfWork` will fail if either the upstream unit of work or the transformation closure fails.
+    /// - Parameter transform: An async closure returning the next unit of work.
+    /// - Returns: An `AsynchronousUnitOfWork` emitting the output of the downstream unit.
+    /// - Note: The returned unit of work fails if either the upstream or the transformation closure fails.
     public func flatMap<D: AsynchronousUnitOfWork>(
         @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping () async throws
             -> D
@@ -63,3 +76,4 @@ extension AsynchronousUnitOfWork {
         Workers.FlatMap(upstream: self, transform: { _ in try await transform() })
     }
 }
+

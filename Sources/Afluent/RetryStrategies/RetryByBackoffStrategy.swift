@@ -7,18 +7,23 @@
 
 import Foundation
 
+/// A closure that converts an integer value to a duration for a given clock.
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 public typealias ClockDurationUnit<C: Clock, T: BinaryInteger> = @Sendable (T) -> C.Duration
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 extension RetryStrategy
 where Self == RetryByBackoffStrategy<ExponentialBackoffStrategy<ContinuousClock>> {
-    /// Creates a retry strategy using the provided backoff strategy and a continuous clock.
+    /// Creates a retry strategy using the provided exponential backoff and a continuous clock.
     ///
-    /// This extension provides a convenient method to create a `RetryByBackoffStrategy` using a `ContinuousClock`.
+    /// This convenience function can be used with operators such as `.retry(strategy:)`.
     ///
-    /// - Parameter strategy: The backoff strategy to use for retrying operations.
-    /// - Returns: A `RetryByBackoffStrategy` configured with the provided `BackoffStrategy` and a `ContinuousClock`.
+    /// ## Example
+    /// ```
+    /// try await DeferredTask { /* some fallible work */ }
+    ///     .retry(strategy: .backoff(.exponential(base: 2, maxCount: 3)))
+    ///     .execute()
+    /// ```
     public static func backoff(_ strategy: ExponentialBackoffStrategy<ContinuousClock>)
         -> RetryByBackoffStrategy<ExponentialBackoffStrategy<ContinuousClock>>
     {
@@ -28,13 +33,14 @@ where Self == RetryByBackoffStrategy<ExponentialBackoffStrategy<ContinuousClock>
 
 /// A retry strategy using a specified backoff strategy and clock.
 ///
-/// This actor manages retry attempts with a configurable `BackoffStrategy` and clock. It uses the clock to calculate
-/// the time delays between retries, allowing more fine-grained control over the timing of retries based on the provided
-/// backoff strategy.
+/// This actor manages retry attempts with a configurable `BackoffStrategy` and clock. It determines delays between retries using this strategy.
 ///
-/// - Parameters:
-///   - C: The type of `Clock` used for measuring time between retries.
-/// - Note: This actor conforms to `RetryStrategy` and is used to manage retries based on time delays.
+/// ## Example
+/// ```
+/// try await DeferredTask { /* some fallible work */ }
+///     .retry(strategy: .backoff(.exponential(base: 2, maxCount: 3)))
+///     .execute()
+/// ```
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 public actor RetryByBackoffStrategy<Strategy: BackoffStrategy>: RetryStrategy {
     let strategy: Strategy
@@ -46,6 +52,7 @@ public actor RetryByBackoffStrategy<Strategy: BackoffStrategy>: RetryStrategy {
     /// - Parameters:
     ///   - strategy: The backoff strategy used to determine how to back off between retries.
     ///   - clock: The clock used to measure the time between retries.
+    ///   - durationUnit: A closure that converts an integer to a clock duration.
     public init(
         _ strategy: Strategy, clock: Strategy.Clock,
         durationUnit: @escaping ClockDurationUnit<Strategy.Clock, Int>
@@ -62,23 +69,29 @@ public actor RetryByBackoffStrategy<Strategy: BackoffStrategy>: RetryStrategy {
     }
 }
 
-/// A protocol for implementing custom backoff strategies in retry mechanisms.
+/// A protocol for implementing custom backoff strategies for retry mechanisms.
 ///
-/// Types conforming to `BackoffStrategy` must implement logic for calculating delays between retry attempts.
-/// The delay is determined using a clock and a duration unit.
+/// Conforming types provide logic to determine the delay between retry attempts using a clock and a duration unit.
+///
+/// ## Example
+/// ```
+/// struct MyStrategy: BackoffStrategy {
+///     func backoff<T: BinaryInteger>(clock: ContinuousClock, durationUnit: @escaping ClockDurationUnit<ContinuousClock, T>) async throws -> Bool {
+///         try await clock.sleep(for: durationUnit(1))
+///         return true
+///     }
+/// }
+/// ```
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 public protocol BackoffStrategy<Clock>: Sendable where Clock: _Concurrency.Clock {
     associatedtype Clock
     /// Calculates the delay between retries using a clock and a duration unit.
     ///
-    /// This method allows for custom backoff strategies based on a clock and a duration unit. The delay between retries
-    /// is determined by the combination of these two parameters.
-    ///
     /// - Parameters:
     ///   - clock: The clock used to measure the time between retries.
     ///   - durationUnit: A closure that converts an integer value to a clock duration.
     ///
-    /// - Returns: A Boolean value indicating whether a retry should be attempted (`true`) or not (`false`).
+    /// - Returns: A Boolean indicating whether a retry should be attempted (`true`) or not (`false`).
     /// - Throws: Any error encountered during the backoff process.
     func backoff<T: BinaryInteger>(clock: Clock, durationUnit: ClockDurationUnit<Clock, T>)
         async throws -> Bool
@@ -159,3 +172,4 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
         return true
     }
 }
+

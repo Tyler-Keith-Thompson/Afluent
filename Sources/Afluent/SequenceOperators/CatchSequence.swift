@@ -8,6 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
+    /// Used as the implementation detail for the catch/tryCatch sequence operators.
     public struct Catch<Upstream: AsyncSequence & Sendable, Downstream: AsyncSequence & Sendable>:
         AsyncSequence, Sendable
     where Upstream.Element == Downstream.Element {
@@ -56,10 +57,12 @@ extension AsyncSequences {
 extension AsyncSequence where Self: Sendable {
     /// Catches any errors emitted by the upstream `AsyncSequence` and handles them using the provided closure.
     ///
-    /// - Parameters:
-    ///   - handler: A closure that takes an `Error` and returns an `AsyncSequence`.
-    ///
-    /// - Returns: An `AsyncSequence` that will catch and handle any errors emitted by the upstream sequence.
+    /// ## Example
+    /// ```
+    /// for try await value in Just(1).catch { _ in Just(0) } {
+    ///     print(value)
+    /// }
+    /// ```
     public func `catch`<D: AsyncSequence>(
         @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error) async ->
             D
@@ -69,11 +72,12 @@ extension AsyncSequence where Self: Sendable {
 
     /// Catches a specific type of error emitted by the upstream `AsyncSequence` and handles them using the provided closure.
     ///
-    /// - Parameters:
-    ///   - error: The specific error type to catch.
-    ///   - handler: A closure that takes an `Error` and returns an `AsyncSequence`.
-    ///
-    /// - Returns: An `AsyncSequence` that will catch and handle the specific error.
+    /// ## Example
+    /// ```
+    /// for try await value in Just(1).catch(MyError()) { _ in Just(0) } {
+    ///     print(value)
+    /// }
+    /// ```
     public func `catch`<D: AsyncSequence, E: Error & Equatable>(
         _ error: E,
         @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (E) async -> D
@@ -88,10 +92,12 @@ extension AsyncSequence where Self: Sendable {
 
     /// Tries to catch any errors emitted by the upstream `AsyncSequence` and handles them using the provided throwing closure.
     ///
-    /// - Parameters:
-    ///   - handler: A closure that takes an `Error` and returns an `AsyncSequence`, potentially throwing an error.
-    ///
-    /// - Returns: An `AsyncSequence` that will try to catch and handle any errors emitted by the upstream sequence.
+    /// ## Example
+    /// ```
+    /// for try await value in Just(1).tryCatch { _ in Just(0) } {
+    ///     print(value)
+    /// }
+    /// ```
     public func tryCatch<D: AsyncSequence>(
         @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error)
             async throws -> D
@@ -101,11 +107,12 @@ extension AsyncSequence where Self: Sendable {
 
     /// Tries to catch a specific type of error emitted by the upstream `AsyncSequence` and handles them using the provided throwing closure.
     ///
-    /// - Parameters:
-    ///   - error: The specific error type to catch.
-    ///   - handler: A closure that takes an `Error` and returns an `AsyncSequence`, potentially throwing an error.
-    ///
-    /// - Returns: An `AsyncSequence` that will try to catch and handle the specific error.
+    /// ## Example
+    /// ```
+    /// for try await value in Just(1).tryCatch(MyError()) { _ in Just(0) } {
+    ///     print(value)
+    /// }
+    /// ```
     public func tryCatch<D: AsyncSequence, E: Error & Equatable>(
         _ error: E,
         @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (E) async throws

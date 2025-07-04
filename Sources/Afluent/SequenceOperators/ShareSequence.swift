@@ -17,15 +17,109 @@
 //
 
 extension AsyncSequence where Self: Sendable, Element: Sendable {
+    /// Returns a sequence that multicasts elements to multiple concurrent consumers.
+    ///
+    /// This operator enables multicasting of values from the upstream sequence to
+    /// multiple consumers that iterate concurrently. Each consumer sees the same
+    /// sequence of elements, and elements are only fetched once from the upstream
+    /// sequence.
+    ///
+    /// `broadcast` creates a new shared sequence that manages buffering and
+    /// distribution of elements to all active iterators.
+    ///
+    /// The `broadcast` and `share` operators are functionally equivalent and
+    /// can be used interchangeably.
+    ///
+    /// ## Example
+    /// ```swift
+    /// // Create an AsyncStream that emits 3 random values between 1 and 5
+    /// let upstream = AsyncStream<Int> { continuation in
+    ///     continuation.yield(Int.random(in: 1...5))
+    ///     continuation.yield(Int.random(in: 1...5))
+    ///     continuation.yield(Int.random(in: 1...5))
+    ///     continuation.finish()
+    /// }
+    ///
+    /// let sharedSequence = upstream.broadcast()
+    ///
+    /// async let firstConsumer = Task {
+    ///     for await value in sharedSequence {
+    ///         print("First consumer received \(value)")
+    ///     }
+    ///     // prints 4, 3, 5 (or whatever random values were generated)
+    /// }
+    ///
+    /// async let secondConsumer = Task {
+    ///     for await value in sharedSequence {
+    ///         print("Second consumer received \(value)")
+    ///     }
+    ///     // prints 4, 3, 5 (or whatever random values were generated)
+    /// }
+    ///
+    /// // Both consumers receive the same values produced by the upstream AsyncStream.
+    /// await firstConsumer.value
+    /// await secondConsumer.value
+    /// ```
+    ///
+    /// - Parameters: None
+    /// - Returns: An `AsyncBroadcastSequence` that multicasts elements to multiple consumers concurrently.
     public func broadcast() -> AsyncBroadcastSequence<Self> {
         AsyncBroadcastSequence(self)
     }
 
+    /// Returns a sequence that multicasts elements to multiple concurrent consumers.
+    ///
+    /// This operator is an alias for `broadcast()`, providing identical behavior.
+    /// It enables multicasting of values from the upstream sequence to multiple
+    /// concurrent consumers, so each consumer receives the same elements without
+    /// duplicating upstream work.
+    ///
+    /// ## Example
+    /// ```swift
+    /// // Create an AsyncStream that emits 3 random values between 1 and 5
+    /// let upstream = AsyncStream<Int> { continuation in
+    ///     continuation.yield(Int.random(in: 1...5))
+    ///     continuation.yield(Int.random(in: 1...5))
+    ///     continuation.yield(Int.random(in: 1...5))
+    ///     continuation.finish()
+    /// }
+    ///
+    /// let sharedSequence = upstream.share()
+    ///
+    /// async let firstConsumer = Task {
+    ///     for await value in sharedSequence {
+    ///         print("First consumer received \(value)")
+    ///     }
+    ///     // prints 4, 3, 5 (or whatever random values were generated)
+    /// }
+    ///
+    /// async let secondConsumer = Task {
+    ///     for await value in sharedSequence {
+    ///         print("Second consumer received \(value)")
+    ///     }
+    ///     // prints 4, 3, 5 (or whatever random values were generated)
+    /// }
+    ///
+    /// // Both consumers receive the same values produced by the upstream AsyncStream.
+    /// await firstConsumer.value
+    /// await secondConsumer.value
+    /// ```
+    ///
+    /// - Parameters: None
+    /// - Returns: An `AsyncBroadcastSequence` that multicasts elements to multiple consumers concurrently.
     public func share() -> AsyncBroadcastSequence<Self> {
         AsyncBroadcastSequence(self)
     }
 }
 
+/// An async sequence that multicasts elements from an upstream sequence to multiple concurrent consumers.
+///
+/// `AsyncBroadcastSequence` shares a single upstream sequence and distributes its elements
+/// to all active consumers. This allows multiple async iterators to receive the same sequence
+/// of elements without triggering duplicate work or repeated upstream iteration.
+///
+/// This type is typically produced by the `broadcast()` or `share()` operators on async sequences,
+/// and is useful in scenarios where multiple tasks need to observe the same stream of values concurrently.
 public struct AsyncBroadcastSequence<Base: AsyncSequence>: Sendable
 where Base: Sendable, Base.Element: Sendable {
     struct State: Sendable {
@@ -260,3 +354,4 @@ extension AsyncBroadcastSequence: AsyncSequence {
 
 @available(*, unavailable)
 extension AsyncBroadcastSequence.Iterator: Sendable {}
+

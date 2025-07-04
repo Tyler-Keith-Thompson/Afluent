@@ -154,13 +154,23 @@ extension Workers {
 }
 
 extension AsynchronousUnitOfWork {
-    /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times while applying a transformation on error.
+    /// Retries this unit of work using the provided retry strategy, performing an asynchronous side effect with the error before each retry.
+    ///
+    /// This is useful for injecting retry-dependent side effects (such as refreshing tokens) before attempting another run.
+    ///
+    /// ## Example
+    /// ```
+    /// try await DeferredTask { try await fetchData() }
+    ///     .retry(.byCount(3)) { error in
+    ///         DeferredTask { try await refreshCredentials() }
+    ///     }
+    ///     .execute()
+    /// ```
     ///
     /// - Parameters:
     ///   - strategy: The retry strategy to use.
-    ///   - transform: An async closure that takes the error from the upstream and returns a new `AsynchronousUnitOfWork`.
-    ///
-    /// - Returns: An `AsynchronousUnitOfWork` that emits the same output as the upstream but retries on failure up to the specified number of times, with the applied transformation.
+    ///   - transform: An async closure run before each retry, returning a unit of work for side effects.
+    /// - Returns: An `AsynchronousUnitOfWork` that performs the side effect before each retry.
     public func retry<D: AsynchronousUnitOfWork>(
         _ strategy: some RetryStrategy,
         @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (Error)
@@ -169,13 +179,21 @@ extension AsynchronousUnitOfWork {
         Workers.RetryAfterFlatMapping(upstream: self, strategy: strategy, transform: transform)
     }
 
-    /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times while applying a transformation on error.
+    /// Retries this unit of work up to a specified number of times, running an async side effect before each retry.
+    ///
+    /// ## Example
+    /// ```
+    /// try await DeferredTask { try await fetchData() }
+    ///     .retry(3) { error in
+    ///         DeferredTask { try await refreshCredentials() }
+    ///     }
+    ///     .execute()
+    /// ```
     ///
     /// - Parameters:
-    ///   - retries: The maximum number of times to retry the upstream, defaulting to 1.
-    ///   - transform: An async closure that takes the error from the upstream and returns a new `AsynchronousUnitOfWork`.
-    ///
-    /// - Returns: An `AsynchronousUnitOfWork` that emits the same output as the upstream but retries on failure up to the specified number of times, with the applied transformation.
+    ///   - retries: The max number of retry attempts (default 1).
+    ///   - transform: An async closure run before each retry, returning a unit of work for side effects.
+    /// - Returns: An `AsynchronousUnitOfWork` that performs the side effect before each retry.
     public func retry<D: AsynchronousUnitOfWork>(
         _ retries: UInt = 1,
         @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (Error)
@@ -185,14 +203,23 @@ extension AsynchronousUnitOfWork {
             upstream: self, strategy: .byCount(retries), transform: transform)
     }
 
-    /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
+    /// Retries this unit of work up to the specified number of times only when the error matches, running an async side effect before retrying.
+    ///
+    /// ## Example
+    /// ```
+    /// enum NetworkError: Error, Equatable { case unauthorized }
+    /// try await DeferredTask { throw NetworkError.unauthorized }
+    ///     .retry(3, on: NetworkError.unauthorized) { _ in
+    ///         DeferredTask { try await refreshToken() }
+    ///     }
+    ///     .execute()
+    /// ```
     ///
     /// - Parameters:
-    ///   - retries: The maximum number of times to retry the upstream, defaulting to 1.
-    ///   - error: The specific error that should trigger a retry.
-    ///   - transform: An async closure that takes the error from the upstream and returns a new `AsynchronousUnitOfWork`.
-    ///
-    /// - Returns: An `AsynchronousUnitOfWork` that emits the same output as the upstream but retries on the specified error up to the specified number of times, with the applied transformation.
+    ///   - retries: The max number of retry attempts (default 1).
+    ///   - error: The specific error to match for retry.
+    ///   - transform: An async closure run before each retry, returning a unit of work for side effects.
+    /// - Returns: An `AsynchronousUnitOfWork` that performs the side effect before retrying on the error.
     public func retry<D: AsynchronousUnitOfWork, E: Error & Equatable>(
         _ retries: UInt = 1, on error: E,
         @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (E)
@@ -202,14 +229,23 @@ extension AsynchronousUnitOfWork {
             upstream: self, strategy: .byCount(retries), error: error, transform: transform)
     }
 
-    /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
+    /// Retries this unit of work up to the specified number of times only when the error matches, running an async side effect before retrying.
+    ///
+    /// ## Example
+    /// ```
+    /// enum NetworkError: Error, Equatable { case unauthorized }
+    /// try await DeferredTask { throw NetworkError.unauthorized }
+    ///     .retry(.byCount(3), on: NetworkError.unauthorized) { _ in
+    ///         DeferredTask { try await refreshToken() }
+    ///     }
+    ///     .execute()
+    /// ```
     ///
     /// - Parameters:
     ///   - strategy: The retry strategy to use.
-    ///   - error: The specific error that should trigger the transform.
-    ///   - transform: An async closure that takes the error from the upstream and returns a new `AsynchronousUnitOfWork`.
-    ///
-    /// - Returns: An `AsynchronousUnitOfWork` that emits the same output as the upstream but retries on the specified error up to the specified number of times, with the applied transformation.
+    ///   - error: The specific error to match for retry.
+    ///   - transform: An async closure run before each retry, returning a unit of work for side effects.
+    /// - Returns: An `AsynchronousUnitOfWork` that performs the side effect before retrying on the error.
     public func retry<D: AsynchronousUnitOfWork, E: Error & Equatable, S: RetryStrategy>(
         _ strategy: S, on error: E,
         @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (E)
@@ -219,14 +255,23 @@ extension AsynchronousUnitOfWork {
             upstream: self, strategy: strategy, error: error, transform: transform)
     }
     
-    /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
+    /// Retries this unit of work up to the specified number of times only when the error is of the given type, running an async side effect before retrying.
+    ///
+    /// ## Example
+    /// ```
+    /// enum NetworkError: Error { case unauthorized }
+    /// try await DeferredTask { throw NetworkError.unauthorized }
+    ///     .retry(3, on: NetworkError.self) { _ in
+    ///         DeferredTask { try await refreshToken() }
+    ///     }
+    ///     .execute()
+    /// ```
     ///
     /// - Parameters:
-    ///   - retries: The maximum number of times to retry the upstream, defaulting to 1.
-    ///   - error: The specific error that should trigger a retry after successful cast.
-    ///   - transform: An async closure that takes the error from the upstream and returns a new `AsynchronousUnitOfWork`.
-    ///
-    /// - Returns: An `AsynchronousUnitOfWork` that emits the same output as the upstream but retries on the specified error up to the specified number of times, with the applied transformation.
+    ///   - retries: The max number of retry attempts (default 1).
+    ///   - error: The error type to match for retry on cast.
+    ///   - transform: An async closure run before each retry, returning a unit of work for side effects.
+    /// - Returns: An `AsynchronousUnitOfWork` that performs the side effect before retrying on the error type.
     public func retry<D: AsynchronousUnitOfWork, E: Error>(
         _ retries: UInt = 1, on error: E.Type,
         @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (E)
@@ -236,14 +281,23 @@ extension AsynchronousUnitOfWork {
             upstream: self, strategy: .byCount(retries), error: error, transform: transform)
     }
 
-    /// Retries the upstream `AsynchronousUnitOfWork` up to a specified number of times only when a specific error occurs, while applying a transformation on error.
+    /// Retries this unit of work up to the specified number of times only when the error is of the given type, running an async side effect before retrying.
+    ///
+    /// ## Example
+    /// ```
+    /// enum NetworkError: Error { case unauthorized }
+    /// try await DeferredTask { throw NetworkError.unauthorized }
+    ///     .retry(.byCount(3), on: NetworkError.self) { _ in
+    ///         DeferredTask { try await refreshToken() }
+    ///     }
+    ///     .execute()
+    /// ```
     ///
     /// - Parameters:
     ///   - strategy: The retry strategy to use.
-    ///   - error: The specific error that should trigger the transform after succesful cast.
-    ///   - transform: An async closure that takes the error from the upstream and returns a new `AsynchronousUnitOfWork`.
-    ///
-    /// - Returns: An `AsynchronousUnitOfWork` that emits the same output as the upstream but retries on the specified error up to the specified number of times, with the applied transformation.
+    ///   - error: The error type to match for retry on cast.
+    ///   - transform: An async closure run before each retry, returning a unit of work for side effects.
+    /// - Returns: An `AsynchronousUnitOfWork` that performs the side effect before retrying on the error type.
     public func retry<D: AsynchronousUnitOfWork, E: Error, S: RetryStrategy>(
         _ strategy: S, on error: E.Type,
         @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (E)
@@ -253,3 +307,4 @@ extension AsynchronousUnitOfWork {
             upstream: self, strategy: strategy, error: error, transform: transform)
     }
 }
+

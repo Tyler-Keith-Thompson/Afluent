@@ -33,11 +33,22 @@ extension Workers {
 }
 
 extension AsynchronousUnitOfWork {
-    /// Replaces any errors from the upstream `AsynchronousUnitOfWork` with the provided value.
+    /// Replaces any error emitted by this unit of work with the provided value, allowing the operation to yield a fallback result instead of failing.
     ///
-    /// - Parameter value: The value to emit upon encountering an error.
+    /// Use this operator to recover from errors by substituting a default value, making the unit of work non-throwing for downstream consumers.
     ///
-    /// - Returns: An `AsynchronousUnitOfWork` that emits the specified value instead of failing when the upstream fails.
+    /// ## Example
+    /// ```
+    /// enum MyError: Error { case network }
+    /// let value = try await DeferredTask { throw MyError.network }
+    ///     .replaceError(with: 0)
+    ///     .execute()
+    /// // value is 0 even if an error occurs upstream
+    /// ```
+    ///
+    /// - Parameter value: The value to emit if an error occurs.
+    /// - Returns: An `AsynchronousUnitOfWork` that emits the specified value if the upstream throws an error.
+    /// - Note: Cancellation errors are always propagated and are not replaced.
     public func replaceError(with value: Success) -> some AsynchronousUnitOfWork<Success> {
         Workers.ReplaceError(upstream: self, newValue: value)
     }

@@ -7,11 +7,27 @@
 
 import Foundation
 
-/// A subject that emits a single value or an error.
+/// A subject for bridging callback-based APIs to async/await, emitting a single value or error.
 ///
-/// `SingleValueSubject` is an `AsynchronousUnitOfWork` that can be manually completed with either a success value or an error. It's useful for scenarios where you need to bridge callback-based APIs into the world of `async/await`.
+/// `SingleValueSubject` is an `AsynchronousUnitOfWork` that you manually complete once, making it useful for integrating legacy, delegate, or callback-style APIs into modern async workflows.
 ///
-/// - Note: Once completed, any further attempts to send a value or an error will result in a `SubjectError.alreadyCompleted`.
+/// ## Example: Bridging a delegate to async/await
+/// ```
+/// final class MyDelegate: NSObject, SomeLegacyDelegate {
+///     let subject = SingleValueSubject<Data>()
+///     func didReceive(data: Data) { try? subject.send(data) }
+///     func didFail(error: Error) { try? subject.send(error: error) }
+/// }
+///
+/// func fetchDataWithDelegate() async throws -> Data {
+///     let delegate = MyDelegate()
+///     startLegacyOperation(delegate: delegate)
+///     return try await delegate.subject.execute()
+/// }
+/// ```
+///
+/// - Note: Once completed, any further send or error will throw `SubjectError.alreadyCompleted`.
+/// - Important: This is conceptually similar to a Combine subject, but for async/await. Prefer `SingleValueChannel` for most bridging tasks—use this type when manual, thread-safe completion is required.
 public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork, @unchecked
     Sendable
 {

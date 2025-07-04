@@ -50,7 +50,32 @@ extension Workers {
 }
 
 extension AsynchronousUnitOfWork {
-    /// Decodes the output from the upstream `AsynchronousUnitOfWork` using the specified top-level decoder.
+    /// Decodes the output from the upstream `AsynchronousUnitOfWork` into a model of type `T` using the given top-level decoder.
+    ///
+    /// This operator transforms the upstream's output by applying the specified decoder to convert the data into a `Decodable` type.
+    /// The upstream's output must be compatible with the input type expected by the provided decoder (e.g., `Data` for `JSONDecoder`).
+    ///
+    /// ## Discussion
+    /// This is typically used to decode raw data (such as JSON `Data`) emitted by an upstream asynchronous unit of work into a strongly typed model.
+    /// It simplifies chaining asynchronous operations that involve fetching raw encoded data and decoding it into usable Swift types.
+    ///
+    /// ## Example
+    /// ```swift
+    /// struct User: Decodable, Sendable {
+    ///     let id: Int
+    ///     let name: String
+    /// }
+    ///
+    /// let jsonDataTask: DeferredTask<Data> = DeferredTask {
+    ///     // Imagine this fetches JSON data asynchronously
+    ///     Data("""{"id": 1, "name": "Alice"}""".utf8)
+    /// }
+    ///
+    /// let userTask = jsonDataTask.decode(type: User.self, decoder: JSONDecoder())
+    ///
+    /// let user = try await userTask.operation()
+    /// print(user.name) // prints "Alice"
+    /// ```
     ///
     /// - Parameters:
     ///   - type: The type `T` to decode into, conforming to the `Decodable` protocol.

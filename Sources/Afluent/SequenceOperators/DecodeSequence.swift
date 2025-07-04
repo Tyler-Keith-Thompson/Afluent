@@ -8,6 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
+    /// Used as the implementation detail for the ``AsyncSequence/decode(type:decoder:)`` operator.
     public struct Decode<
         Upstream: AsyncSequence & Sendable, Decoder: TopLevelDecoder,
         DecodedType: Decodable & Sendable
@@ -58,9 +59,21 @@ extension AsyncSequences {
 
 extension AsyncSequence where Self: Sendable {
     /// Decodes the output from the upstream using a specified decoder.
+    ///
+    /// Use this to decode values from upstream elements (such as encoded JSON) to a concrete type.
+    ///
+    /// ## Example
+    /// ```
+    /// struct Person: Decodable { let name: String }
+    /// let json = try JSONEncoder().encode(Person(name: "Alice"))
+    /// for try await person in Just(json).decode(type: Person.self, decoder: JSONDecoder()) {
+    ///     print(person.name) // Prints: Alice
+    /// }
+    /// ```
     public func decode<T: Decodable, D: TopLevelDecoder>(type _: T.Type, decoder: D)
         -> AsyncSequences.Decode<Self, D, T> where Element == D.Input
     {
         AsyncSequences.Decode(upstream: self, decoder: decoder)
     }
 }
+

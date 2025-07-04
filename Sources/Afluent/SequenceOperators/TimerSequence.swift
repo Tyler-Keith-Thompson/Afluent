@@ -9,7 +9,13 @@ import Foundation
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension AsyncSequences {
-    /// A sequence that repeatedly emits an instant on a given interval.
+    /// A timer-based asynchronous sequence that emits the current instant of a specified clock
+    /// at a regular interval.
+    ///
+    /// This sequence repeatedly waits for the specified time interval, then emits a timestamp
+    /// representing the current instant according to the clock.
+    ///
+    /// This can be used to perform periodic asynchronous tasks or to observe regular time ticks.
     public struct TimerSequence<C: Clock>: AsyncSequence, Sendable {
         public typealias Element = C.Instant
 
@@ -66,11 +72,20 @@ public typealias TimerSequence = AsyncSequences.TimerSequence
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension TimerSequence where C == ContinuousClock {
-    /// Returns a sequence that repeatedly emits an instant of a continuous clock on the given interval.
+    /// Creates a timer sequence that emits the current instant of a continuous clock at the specified interval.
     ///
     /// - Parameters:
-    ///   - interval: The time interval on which to publish events. For example, a value of `.milliseconds(1)` will publish an event approximately every 0.01 seconds.
-    ///   - tolerance: The allowed timing variance when emitting events. Defaults to `nil`, which will schedule with the default tolerance strategy.
+    ///   - interval: The time interval between emitted instants.
+    ///   - tolerance: An optional tolerance for scheduling, allowing slight variance in timing.
+    ///
+    /// ## Example
+    /// ```swift
+    /// let timer = TimerSequence<ContinuousClock>.publish(every: .seconds(1))
+    /// for await instant in timer {
+    ///     print("Tick at \(instant)")
+    /// }
+    /// // Prints a line every second with the current instant.
+    /// ```
     public static func publish(every interval: C.Duration, tolerance: C.Duration? = nil)
         -> AsyncSequences.TimerSequence<C>
     {
@@ -80,12 +95,22 @@ extension TimerSequence where C == ContinuousClock {
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension TimerSequence {
-    /// Returns a sequence that repeatedly emits an instant of the passed clock on the given interval.
+    /// Creates a timer sequence that emits the current instant of the specified clock at the given interval.
     ///
     /// - Parameters:
-    ///   - interval: The time interval on which to publish events. For example, a value of `.milliseconds(1)` will publish an event approximately every 0.01 seconds.
-    ///   - tolerance: The allowed timing variance when emitting events. Defaults to `nil`, which will schedule with the default tolerance strategy.
-    ///   - clock: The clock instance to utilize for sequence timing. For example, `ContinuousClock` or `SuspendingClock`.
+    ///   - interval: The time interval between emitted instants.
+    ///   - tolerance: An optional tolerance for scheduling, allowing slight variance in timing.
+    ///   - clock: The clock instance to use for timing.
+    ///
+    /// ## Example
+    /// ```swift
+    /// let customClock = ContinuousClock()
+    /// let timer = TimerSequence.publish(every: .seconds(1), tolerance: nil, clock: customClock)
+    /// for await instant in timer {
+    ///     print("Tick at \(instant)")
+    /// }
+    /// // Prints a line every second with the current instant.
+    /// ```
     public static func publish(every interval: C.Duration, tolerance: C.Duration? = nil, clock: C)
         -> AsyncSequences.TimerSequence<C>
     {

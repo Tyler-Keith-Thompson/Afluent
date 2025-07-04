@@ -59,13 +59,19 @@ extension AsynchronousUnitOfWork {
         }
     }
 
-    /// Converts the asynchronous unit of work into an `AsyncSequence`.
+    /// Converts this asynchronous unit of work into an `AsyncSequence` that emits a single value and then completes.
     ///
-    /// This method transforms the result of an `AsynchronousUnitOfWork` into an `AsyncSequence`. It's useful for integrating the single-value asynchronous operation into APIs that work with sequences, or for using async/await in a more sequential, iterative manner.
+    /// Use this operator to integrate single-value asynchronous operations into sequence-based workflows, or to use sequence algorithms and idioms with a single result.
     ///
-    /// The resulting sequence emits a single value if the operation succeeds, or throws an error if the operation fails. After emitting its single value or error, the sequence completes.
+    /// ## Example
+    /// ```
+    /// for try await value in DeferredTask { 42 }.toAsyncSequence() {
+    ///     print(value) // prints 42
+    /// }
+    /// ```
     ///
-    /// - Returns: An `AsynchronousUnitOfWorkSequence` that represents the operation of the `AsynchronousUnitOfWork`.
+    /// - Returns: An `AsyncSequence` that emits the operation's result and then completes.
+    /// - Note: The sequence emits one value if the operation succeeds or fails if the operation throws.
     public func toAsyncSequence() -> AsynchronousUnitOfWorkSequence<Self> {
         AsynchronousUnitOfWorkSequence(unitOfWork: self)
     }

@@ -7,8 +7,14 @@
 
 import Foundation
 
+/// A type-erased async sequence.
+///
+/// Used as the backing implementation for ``AsyncSequence/eraseToAnyAsyncSequence()``
 public typealias AnyAsyncSequence = AsyncSequences.AnyAsyncSequence
 extension AsyncSequences {
+    /// A type-erased async sequence.
+    ///
+    /// Used as the backing implementation for ``AsyncSequence/eraseToAnyAsyncSequence()``
     public struct AnyAsyncSequence<Element: Sendable>: AsyncSequence, Sendable {
         let makeIterator: @Sendable () -> AnyAsyncIterator<Element>
 
@@ -59,7 +65,22 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence where Self: Sendable, Element: Sendable {
-    /// Type erases the current sequence, useful when you need a concrete type that's easy to predict.
+    /// Returns a type-erased async sequence.
+    ///
+    /// Use this to hide the underlying concrete type of an async sequence when you need to pass it generically.
+    ///
+    /// ## Example
+    /// ```
+    /// let stream = AsyncStream<Int> { continuation in
+    ///     continuation.yield(1)
+    ///     continuation.yield(2)
+    ///     continuation.finish()
+    /// }
+    /// let erased = stream.eraseToAnyAsyncSequence()
+    /// for await value in erased {
+    ///     print(value)
+    /// }
+    /// ```
     public func eraseToAnyAsyncSequence() -> AsyncSequences.AnyAsyncSequence<Element> {
         AsyncSequences.AnyAsyncSequence(erasing: self)
     }

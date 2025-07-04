@@ -126,7 +126,7 @@ extension AsynchronousUnitOfWork {
     /// ## Example
     /// ```
     /// try await DeferredTask { try await fetchData() }
-    ///     .retry(strategy: .byCount(3))
+    ///     .retry(.byCount(3))
     ///     .execute()
     /// ```
     ///

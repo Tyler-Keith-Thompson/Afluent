@@ -9,6 +9,21 @@
 /// Unlike `CurrentValueSubject`, `PassthroughSubject` does not retain the most recent value.
 /// It only sends values as they are emitted, meaning consumers will only receive values that are sent after they start listening.
 /// This is an `AsyncSequence` that allows multiple tasks to asynchronously consume values and mimics Combine's PassthroughSubject.
+///
+/// ## Example
+/// ```
+/// let subject = PassthroughSubject<Int>()
+///
+/// Task {
+///     for try await value in subject {
+///         print("Received value: \(value)")
+///     }
+/// }
+///
+/// subject.send(1)
+/// subject.send(2)
+/// subject.send(completion: .finished)
+/// ```
 public final class PassthroughSubject<Element: Sendable>: AsyncSequence, @unchecked Sendable {
     private class State: @unchecked Sendable {
         private let lock = Lock.allocate()

@@ -8,6 +8,21 @@
 /// A subject that broadcasts its current value and all subsequent values to multiple consumers.
 /// It can also handle completion events, including normal termination and failure with an error.
 /// This is an `AsyncSequence` that allows multiple tasks to asynchronously consume values and mimics Combine's CurrentValueSubject.
+///
+/// ## Example
+/// ```
+/// let subject = CurrentValueSubject(0)
+///
+/// Task {
+///     for try await value in subject {
+///         print("Received value: \(value)")
+///     }
+/// }
+///
+/// subject.send(1)
+/// subject.send(2)
+/// subject.send(completion: .finished)
+/// ```
 public final class CurrentValueSubject<Element: Sendable>: AsyncSequence, @unchecked Sendable {
     class State: @unchecked Sendable {
         private let lock = Lock.allocate()
@@ -52,6 +67,7 @@ public final class CurrentValueSubject<Element: Sendable>: AsyncSequence, @unche
         state = State(value)
     }
 
+    /// Creates a `CurrentValueSubject` with an initial `Void` value.
     public convenience init() where Element == Void {
         self.init(())
     }
@@ -73,11 +89,11 @@ public final class CurrentValueSubject<Element: Sendable>: AsyncSequence, @unche
 
         public mutating func next() async throws -> Element? {
             guard finished == nil else { return try finished?.get() }
-            guard sentCurrentValue else {
-                defer { sentCurrentValue = true }
-                return state.value
+            guard sentCurrentValue == false else {
+                return try await upstream.next()
             }
-            return try await upstream.next()
+            sentCurrentValue = true
+            return state.value
         }
     }
 
@@ -122,3 +138,4 @@ extension CurrentValueSubject {
         case failure(Failure)
     }
 }
+

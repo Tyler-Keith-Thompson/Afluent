@@ -16,8 +16,8 @@ import Foundation
 /// func fetchData(url: URL) async throws -> Data {
 ///     let channel = SingleValueChannel<Data>()
 ///     let task = URLSession.shared.dataTask(with: url) { data, _, error in
-///         if let data { try? channel.send(data) }
-///         else if let error { try? channel.send(error: error) }
+///         if let data { try? await channel.send(data) }
+///         else if let error { try? await channel.send(error: error) }
 ///     }
 ///     task.resume()
 ///     return try await channel.execute()

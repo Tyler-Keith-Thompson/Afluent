@@ -9,6 +9,7 @@ import Atomics
 import Foundation
 
 extension AsyncSequences {
+    /// Used as the implementation detail for the ``AsyncSequence/flatMap(maxSubscriptions:_:)`` operator.
     public struct FlatMap<
         Upstream: AsyncSequence & Sendable, SegmentOfResult: AsyncSequence & Sendable
     >: AsyncSequence, Sendable where Upstream.Element: Sendable, SegmentOfResult.Element: Sendable {
@@ -69,6 +70,20 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence {
+    /// Merges the results of mapping each element to an `AsyncSequence`, with control over subscription demand.
+    ///
+    /// Unlike the standard library's `flatMap`, this operator allows you to control how many inner sequences may be subscribed to concurrently.
+    ///
+    /// - Parameters:
+    ///   - maxSubscriptions: The maximum number of concurrent inner subscriptions. Use `.unlimited` for no limit.
+    ///   - transform: Transforms each element into an `AsyncSequence`.
+    ///
+    /// ## Example
+    /// ```
+    /// for try await value in Just(1).flatMap(maxSubscriptions: .unlimited) { i in Just(i * 2) } {
+    ///     print(value) // Prints: 2
+    /// }
+    /// ```
     public func flatMap<SegmentOfResult: AsyncSequence>(
         maxSubscriptions: SubscriptionDemand,
         _ transform: @Sendable @escaping (Self.Element) async throws -> SegmentOfResult
@@ -78,6 +93,10 @@ extension AsyncSequence {
     }
 }
 
+/// Specifies the number of concurrent inner subscriptions for operators like ``AsyncSequence/flatMap(maxSubscriptions:_:)``.
+///
+/// Use `.unlimited` to allow unlimited concurrency.
 public enum SubscriptionDemand: Sendable {
+    /// Allows unlimited concurrent inner subscriptions.
     case unlimited
 }

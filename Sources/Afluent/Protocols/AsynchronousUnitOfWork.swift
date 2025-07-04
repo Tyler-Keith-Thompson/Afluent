@@ -3,31 +3,93 @@ import Foundation
 
 /// Represents an asynchronous unit of work.
 ///
+/// Types such as `DeferredTask` and asynchronous operators conform to this protocol.
+///
+/// You can use protocol-oriented code to compose, run, and cancel asynchronous work in a consistent way.
+///
+/// All units of work have the potential to throw an error (including cancellation).
+///
 /// - Parameters:
 ///   - Success: The type of data the unit of work will produce if it succeeds.
-/// - NOTE: All units of work have the potential of throwing an error, because they can all be canceled
+///
+/// ## Example
+///
+/// ```swift
+/// // Chain multiple operators to transform and control asynchronous work
+/// let work: some AsynchronousUnitOfWork<Int> = DeferredTask {
+///     21
+/// }
+/// .map { $0 * 2 }
+/// .timeout(.seconds(1))
+///
+/// // Execute and await the result (will be 42)
+/// let value = try await work.execute()
+/// print(value) // Prints: 42
+///
+/// // Cancel the work if needed
+/// work.cancel()
+/// ```
 public protocol AsynchronousUnitOfWork<Success>: Sendable where Success: Sendable {
     /// The type of data the unit of work will produce if it succeeds.
     associatedtype Success
 
     var state: TaskState<Success> { get }
-    /// The result of the operation (will execute the task)
+    
+    /// Awaits and returns the result of the asynchronous unit of work.
+    ///
+    /// If the work is cancelled, throws `CancellationError`.
+    /// If the work fails, throws the underlying error.
+    /// If the work succeeds, returns the result.
+    ///
+    /// ## Example
+    /// ```swift
+    /// let work = DeferredTask { 1 + 2 }
+    /// let result = try await work.result
+    /// ```
     var result: Result<Success, Error> { get async throws }
 
-    /// Executes the task with an optional task priority.
+    /// Starts the asynchronous unit of work with an optional priority.
+    ///
+    /// This is a fire-and-forget operation; use ``execute(priority:)`` to await the result.
+    /// - Parameter priority: The priority to use for the task, or `nil` for default.
+    ///
+    /// ## Example
+    /// ```swift
+    /// let work = DeferredTask { 42 }
+    /// work.run()
+    /// ```
     func run(priority: TaskPriority?)
 
-    /// Executes the task with an optional task priority and waits for the result.
-    /// - Returns: The result of the task.
+    /// Starts the asynchronous unit of work and awaits its result.
+    ///
+    /// - Parameter priority: The priority to use for the task, or `nil` for default.
+    /// - Returns: The value produced if the work succeeds.
+    /// - Throws: `CancellationError` if cancelled, or another error if the work fails.
+    ///
+    /// ## Example
+    /// ```swift
+    /// let work = DeferredTask { 21 * 2 }
+    /// let value = try await work.execute()
+    /// print(value) // Prints: 42
+    /// ```
     @discardableResult func execute(priority: TaskPriority?) async throws -> Success
 
     #if swift(>=6)
-        /// Executes the task with an optional task executor and priority.
+        /// Starts the asynchronous unit of work using a specific task executor and optional priority.
+        ///
+        /// - Parameters:
+        ///   - taskExecutor: The preferred executor for the task, or `nil` for the default.
+        ///   - priority: The priority to use, or `nil` for default.
         @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
         func run(executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?)
 
-        /// Executes the task with an optional task executor and priority and waits for the result.
-        /// - Returns: The result of the task.
+        /// Starts the asynchronous unit of work with a specific task executor and optional priority, and awaits its result.
+        ///
+        /// - Parameters:
+        ///   - taskExecutor: The preferred executor for the task, or `nil` for the default.
+        ///   - priority: The priority to use, or `nil` for default.
+        /// - Returns: The value produced if the work succeeds.
+        /// - Throws: `CancellationError` if cancelled, or another error if the work fails.
         @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
         @discardableResult func execute(
             executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?
@@ -37,7 +99,16 @@ public protocol AsynchronousUnitOfWork<Success>: Sendable where Success: Sendabl
     /// Only useful when creating operators, defines the async function that should execute when the operator executes
     @Sendable func _operation() async throws -> AsynchronousOperation<Success>
 
-    /// Cancel the task, even if it hasn't begun yet.
+    /// Cancels the asynchronous unit of work.
+    ///
+    /// If the work is already running or scheduled, it will be cancelled. If not yet started, it will not execute.
+    ///
+    /// ## Example
+    /// ```swift
+    /// let work = DeferredTask { await Task.sleep(for: .seconds(5)); return 1 }
+    /// work.run()
+    /// work.cancel()
+    /// ```
     func cancel()
 }
 

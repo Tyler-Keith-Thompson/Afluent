@@ -50,13 +50,22 @@ extension Workers {
 }
 
 extension AsynchronousUnitOfWork {
-    /// Encodes the successful output values from the upstream `AsynchronousUnitOfWork` using the provided encoder.
+    /// Encodes the successful output value from the upstream `AsynchronousUnitOfWork` using the provided encoder.
     ///
-    /// - Parameter encoder: The encoder to use for encoding the successful output values.
+    /// Use this operator when you want to transform an encodable output (such as a model or primitive value) into an encoded form (like Data) using a given encoder (e.g., JSONEncoder).
     ///
-    /// - Returns: An `AsynchronousUnitOfWork` emitting the encoded values as output of type `E.Output`.
+    /// ## Example
+    /// ```
+    /// struct Person: Encodable { let name: String }
+    /// let work = DeferredTask { Person(name: "Alice") }
+    /// let encoded: some AsynchronousUnitOfWork<Data> = work.encode(encoder: JSONEncoder())
+    /// let data = try await encoded.execute()
+    /// // 'data' now contains the encoded JSON representation of the Person
+    /// ```
     ///
-    /// - Note: The returned `AsynchronousUnitOfWork` will fail if the encoding process fails.
+    /// - Parameter encoder: The encoder to use for encoding the successful output value.
+    /// - Returns: An `AsynchronousUnitOfWork` emitting the encoded value as output of type `E.Output`.
+    /// - Note: The returned unit of work will fail if the encoding process throws an error.
     public func encode<E: TopLevelEncoder>(encoder: E) -> some AsynchronousUnitOfWork<E.Output>
     where Success: Encodable, E.Output: Sendable {
         Workers.Encode(upstream: self, encoder: encoder)

@@ -47,9 +47,23 @@ extension Workers {
 }
 
 extension AsynchronousUnitOfWork {
-    /// Shares the upstream `AsynchronousUnitOfWork` among multiple downstream subscribers.
+    /// Shares the result of this unit of work among multiple subscribers, ensuring the upstream operation is only performed once.
     ///
-    /// - Returns: An `AsynchronousUnitOfWork` that shares a single subscription to the upstream, allowing multiple downstream subscribers to receive the same values.
+    /// Use this operator to avoid duplicate work when multiple parts of your code need the result of the same asynchronous operation.
+    ///
+    /// ## Example
+    /// ```
+    /// let sharedTask = DeferredTask { UUID() }
+    ///     .share()
+    ///
+    /// async let value1 = sharedTask.execute()
+    /// async let value2 = sharedTask.execute()
+    /// let (a, b) = try await (value1, value2)
+    /// // 'a' and 'b' are guaranteed to be the same UUID instance
+    /// ```
+    ///
+    /// - Returns: An `AsynchronousUnitOfWork` that shares a single execution among all subscribers.
+    /// - Note: The upstream operation runs only once, regardless of the number of calls to `execute()`.
     public func share() -> some AsynchronousUnitOfWork<Success> & Actor {
         Workers.Share(upstream: self)
     }

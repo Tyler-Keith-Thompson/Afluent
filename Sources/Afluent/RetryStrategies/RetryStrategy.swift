@@ -9,6 +9,21 @@
 ///
 /// Conforming types must implement logic to determine if an operation should be retried after an error occurs.
 /// This protocol also allows executing any pre-retry logic, such as logging or cleanup, before attempting a retry.
+///
+/// ## Example
+/// ```
+/// actor AlwaysRetryOnce: RetryStrategy {
+///     private var hasRetried = false
+///     func handle(error: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws -> Bool {
+///         defer { hasRetried = true }
+///         return !hasRetried
+///     }
+/// }
+///
+/// try await DeferredTask { /* some fallible work */ }
+///     .retry(strategy: AlwaysRetryOnce())
+///     .execute()
+/// ```
 public protocol RetryStrategy: Sendable {
 
     /// Determines whether an operation should be retried after encountering an error.
@@ -39,3 +54,4 @@ extension RetryStrategy {
         try await handle(error: err, beforeRetry: { _ in })
     }
 }
+

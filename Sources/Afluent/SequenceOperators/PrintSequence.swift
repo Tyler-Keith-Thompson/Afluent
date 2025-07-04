@@ -8,12 +8,18 @@
 import Foundation
 
 extension AsyncSequence where Self: Sendable {
-    /// Logs events from the upstream `AsyncSequence` to the console.
+    /// Logs events from the sequence to the console, optionally with a prefix.
     ///
-    /// - Parameters:
-    ///   - prefix: A string to prefix each log message with. Default is an empty string.
+    /// Use this for debugging or observing the lifecycle of a sequence.
     ///
-    /// - Returns: An `AsyncSequence` that behaves identically to the upstream but logs events.
+    /// - Parameter prefix: A string to prefix each log message with. Default is an empty string.
+    ///
+    /// ## Example
+    /// ```
+    /// for try await value in Just(1).print("MyPrefix") {
+    ///     // Prints lifecycle events and value to the console with prefix "MyPrefix"
+    /// }
+    /// ```
     public func print(_ prefix: String = "") -> AsyncSequences.HandleEvents<Self> {
         handleEvents {
             Swift.print("\(prefix) received make iterator")

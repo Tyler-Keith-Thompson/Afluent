@@ -8,6 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
+    /// Used as the implementation detail for the ``AsyncSequence/mapError(_:)`` operator.
     public struct MapError<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream
@@ -36,28 +37,41 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence where Self: Sendable {
-    /// Transforms the error produced by the `AsyncSequence`.
+    /// Transforms any error produced by the sequence using the provided closure.
     ///
-    /// This function allows you to modify or replace the error produced by the current sequence. It's useful for converting between error types or adding additional context to errors.
+    /// This is useful for converting between error types or adding additional context to errors.
     ///
-    /// - Parameter transform: A closure that takes the original error and returns a transformed error.
-    ///
-    /// - Returns: An `AsyncSequence` that produces the transformed error.
+    /// ## Example
+    /// ```
+    /// enum NetworkError: Error { case timeout }
+    /// enum UserError: Error { case displayMessage(String) }
+    /// let throwing = Just(1).map { _ in throw NetworkError.timeout }
+    /// for try await _ in throwing.mapError { error in
+    ///     if let netErr = error as? NetworkError, netErr == .timeout {
+    ///         return UserError.displayMessage("Request timed out")
+    ///     }
+    ///     return error
+    /// } {
+    ///     // Will throw UserError.displayMessage("Request timed out")
+    /// }
+    /// ```
     public func mapError(_ transform: @Sendable @escaping (Error) -> Error)
         -> AsyncSequences.MapError<Self>
     {
         AsyncSequences.MapError(upstream: self, transform: transform)
     }
 
-    /// Transforms the error produced by the `AsyncSequence`.
+    /// Transforms a specific error value produced by the sequence using the provided closure.
     ///
-    /// This function allows you to modify or replace the error produced by the current sequence. It's useful for converting between error types or adding additional context to errors.
-    ///
-    /// - Parameters:
-    ///   - error: The specific error to be transformed. This error is equatable, allowing for precise matching.
-    ///   - transform: A closure that takes the matched error and returns a transformed error.
-    ///
-    /// - Returns: An `AsyncSequence` that produces the transformed error.
+    /// ## Example
+    /// ```
+    /// enum NetworkError: Error, Equatable { case timeout }
+    /// enum UserError: Error { case displayMessage(String) }
+    /// let throwing = Just(1).map { _ in throw NetworkError.timeout }
+    /// for try await _ in throwing.mapError(NetworkError.timeout) { _ in UserError.displayMessage("Request timed out") } {
+    ///     // Will throw UserError.displayMessage("Request timed out") if the error matched
+    /// }
+    /// ```
     public func mapError<E: Error & Equatable>(
         _ error: E, _ transform: @Sendable @escaping (Error) -> Error
     ) -> AsyncSequences.MapError<Self> {
@@ -67,3 +81,4 @@ extension AsyncSequence where Self: Sendable {
         }
     }
 }
+

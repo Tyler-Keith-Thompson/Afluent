@@ -8,6 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
+    /// Used as the implementation detail for the ``AsyncSequence/collect()`` operator.
     public struct Collect<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable {
         public typealias Element = [Upstream.Element]
         let upstream: Upstream
@@ -36,11 +37,19 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence where Self: Sendable {
-    /// Collects all received elements, and emits a single array of the collection when the upstream sequence finishes.
-    /// ### Discussion:
-    /// Use `collect()` to gather elements into an array that the operator emits after the upstream sequence finishes.
-    /// If the upstream sequence fails with an error, this sequence forwards the error to the downstream receiver instead of sending its output.
-    /// - Important: Be cautious when using `collect` on sequences that can emit a large number of elements or do not complete, as it can lead to high memory usage or even memory exhaustion.
+    /// Collects all received elements and emits a single array when the upstream sequence finishes.
+    ///
+    /// Use `collect()` to gather elements into an array and emit the result as a single value.
+    /// If the upstream sequence fails with an error, the error is forwarded and no array is emitted.
+    ///
+    /// - Important: Be cautious using `collect()` on sequences that emit a large number of elements or never complete, as this can lead to high memory usage.
+    ///
+    /// ## Example
+    /// ```
+    /// for try await values in Just(1).collect() {
+    ///     print(values) // Prints: [1]
+    /// }
+    /// ```
     public func collect() -> AsyncSequences.Collect<Self> {
         AsyncSequences.Collect(upstream: self)
     }

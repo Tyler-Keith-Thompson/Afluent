@@ -14,12 +14,24 @@ public enum UnretainedError: Error, Equatable {
 // Heavily based on the RxSwift operator - `withUnretained`.
 // https://github.com/ReactiveX/RxSwift/blob/main/RxSwift/Observables/WithUnretained.swift
 extension AsynchronousUnitOfWork {
-    /// Provides an unretained, safe to use (i.e. not implicitly unwrapped), reference to an object along with the events emitted by the operator.
-    /// In the case the provided object cannot be retained successfully, the sequence will throw.
+    /// Combines this unit of work's value with an unretained reference to the given object, or throws if the object has been deallocated.
+    ///
+    /// Use this operator to safely pass both a value and an object into a closure, without retaining the object.
+    ///
+    /// ## Example
+    /// ```
+    /// final class MyController: Sendable {}
+    /// let controller = MyController()
+    /// let combined = DeferredTask { 42 }
+    ///     .withUnretained(controller) { ctrl, value in (ctrl, value) }
+    /// let result = try await combined.execute()
+    /// // 'result' is a tuple of (controller, 42) if controller is still alive
+    /// ```
+    ///
     /// - Parameters:
-    ///   - obj: The object to provide an unretained reference on.
-    ///   - resultSelector: A function to combine the unretained referenced on `obj` and the value of the observable sequence.
-    /// - Returns: An AsynchronousUnitOfWork that contains the result of `resultSelector` being called with an unretained reference on `obj` and the values of the original sequence.
+    ///   - obj: The object to provide as an unretained reference.
+    ///   - resultSelector: Closure combining the object and the value.
+    /// - Returns: An `AsynchronousUnitOfWork` containing the result of `resultSelector`, or failing if `obj` is nil.
     public func withUnretained<Object: AnyObject & Sendable, Out: Sendable>(
         _ obj: Object, resultSelector: @Sendable @escaping (Object, Success) -> Out
     ) -> some AsynchronousUnitOfWork<Out> {

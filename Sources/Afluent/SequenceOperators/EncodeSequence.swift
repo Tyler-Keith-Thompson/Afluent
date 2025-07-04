@@ -8,6 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
+    /// Used as the implementation detail for the ``AsyncSequence/encode(encoder:)`` operator.
     public struct Encode<Upstream: AsyncSequence & Sendable, Encoder: TopLevelEncoder>:
         AsyncSequence, Sendable
     where Upstream.Element: Encodable {
@@ -56,7 +57,17 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence where Self: Sendable {
-    /// Encodes the output from upstream using a specified encoder.
+    /// Encodes the output from upstream using the specified encoder.
+    ///
+    /// Use this to encode values into a data format (such as JSON) before further processing or output.
+    ///
+    /// ## Example
+    /// ```
+    /// struct Person: Encodable { let name: String }
+    /// for try await data in Just(Person(name: "Alice")).encode(encoder: JSONEncoder()) {
+    ///     print(data) // Encoded JSON data
+    /// }
+    /// ```
     public func encode<E: TopLevelEncoder>(encoder: E) -> AsyncSequences.Encode<Self, E>
     where Element: Encodable {
         AsyncSequences.Encode(upstream: self, encoder: encoder)

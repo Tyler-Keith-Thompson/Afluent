@@ -225,11 +225,44 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence where Self: Sendable, Element: Sendable {
-    /// Retries the upstream `AsyncSequence` up to a specified number of times.
+    /// Retries the upstream `AsyncSequence` using the provided retry strategy.
+    ///
+    /// This method returns an `AsyncSequence` which attempts to retry the upstream sequence according to the given retry strategy upon failure.
+    ///
+    /// Not all `AsyncSequence`s can be retried. For example, `AsyncStream` and `AsyncThrowingStream` cannot be retried on their own.
+    ///
+    /// ## Example
+    /// ```
+    /// actor CallCounter {
+    ///     private(set) var count = 0
+    ///     func increment() -> Int {
+    ///         count += 1
+    ///         return count
+    ///     }
+    /// }
+    ///
+    /// struct ExampleError: Error {}
+    ///
+    /// let counter = CallCounter()
+    ///
+    /// let sequence = DeferredTask {
+    ///     let attempt = await counter.increment()
+    ///     if attempt < 3 {
+    ///         throw ExampleError()
+    ///     }
+    ///     return 42
+    /// }
+    /// .toAsyncSequence()
+    /// .retry(.byCount(5))
+    ///
+    /// for try await value in sequence {
+    ///     print(value) // prints 42 after retries
+    /// }
+    /// ```
     ///
     /// - Parameter strategy: The strategy to use when retrying.
     ///
-    /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on failure up to the specified number of times.
+    /// - Returns: An `AsyncSequence` that emits the same output as the upstream but retries on failure according to the provided strategy.
     /// - Important: Not every `AsyncSequence` can be retried, for this to work the sequence has to implement an iterator that doesn't preserve state across various creations.
     /// - Note: `AsyncStream` and `AsyncThrowingStream` are notable sequences which cannot be retried on their own.
     public func retry<S: RetryStrategy>(_ strategy: S) -> AsyncSequences.Retry<Self, S> {
@@ -237,6 +270,39 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     }
 
     /// Retries the upstream `AsyncSequence` up to a specified number of times.
+    ///
+    /// This method returns an `AsyncSequence` which retries the upstream sequence on any failure, up to the specified number of retries.
+    ///
+    /// Not all `AsyncSequence`s can be retried. For example, `AsyncStream` and `AsyncThrowingStream` cannot be retried on their own.
+    ///
+    /// ## Example
+    /// ```
+    /// actor CallCounter {
+    ///     private(set) var count = 0
+    ///     func increment() -> Int {
+    ///         count += 1
+    ///         return count
+    ///     }
+    /// }
+    ///
+    /// struct ExampleError: Error {}
+    ///
+    /// let counter = CallCounter()
+    ///
+    /// let sequence = DeferredTask {
+    ///     let attempt = await counter.increment()
+    ///     if attempt < 2 {
+    ///         throw ExampleError()
+    ///     }
+    ///     return 100
+    /// }
+    /// .toAsyncSequence()
+    /// .retry(3)
+    ///
+    /// for try await value in sequence {
+    ///     print(value) // prints 100 after retries
+    /// }
+    /// ```
     ///
     /// - Parameter retries: The maximum number of times to retry the upstream, defaulting to 1.
     ///
@@ -248,6 +314,43 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     }
 
     /// Retries the upstream `AsyncSequence` up to a specified number of times only when a specific error occurs.
+    ///
+    /// This method returns an `AsyncSequence` that retries the upstream only when the specified error occurs, up to the given number of retries.
+    ///
+    /// Not all `AsyncSequence`s can be retried. For example, `AsyncStream` and `AsyncThrowingStream` cannot be retried on their own.
+    ///
+    /// ## Example
+    /// ```
+    /// actor CallCounter {
+    ///     private(set) var count = 0
+    ///     func increment() -> Int {
+    ///         count += 1
+    ///         return count
+    ///     }
+    /// }
+    ///
+    /// enum CustomError: Error, Equatable {
+    ///     case temporaryFailure
+    /// }
+    ///
+    /// let counter = CallCounter()
+    ///
+    /// let sequence = DeferredTask {
+    ///     let attempt = await counter.increment()
+    ///     if attempt < 2 {
+    ///         throw CustomError.temporaryFailure
+    ///     } else if attempt == 2 {
+    ///         throw NSError(domain: "OtherError", code: 1, userInfo: nil)
+    ///     }
+    ///     return 7
+    /// }
+    /// .toAsyncSequence()
+    /// .retry(3, on: CustomError.temporaryFailure)
+    ///
+    /// for try await value in sequence {
+    ///     print(value) // prints 7 after retry
+    /// }
+    /// ```
     ///
     /// - Parameters:
     ///   - retries: The maximum number of times to retry the upstream, defaulting to 1.
@@ -262,7 +365,43 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
         AsyncSequences.RetryOn(upstream: self, strategy: .byCount(retries), error: error)
     }
     
-    /// Retries the upstream `AsyncSequence` up to a specified number of times only when a specific error occurs.
+    /// Retries the upstream `AsyncSequence` up to a specified number of times only when a specific error type is encountered.
+    ///
+    /// This method returns an `AsyncSequence` that retries the upstream only when an error can be cast to the specified error type, up to the given number of retries.
+    ///
+    /// Not all `AsyncSequence`s can be retried. For example, `AsyncStream` and `AsyncThrowingStream` cannot be retried on their own.
+    ///
+    /// ## Example
+    /// ```
+    /// actor CallCounter {
+    ///     private(set) var count = 0
+    ///     func increment() -> Int {
+    ///         count += 1
+    ///         return count
+    ///     }
+    /// }
+    ///
+    /// enum NetworkError: Error {
+    ///     case timeout
+    ///     case unknown
+    /// }
+    ///
+    /// let counter = CallCounter()
+    ///
+    /// let sequence = DeferredTask {
+    ///     let attempt = await counter.increment()
+    ///     if attempt < 2 {
+    ///         throw NetworkError.timeout
+    ///     }
+    ///     return 55
+    /// }
+    /// .toAsyncSequence()
+    /// .retry(3, on: NetworkError.self)
+    ///
+    /// for try await value in sequence {
+    ///     print(value) // prints 55 after retry on NetworkError.timeout
+    /// }
+    /// ```
     ///
     /// - Parameters:
     ///   - retries: The maximum number of times to retry the upstream, defaulting to 1.
@@ -277,3 +416,4 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
         AsyncSequences.RetryOnCast(upstream: self, strategy: .byCount(retries), error: error)
     }
 }
+

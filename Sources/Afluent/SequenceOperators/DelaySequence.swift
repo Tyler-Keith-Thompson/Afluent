@@ -8,6 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
+    /// Used as the implementation detail for the ``AsyncSequence/delay(for:tolerance:)`` operator.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public struct Delay<Upstream: AsyncSequence & Sendable, C: Clock>: AsyncSequence, Sendable
     where Upstream.Element: Sendable {
@@ -64,8 +65,22 @@ extension AsyncSequences {
 }
 
 extension AsyncSequence where Self: Sendable, Element: Sendable {
-    /// Delays delivery of all output to the downstream receiver by a specified amount of time
-    /// - Parameter interval: The amount of time to delay.
+    /// Delays delivery of all output by the specified amount of time, using a default clock.
+    ///
+    /// Use this to delay events from a sequence before they are delivered to the downstream consumer.
+    ///
+    /// - Parameters:
+    ///   - interval: The duration to delay.
+    ///   - tolerance: The allowed tolerance for the delay.
+    ///
+    /// The default clock is `SuspendingClock`.
+    ///
+    /// ## Example
+    /// ```
+    /// for try await value in Just(1).delay(for: .seconds(1), tolerance: .milliseconds(100)) {
+    ///     print(value)
+    /// }
+    /// ```
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func delay(for interval: Duration, tolerance: Duration)
         -> AsyncSequences.Delay<Self, SuspendingClock>
@@ -73,8 +88,19 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
         delay(for: interval, tolerance: tolerance, clock: SuspendingClock())
     }
 
-    /// Delays delivery of all output to the downstream receiver by a specified amount of time
-    /// - Parameter interval: The amount of time to delay.
+    /// Delays delivery of all output by the specified amount of time, using the provided clock.
+    ///
+    /// - Parameters:
+    ///   - interval: The duration to delay.
+    ///   - tolerance: The allowed tolerance for the delay. Default is `nil`.
+    ///   - clock: The clock to use for timing the delay.
+    ///
+    /// ## Example
+    /// ```
+    /// for try await value in Just(1).delay(for: .seconds(1), clock: ContinuousClock()) {
+    ///     print(value)
+    /// }
+    /// ```
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func delay<C: Clock>(for interval: C.Duration, tolerance: C.Duration? = nil, clock: C)
         -> AsyncSequences.Delay<Self, C>

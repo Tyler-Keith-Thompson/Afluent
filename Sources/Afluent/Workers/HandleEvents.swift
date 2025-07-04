@@ -65,15 +65,31 @@ extension Workers {
 extension AsynchronousUnitOfWork {
     /// Adds side-effects to the receiving events of the upstream `AsynchronousUnitOfWork`.
     ///
+    /// This operator allows you to hook into the lifecycle events of the asynchronous unit of work, 
+    /// enabling actions to be performed immediately before the operation starts, upon successful output, 
+    /// on errors, or cancellation.
+    ///
+    /// ## Example
+    /// ```
+    /// try await DeferredTask { try await fetchUser() }
+    ///     .handleEvents(
+    ///         receiveOperation: { print("About to start") },
+    ///         receiveOutput: { user in print("Received user: \(user)") },
+    ///         receiveError: { error in print("Failed with error: \(error)") },
+    ///         receiveCancel: { print("Cancelled") }
+    ///     )
+    ///     .execute()
+    /// ```
+    ///
     /// - Parameters:
-    ///   - receiveOperation: A closure that is invoked immediately before the upstream operation is executed. The closure can throw errors.
-    ///   - receiveOutput: A closure that is invoked when the upstream emits a successful output. The closure can throw errors.
-    ///   - receiveError: A closure that is invoked when the upstream emits an error. The closure can throw errors.
-    ///   - receiveCancel: A closure that is invoked when the unit of work is cancelled. The closure can throw errors.
+    ///   - receiveOperation: A closure invoked immediately before the upstream operation is executed. Can throw errors.
+    ///   - receiveOutput: A closure invoked when the upstream emits a successful output. Can throw errors.
+    ///   - receiveError: A closure invoked when the upstream emits an error. Can throw errors.
+    ///   - receiveCancel: A closure invoked when the unit of work is cancelled. Can throw errors.
     ///
-    /// - Returns: An `AsynchronousUnitOfWork` that performs the side-effects for the specified receiving events.
+    /// - Returns: An `AsynchronousUnitOfWork` that performs the specified side-effects during the receiving events.
     ///
-    /// - Note: The returned `AsynchronousUnitOfWork` forwards all receiving events from the upstream unit of work.
+    /// - Note: Errors thrown by any of the provided closures will propagate downstream and cancel the operation.
     public func handleEvents(
         @_inheritActorContext @_implicitSelfCapture receiveOperation: (
             @Sendable () async throws -> Void
@@ -93,3 +109,4 @@ extension AsynchronousUnitOfWork {
             receiveError: receiveError, receiveCancel: receiveCancel)
     }
 }
+

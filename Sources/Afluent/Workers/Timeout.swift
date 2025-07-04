@@ -45,14 +45,20 @@ extension Workers {
 }
 
 extension AsynchronousUnitOfWork {
-    /// Adds a timeout to the current asynchronous unit of work.
+    /// Adds a timeout to this unit of work, cancelling it if it does not complete within the specified duration.
     ///
-    /// If the operation does not complete within the specified duration, it will be terminated.
+    /// ## Example
+    /// ```
+    /// try await DeferredTask { try await fetchData() }
+    ///     .timeout(.seconds(5))
+    ///     .execute()
+    /// // Throws TimeoutError.timedOut if more than 5 seconds elapse
+    /// ```
     ///
-    /// - Parameter duration: The maximum duration the operation is allowed to take, represented as a `Duration`.
-    /// - Parameter customError: A custom error to throw if timeout occurs. If no value is supplied a `CancellationError` is thrown.
-    /// - Returns: An asynchronous unit of work that includes the timeout behavior, encapsulating the operation's success or failure.
-    /// - Throws: ``TimeoutError`` if the timeout limit is reached.
+    /// - Parameter duration: The maximum allowed time for the operation (as a `Duration`).
+    /// - Parameter customError: Optional error to throw if a timeout occurs. Defaults to `TimeoutError.timedOut`.
+    /// - Returns: An `AsynchronousUnitOfWork` that throws if the duration is exceeded.
+    /// - Throws: `TimeoutError` if the duration elapses before completion.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func timeout(_ duration: Duration, customError: Error? = nil)
         -> some AsynchronousUnitOfWork<Success>
@@ -62,16 +68,22 @@ extension AsynchronousUnitOfWork {
             tolerance: nil)
     }
 
-    /// Adds a timeout to the current asynchronous unit of work.
+    /// Adds a timeout to this unit of work, cancelling it if it does not complete in time, measured against the given clock.
     ///
-    /// If the operation does not complete within the specified duration, it will be terminated.
+    /// ## Example
+    /// ```
+    /// let clock = SuspendingClock()
+    /// try await DeferredTask { try await fetchData() }
+    ///     .timeout(.seconds(2), clock: clock, tolerance: .milliseconds(100))
+    ///     .execute()
+    /// ```
     ///
-    /// - Parameter duration: The maximum duration the operation is allowed to take, represented as a `Clock.Duration`.
-    /// - Parameter clock: The clock used for timekeeping. Defaults to `SuspendingClock()`.
-    /// - Parameter tolerance: An optional tolerance for the delay. Defaults to `nil`.
-    /// - Parameter customError: A custom error to throw if timeout occurs. If no value is supplied a `CancellationError` is thrown.
-    /// - Returns: An asynchronous unit of work that includes the timeout behavior, encapsulating the operation's success or failure.
-    /// - Throws: ``TimeoutError`` if the timeout limit is reached.
+    /// - Parameter duration: The maximum allowed time for the operation (as a `Clock.Duration`).
+    /// - Parameter clock: The clock used to measure timeouts (defaults to `SuspendingClock()`).
+    /// - Parameter tolerance: Optional tolerance for the delay (defaults to `nil`).
+    /// - Parameter customError: Optional error to throw if a timeout occurs. Defaults to `TimeoutError.timedOut`.
+    /// - Returns: An `AsynchronousUnitOfWork` that throws if the duration is exceeded.
+    /// - Throws: `TimeoutError` if the duration elapses before completion.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func timeout<C: Clock>(
         _ duration: C.Duration, clock: C, tolerance: C.Duration? = nil, customError: Error? = nil
@@ -81,3 +93,4 @@ extension AsynchronousUnitOfWork {
             tolerance: tolerance)
     }
 }
+

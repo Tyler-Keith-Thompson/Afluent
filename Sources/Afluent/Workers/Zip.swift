@@ -94,23 +94,39 @@ extension Workers {
 }
 
 extension AsynchronousUnitOfWork {
-    /// Zips the result of the current unit of work with another asynchronous unit of work.
+    /// Zips the result of this unit of work with another, producing a tuple of both results when both complete.
     ///
-    /// - Parameters:
-    ///   - downstream: The second asynchronous unit of work to zip with.
-    /// - Returns: A new asynchronous unit of work that produces a tuple containing results from both upstream and downstream when completed.
+    /// ## Example
+    /// ```
+    /// let zipped = DeferredTask { "a" }
+    ///     .zip(DeferredTask { 42 })
+    /// let (str, num) = try await zipped.execute()
+    /// // 'str' is "a", 'num' is 42
+    /// ```
+    ///
+    /// - Parameter downstream: The unit of work to zip with.
+    /// - Returns: An `AsynchronousUnitOfWork` producing a tuple of both results.
     public func zip<D: AsynchronousUnitOfWork>(_ downstream: D) -> some AsynchronousUnitOfWork<
         (Success, D.Success)
     > {
         Workers.Zip(upstream: self, downstream: downstream)
     }
 
-    /// Zips the result of the current unit of work with another and applies a transform function.
+    /// Zips the result of this unit of work with another and applies a transform function.
     ///
-    /// - Parameters:
-    ///   - downstream: The second asynchronous unit of work to zip with.
-    ///   - transform: A function that takes a tuple of results from both units of work and returns a transformed result.
-    /// - Returns: A new asynchronous unit of work that produces the transformed result when completed.
+    /// ## Example
+    /// ```
+    /// let zipped = DeferredTask { "a" }
+    ///     .zip(DeferredTask { 42 }) { (str, num) in
+    ///         "\(str): \(num)"
+    ///     }
+    /// let result = try await zipped.execute()
+    /// // result is "a: 42"
+    /// ```
+    ///
+    /// - Parameter downstream: The unit of work to zip with.
+    /// - Parameter transform: Closure combining both results.
+    /// - Returns: An `AsynchronousUnitOfWork` producing the transformed result.
     public func zip<D: AsynchronousUnitOfWork, T: Sendable>(
         _ downstream: D,
         @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (
@@ -123,25 +139,43 @@ extension AsynchronousUnitOfWork {
     }
 
     // zip3
-    /// Zips the result of the current unit of work with two other asynchronous units of work.
+    /// Zips the result of this unit of work with two other asynchronous units of work, producing a tuple of all three results.
+    ///
+    /// ## Example
+    /// ```
+    /// let zipped = DeferredTask { "a" }
+    ///     .zip(DeferredTask { 42 }, DeferredTask { true })
+    /// let (str, num, bool) = try await zipped.execute()
+    /// // 'str' is "a", 'num' is 42, 'bool' is true
+    /// ```
     ///
     /// - Parameters:
-    ///   - d0: The first additional asynchronous unit of work to zip with.
-    ///   - d1: The second additional asynchronous unit of work to zip with.
-    /// - Returns: A new asynchronous unit of work that produces a tuple containing results from the upstream and both downstreams when completed.
+    ///   - d0: The first additional unit of work to zip with.
+    ///   - d1: The second additional unit of work to zip with.
+    /// - Returns: An `AsynchronousUnitOfWork` producing a tuple of all three results.
     public func zip<D0: AsynchronousUnitOfWork, D1: AsynchronousUnitOfWork>(_ d0: D0, _ d1: D1)
         -> some AsynchronousUnitOfWork<(Success, D0.Success, D1.Success)>
     {
         Workers.Zip3(upstream: self, d0: d0, d1: d1)
     }
 
-    /// Zips the result of the current unit of work with two other units of work and applies a transform function.
+    /// Zips the result of this unit of work with two others and applies a transform function.
+    ///
+    /// ## Example
+    /// ```
+    /// let zipped = DeferredTask { "a" }
+    ///     .zip(DeferredTask { 42 }, DeferredTask { true }) { (str, num, bool) in
+    ///         "\(str): \(num), flag is \(bool)"
+    ///     }
+    /// let result = try await zipped.execute()
+    /// // result is "a: 42, flag is true"
+    /// ```
     ///
     /// - Parameters:
-    ///   - d0: The first additional asynchronous unit of work to zip with.
-    ///   - d1: The second additional asynchronous unit of work to zip with.
-    ///   - transform: A function that takes a tuple of results from all units of work and returns a transformed result.
-    /// - Returns: A new asynchronous unit of work that produces the transformed result when completed.
+    ///   - d0: The first additional unit of work to zip with.
+    ///   - d1: The second additional unit of work to zip with.
+    ///   - transform: Closure combining all three results.
+    /// - Returns: An `AsynchronousUnitOfWork` producing the transformed result.
     public func zip<D0: AsynchronousUnitOfWork, D1: AsynchronousUnitOfWork, T: Sendable>(
         _ d0: D0, _ d1: D1,
         @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (
@@ -154,13 +188,21 @@ extension AsynchronousUnitOfWork {
     }
 
     // zip4
-    /// Zips the result of the current unit of work with three other asynchronous units of work.
+    /// Zips the result of this unit of work with three other asynchronous units of work, producing a tuple of all four results.
+    ///
+    /// ## Example
+    /// ```
+    /// let zipped = DeferredTask { "a" }
+    ///     .zip(DeferredTask { 42 }, DeferredTask { true }, DeferredTask { 3.14 })
+    /// let (str, num, bool, pi) = try await zipped.execute()
+    /// // 'str' is "a", 'num' is 42, 'bool' is true, 'pi' is 3.14
+    /// ```
     ///
     /// - Parameters:
-    ///   - d0: The first additional asynchronous unit of work to zip with.
-    ///   - d1: The second additional asynchronous unit of work to zip with.
-    ///   - d2: The third additional asynchronous unit of work to zip with.
-    /// - Returns: A new asynchronous unit of work that produces a tuple containing results from the upstream and all three downstreams when completed.
+    ///   - d0: The first additional unit of work to zip with.
+    ///   - d1: The second additional unit of work to zip with.
+    ///   - d2: The third additional unit of work to zip with.
+    /// - Returns: An `AsynchronousUnitOfWork` producing a tuple of all four results.
     public func zip<
         D0: AsynchronousUnitOfWork, D1: AsynchronousUnitOfWork, D2: AsynchronousUnitOfWork
     >(_ d0: D0, _ d1: D1, _ d2: D2) -> some AsynchronousUnitOfWork<
@@ -169,14 +211,24 @@ extension AsynchronousUnitOfWork {
         Workers.Zip4(upstream: self, d0: d0, d1: d1, d2: d2)
     }
 
-    /// Zips the result of the current unit of work with three other units of work and applies a transform function.
+    /// Zips the result of this unit of work with three others and applies a transform function.
+    ///
+    /// ## Example
+    /// ```
+    /// let zipped = DeferredTask { "a" }
+    ///     .zip(DeferredTask { 42 }, DeferredTask { true }, DeferredTask { 3.14 }) { (str, num, bool, pi) in
+    ///         "\(str): \(num), flag is \(bool), π is \(pi)"
+    ///     }
+    /// let result = try await zipped.execute()
+    /// // result is "a: 42, flag is true, π is 3.14"
+    /// ```
     ///
     /// - Parameters:
-    ///   - d0: The first additional asynchronous unit of work to zip with.
-    ///   - d1: The second additional asynchronous unit of work to zip with.
-    ///   - d2: The third additional asynchronous unit of work to zip with.
-    ///   - transform: A function that takes a tuple of results from all units of work and returns a transformed result.
-    /// - Returns: A new asynchronous unit of work that produces the transformed result when completed.
+    ///   - d0: The first additional unit of work to zip with.
+    ///   - d1: The second additional unit of work to zip with.
+    ///   - d2: The third additional unit of work to zip with.
+    ///   - transform: Closure combining all four results.
+    /// - Returns: An `AsynchronousUnitOfWork` producing the transformed result.
     public func zip<
         D0: AsynchronousUnitOfWork, D1: AsynchronousUnitOfWork, D2: AsynchronousUnitOfWork,
         T: Sendable

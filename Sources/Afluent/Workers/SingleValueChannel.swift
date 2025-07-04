@@ -7,12 +7,25 @@
 
 import Foundation
 
-/// A channel that emits a single value or an error.
+/// A channel for bridging callback-based APIs to async/await, emitting a single value or error.
 ///
-/// ` SingleValueChannel` is an `AsynchronousUnitOfWork` that can be manually completed with either a success value or an error. It's useful for scenarios where you need to bridge callback-based APIs into the world of `async/await`.
+/// `SingleValueChannel` is an `AsynchronousUnitOfWork` that can be manually completed exactly once, making it ideal for integrating legacy or delegate/callback APIs with modern async workflows.
 ///
-/// - Note: Once completed, any further attempts to send a value or an error will result in a `ChannelError.alreadyCompleted`.
-/// - Important: This is very similar to a `SingleValueSubject`, but shares more similarities with `AsyncChannel` in swift-async-algorithms. Sending is an `async` operation, and therefore the ergonomics of this type are a little different. However, it should generally be preferred where possible over `SingleValueSubject`
+/// ## Example: Bridging a callback to async/await
+/// ```
+/// func fetchData(url: URL) async throws -> Data {
+///     let channel = SingleValueChannel<Data>()
+///     let task = URLSession.shared.dataTask(with: url) { data, _, error in
+///         if let data { try? await channel.send(data) }
+///         else if let error { try? await channel.send(error: error) }
+///     }
+///     task.resume()
+///     return try await channel.execute()
+/// }
+/// ```
+///
+/// - Note: Once completed, any further send or error will throw `ChannelError.alreadyCompleted`.
+/// - Important: Prefer this over a subject for bridging when possible, as it is more ergonomic for async/await and similar to `AsyncChannel` in swift-async-algorithms.
 public actor SingleValueChannel<Success: Sendable>: AsynchronousUnitOfWork {
     /// Errors specific to `SingleValueChannel`.
     public enum ChannelError: Error {

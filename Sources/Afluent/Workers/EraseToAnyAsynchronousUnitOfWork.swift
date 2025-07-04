@@ -59,7 +59,19 @@ public struct AnyAsynchronousUnitOfWork<Success: Sendable>: AsynchronousUnitOfWo
 }
 
 extension AsynchronousUnitOfWork {
-    /// Type erases the current unit of work, useful when you need a concrete type
+    /// Type-erases this unit of work to `AnyAsynchronousUnitOfWork`, hiding its concrete type.
+    ///
+    /// Use this method when you need to store or pass around an `AsynchronousUnitOfWork` without exposing its underlying type, such as when collecting heterogeneous unit of work instances in a single array.
+    ///
+    /// ## Example
+    /// ```
+    /// struct User: Sendable {}
+    /// let original: some AsynchronousUnitOfWork<User> = DeferredTask { User() }
+    /// let erased: AnyAsynchronousUnitOfWork<User> = original.eraseToAnyUnitOfWork()
+    /// // 'erased' can now be used wherever a concrete type is needed.
+    /// ```
+    ///
+    /// - Returns: An `AnyAsynchronousUnitOfWork` that wraps this unit of work.
     public func eraseToAnyUnitOfWork() -> AnyAsynchronousUnitOfWork<Success> {
         AnyAsynchronousUnitOfWork(self)
     }

@@ -8,11 +8,18 @@
 import Foundation
 
 extension AsyncSequences {
-    /// An `AsyncSequence` that emits a single specified element and then completes.
+    /// An async sequence that emits a single specified element and then completes.
     ///
-    /// `Just` is a simple `AsyncSequence` that emits only one element and then finishes. It's useful for creating sequences with a single, known value, often for testing or combining with other asynchronous sequences.
+    /// Use `Just` to create a sequence that yields one value and then finishes, often for testing, composition, or as a source of a single known value.
     ///
-    /// - Parameter value: The single element that this sequence will emit.
+    /// ## Example
+    /// ```
+    /// for await value in Just(1) {
+    ///     print(value) // Prints: 1
+    /// }
+    /// ```
+    ///
+    /// - Note: If you want to emit a single asynchronous value (not a sequence), consider using `DeferredTask` instead.
     public struct Just<Element: Sendable>: AsyncSequence, Sendable {
         let val: Element
 
@@ -44,3 +51,4 @@ extension AsyncSequences {
 }
 
 public typealias Just = AsyncSequences.Just
+

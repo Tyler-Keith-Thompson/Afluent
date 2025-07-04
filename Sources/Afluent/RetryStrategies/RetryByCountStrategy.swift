@@ -8,10 +8,14 @@
 extension RetryStrategy where Self == RetryByCountStrategy {
     /// Creates a retry strategy that retries the operation up to a specified number of times.
     ///
-    /// - Parameter count: The maximum number of retries allowed.
-    /// - Returns: A `RetryByCountStrategy` configured to retry up to the specified count.
+    /// Use this strategy with operators like `.retry(strategy:)` to control how many times an operation will be retried.
     ///
-    /// - Note: The retry count will be decremented after each retry attempt, stopping when it reaches zero.
+    /// ## Example
+    /// ```
+    /// try await DeferredTask { /* some fallible work */ }
+    ///     .retry(strategy: .byCount(3))
+    ///     .execute()
+    /// ```
     public static func byCount(_ count: UInt) -> RetryByCountStrategy {
         return RetryByCountStrategy(retryCount: count)
     }
@@ -21,7 +25,12 @@ extension RetryStrategy where Self == RetryByCountStrategy {
 ///
 /// This strategy retries an operation a specified number of times before giving up.
 ///
-/// - Important: Once the retry count reaches zero, no further retries will be attempted.
+/// ## Example
+/// ```
+/// try await DeferredTask { /* some fallible work */ }
+///     .retry(strategy: .byCount(3))
+///     .execute()
+/// ```
 public actor RetryByCountStrategy: RetryStrategy {
     /// The number of retries remaining.
     var retryCount: UInt
@@ -50,3 +59,4 @@ public actor RetryByCountStrategy: RetryStrategy {
         retryCount -= 1
     }
 }
+

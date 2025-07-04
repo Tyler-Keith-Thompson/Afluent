@@ -39,7 +39,22 @@ extension Workers {
 }
 
 extension AsynchronousUnitOfWork {
-    /// Retains a successful result of the current unit of work, will not execute the operation again, even if retried.
+    /// Retains the successful result of this unit of work, ensuring the operation is performed only once. Subsequent executions return the cached result.
+    ///
+    /// Use this operator when you want to prevent repeated side effects or recomputation by caching the result of the first execution.
+    ///
+    /// ## Example
+    /// ```
+    /// var runCount = 0
+    /// let task = DeferredTask { runCount += 1; return 42 }
+    ///     .retain()
+    ///
+    /// let a = try await task.execute() // runCount is 1
+    /// let b = try await task.execute() // runCount is still 1, value is cached
+    /// ```
+    ///
+    /// - Returns: An `AsynchronousUnitOfWork` that caches and reuses its initial successful result.
+    /// - Note: If the operation fails, no value is cached and subsequent executions will retry the operation.
     public func retain() -> some AsynchronousUnitOfWork<Success> {
         Workers.Retain(upstream: self)
     }

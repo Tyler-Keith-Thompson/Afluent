@@ -10,12 +10,29 @@ import Foundation
 
 /// A serial task queue that ensures tasks are executed one at a time.
 ///
-/// This actor manages a queue of tasks, ensuring that only one task is executed at a time. If a task is currently running, any new tasks are added to the queue and executed sequentially.
+/// This class manages a queue of asynchronous tasks, executing each task sequentially to prevent concurrent execution.
+/// It is useful when tasks must run in order or when you want to avoid race conditions by ensuring only one task runs at any given time.
 ///
-/// ## Discussion
+/// ## Example
+/// ```swift
+/// let queue = SerialTaskQueue()
 ///
-/// The `SerialTaskQueue` actor provides a way to manage task execution in a serial manner. When a new task is queued, it checks if another task is currently running. If no task is running, the new task is executed immediately. If a task is already running, the new task is added to a queue and will be executed once the current task completes.
-/// This actor is useful in scenarios where tasks must be executed in a specific order or when you need to ensure that only one task is executed at a time to avoid race conditions.
+/// async let first = queue.queue {
+///     try await Task.sleep(nanoseconds: 2_000_000_000)
+///     return "first"
+/// }
+/// async let second = queue.queue {
+///     try await Task.sleep(nanoseconds: 1_000_000_000)
+///     return "second"
+/// }
+///
+/// // The results are delivered in order: ["first", "second"], even though the second task sleeps less
+/// let results = try await [first, second]
+/// print(results)
+///
+/// // To cancel all tasks:
+/// queue.cancelAll()
+/// ```
 public final class SerialTaskQueue: @unchecked Sendable {
     private var subscribers = Set<AnyCancellable>()
     private let (stream, deferredTaskContinuation) = AsyncStream<AnyAsynchronousUnitOfWork<Void>>
@@ -63,7 +80,7 @@ public final class SerialTaskQueue: @unchecked Sendable {
         }
     }
 
-    /// Cancels all the ongoing tasks in the queue
+    /// Cancels all the ongoing tasks in the queue.
     public func cancelAll() {
         subscribers.removeAll()
     }

@@ -36,20 +36,60 @@ jobs:
     runs-on: macos-15
     strategy:
       matrix:
-        destination:
-        - "platform=macOS,arch=arm64"
-        - "platform=macOS,arch=arm64,variant=Mac Catalyst"
-        - "platform=iOS Simulator,name=iPhone 16 Pro,OS=18.5"
-        - "platform=iOS Simulator,name=iPad mini (A17 Pro),OS=18.2"
-        - "platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=18.1"
-        - "platform=visionOS Simulator,name=Apple Vision Pro,OS=2.5"
-        - "platform=watchOS Simulator,name=Apple Watch Ultra 2 (49mm),OS=11.5"
+        platform: [macOS, iOS, tvOS, visionOS, watchOS, catalyst]
     steps:
       - uses: actions/checkout@v4
-      - name: Build and Test for ${{ matrix.destination }}
+      - name: Build and Test for ${{ matrix.platform }}
         run: |
           set -eo pipefail
+          
+          # Function to get the latest available simulator for a platform
+          get_latest_simulator() {
+            local platform=$1
+            case $platform in
+              iOS)
+                # Get the latest iPhone simulator
+                xcrun simctl list devices iPhone available | grep -E "iPhone [0-9]+" | tail -1 | sed -E 's/.*iPhone ([^(]+) \(([^)]+)\).*/platform=iOS Simulator,name=iPhone \1,id=\2/'
+                ;;
+              tvOS)
+                # Get the latest Apple TV simulator
+                xcrun simctl list devices "Apple TV" available | grep "Apple TV" | tail -1 | sed -E 's/.*(Apple TV[^(]+) \(([^)]+)\).*/platform=tvOS Simulator,name=\1,id=\2/'
+                ;;
+              visionOS)
+                # Get the latest Vision Pro simulator
+                xcrun simctl list devices "Apple Vision Pro" available | grep "Apple Vision Pro" | tail -1 | sed -E 's/.*(Apple Vision Pro[^(]*) \(([^)]+)\).*/platform=visionOS Simulator,name=\1,id=\2/'
+                ;;
+              watchOS)
+                # Get the latest Apple Watch simulator
+                xcrun simctl list devices "Apple Watch" available | grep "Apple Watch" | tail -1 | sed -E 's/.*(Apple Watch[^(]+) \(([^)]+)\).*/platform=watchOS Simulator,name=\1,id=\2/'
+                ;;
+              macOS)
+                echo "platform=macOS,arch=arm64"
+                ;;
+              catalyst)
+                echo "platform=macOS,arch=arm64,variant=Mac Catalyst"
+                ;;
+            esac
+          }
+          
+          # Get the destination for the current platform
+          DESTINATION=$(get_latest_simulator ${{ matrix.platform }})
+          
+          # Fallback to generic destinations if simulator detection fails
+          if [ -z "$DESTINATION" ]; then
+            case ${{ matrix.platform }} in
+              iOS) DESTINATION="platform=iOS Simulator,name=iPhone 15" ;;
+              tvOS) DESTINATION="platform=tvOS Simulator,name=Apple TV 4K" ;;
+              visionOS) DESTINATION="platform=visionOS Simulator,name=Apple Vision Pro" ;;
+              watchOS) DESTINATION="platform=watchOS Simulator,name=Apple Watch Series 9" ;;
+              macOS) DESTINATION="platform=macOS,arch=arm64" ;;
+              catalyst) DESTINATION="platform=macOS,arch=arm64,variant=Mac Catalyst" ;;
+            esac
+          fi
+          
+          echo "Using destination: $DESTINATION"
+          
           xcodebuild \
             -scheme Afluent-Package \
-            -destination '${{ matrix.destination }}' \
+            -destination "$DESTINATION" \
             clean build

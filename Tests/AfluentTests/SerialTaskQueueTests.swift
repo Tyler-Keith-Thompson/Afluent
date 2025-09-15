@@ -141,6 +141,39 @@ struct SerialTaskQueueTests {
             }
         }
     #endif
+
+    @Test func fireAndForgetEnqueueExecutesTasksSerially() async throws {
+        let queue = SerialTaskQueue()
+        actor Test {
+            var executionOrder = [Int]()
+
+            func addExecution(_ value: Int) {
+                executionOrder.append(value)
+            }
+
+            func getExecutionOrder() -> [Int] {
+                executionOrder
+            }
+        }
+        let test = Test()
+        let sub = SingleValueSubject<Void>()
+
+        // Fire and forget multiple tasks - use non-throwing version
+        for i in 1...3 {
+            {queue.enqueue {
+                await test.addExecution(i)
+                if i == 3 {
+                    try sub.send()
+                }
+            }}() // this is some stupid-ass cermony because Swift insists on preferring the async method since we're async. Despite the fact that doesn't compile.
+        }
+
+        // Wait a bit for all tasks to complete
+        try await sub.execute()
+
+        let executionOrder = await test.getExecutionOrder()
+        #expect(executionOrder == [1, 2, 3])
+    }
 }
 
 enum SwiftVersion {

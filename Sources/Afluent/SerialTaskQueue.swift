@@ -17,11 +17,11 @@ import Foundation
 /// ```swift
 /// let queue = SerialTaskQueue()
 ///
-/// async let first = queue.queue {
+/// async let first = queue.enqueue {
 ///     try await Task.sleep(nanoseconds: 2_000_000_000)
 ///     return "first"
 /// }
-/// async let second = queue.queue {
+/// async let second = queue.enqueue {
 ///     try await Task.sleep(nanoseconds: 1_000_000_000)
 ///     return "second"
 /// }
@@ -47,6 +47,24 @@ public final class SerialTaskQueue: @unchecked Sendable {
         .subscribe()
         .store(in: &subscribers)
     }
+    
+    
+    /// Queues a task to be executed serially without waiting for completion (fire-and-forget).
+    ///
+    /// If no task is currently running, the provided task is executed immediately.
+    /// If a task is running, the provided task is added to the queue and will be executed once the current task completes.
+    /// This method returns immediately without waiting for the task to complete.
+    /// Any errors thrown by the task are silently ignored.
+    ///
+    /// - Parameter task: The asynchronous throwing task to be queued and executed.
+    public func enqueue(_ task: @Sendable @escaping () async throws -> Void) {
+        deferredTaskContinuation.yield(
+            DeferredTask {
+                try await task()
+            }
+            .eraseToAnyUnitOfWork()
+        )
+    }
 
     /// Queues a task to be executed serially.
     ///
@@ -56,7 +74,7 @@ public final class SerialTaskQueue: @unchecked Sendable {
     /// - Parameter task: The asynchronous task to be queued and executed.
     /// - Returns: The result of the task.
     /// - Throws: An error if the task throws an error.
-    public func queue<T: Sendable>(_ task: @Sendable @escaping () async throws -> T) async throws
+    public func enqueue<T: Sendable>(_ task: @Sendable @escaping () async throws -> T) async throws
         -> T
     {
         return try await withUnsafeThrowingContinuation { [weak self] continuation in
@@ -78,6 +96,22 @@ public final class SerialTaskQueue: @unchecked Sendable {
                 .eraseToAnyUnitOfWork()
             )
         }
+    }
+
+    /// Queues a task to be executed serially.
+    ///
+    /// If no task is currently running, the provided task is executed immediately.
+    /// If a task is running, the provided task is added to the queue and will be executed once the current task completes.
+    ///
+    /// - Parameter task: The asynchronous task to be queued and executed.
+    /// - Returns: The result of the task.
+    /// - Throws: An error if the task throws an error.
+    /// - Note: This method has been renamed to `enqueue`. Use `enqueue` instead.
+    @available(*, deprecated, renamed: "enqueue", message: "Use enqueue instead")
+    public func queue<T: Sendable>(_ task: @Sendable @escaping () async throws -> T) async throws
+        -> T
+    {
+        return try await enqueue(task)
     }
 
     /// Cancels all the ongoing tasks in the queue.

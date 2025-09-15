@@ -1,7 +1,7 @@
 version: 0.1
 merge: 
   required_statuses:
-    - apple-platform-regression-tests (platform=iOS Simulator,name=iPad mini (A17 Pro),OS=18.2)
+    - apple-platform-regression-tests (platform=iOS Simulator,name=iPad mini (A17 Pro),OS=18.5)
     - apple-platform-regression-tests (platform=iOS Simulator,name=iPhone 16 Pro,OS=18.5)
     - apple-platform-regression-tests (platform=macOS,arch=arm64,variant=Mac Catalyst)
     - apple-platform-regression-tests (platform=macOS,arch=arm64)

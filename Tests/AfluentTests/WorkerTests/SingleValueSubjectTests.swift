@@ -206,7 +206,7 @@ struct SingleValueSubjectTests {
         }
     }
 
-    @Test func singleValueSubjectCancellation_withCooperativeCancellation() async throws {
+    @Test func singleValueSubjectCancellation() async throws {
         try await withMainSerialExecutor {
             let subject = SingleValueSubject<Void>()
 

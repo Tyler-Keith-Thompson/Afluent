@@ -45,7 +45,7 @@ struct TimeoutTests {
     @Test func taskTimesOutIfItTakesTooLong_withSingleValueSubject() async throws {
         let clock = TestClock()
 
-        let sub = SingleValueSubject<Void>(enableCooperativeCancellation: true)
+        let sub = SingleValueSubject<Void>()
 
         let task = Task {
             try await DeferredTask { try await sub.execute() }

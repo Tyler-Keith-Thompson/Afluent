@@ -47,16 +47,8 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     }
     private var subjectState = State.noValue
 
-    public let enableCooperativeCancellation: Bool
-
     /// Creates a new `SingleValueSubject`.
-    ///
-    /// - Parameter enableCooperativeCancellation: When true, this instance will properly handle cooperative cancellation.
-    ///
-    /// - Important: In the next major version of Afluent, `SingleValueSubject` will default to enabling cooperative cancellation.
-    public init(enableCooperativeCancellation: Bool = false) {
-        self.enableCooperativeCancellation = enableCooperativeCancellation
-    }
+    public init() {}
 
     public func _operation() async throws -> AsynchronousOperation<Success> {
         AsynchronousOperation { [weak self] in
@@ -101,9 +93,7 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     public func cancel() {
         // custom implementation of cancel() required due to the need to finish the continuation
         state.cancel()
-        if enableCooperativeCancellation {
-            try? self.send(error: CancellationError())
-        }
+        try? self.send(error: CancellationError())
     }
 
     private func lock() { _lock.lock() }
@@ -123,7 +113,9 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
                     self.subjectState = .sentValue(value)
                     continuation.resume(returning: value)
                 default:
-                    throw SubjectError.alreadyCompleted
+                    if self.state.isCancelled == false {
+                        throw SubjectError.alreadyCompleted
+                    }
             }
         }
     }
@@ -141,7 +133,9 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
                     self.subjectState = .sentValue(())
                     continuation.resume(returning: ())
                 default:
-                    throw SubjectError.alreadyCompleted
+                    if self.state.isCancelled == false {
+                        throw SubjectError.alreadyCompleted
+                    }
             }
         }
     }
@@ -160,7 +154,9 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
                     self.subjectState = .sentError(error)
                     continuation.resume(throwing: error)
                 default:
-                    throw SubjectError.alreadyCompleted
+                    if self.state.isCancelled == false {
+                        throw SubjectError.alreadyCompleted
+                    }
             }
         }
     }

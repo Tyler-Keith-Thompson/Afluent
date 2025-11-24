@@ -47,8 +47,16 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     }
     private var subjectState = State.noValue
 
+    public let enableCooperativeCancellation: Bool
+
     /// Creates a new `SingleValueSubject`.
-    public init() {}
+    ///
+    /// - Parameter enableCooperativeCancellation: When true, this instance will properly handle cooperative cancellation.
+    ///
+    /// - Important: In the next major version of Afluent, `SingleValueSubject` will default to enabling cooperative cancellation.
+    public init(enableCooperativeCancellation: Bool = false) {
+        self.enableCooperativeCancellation = enableCooperativeCancellation
+    }
 
     public func _operation() async throws -> AsynchronousOperation<Success> {
         AsynchronousOperation { [weak self] in
@@ -93,7 +101,9 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     public func cancel() {
         // custom implementation of cancel() required due to the need to finish the continuation
         state.cancel()
-        try? self.send(error: CancellationError())
+        if enableCooperativeCancellation {
+            try? self.send(error: CancellationError())
+        }
     }
 
     private func lock() { _lock.lock() }

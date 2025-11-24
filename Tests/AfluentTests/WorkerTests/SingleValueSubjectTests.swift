@@ -206,9 +206,9 @@ struct SingleValueSubjectTests {
         }
     }
 
-    @Test func singleValueSubjectCancellation() async throws {
+    @Test func singleValueSubjectCancellation_withCooperativeCancellation() async throws {
         await withMainSerialExecutor {
-            let subject = SingleValueSubject<Void>()
+            let subject = SingleValueSubject<Void>(enableCooperativeCancellation: true)
 
             let task = Task {
                 _ = await #expect(throws: CancellationError.self) {
@@ -219,7 +219,33 @@ struct SingleValueSubjectTests {
             // make sure we don't cancel before the subject operation has begun
             await Task.megaYield()
             task.cancel()
+
+            #expect(throws: SingleValueSubject<Void>.SubjectError.alreadyCompleted) {
+                _ = try subject.send()
+            }
+
             await task.value
+        }
+    }
+
+    @Test func singleValueSubjectCancellation_withoutCooperativeCancellation() async throws {
+        try await withMainSerialExecutor {
+            let subject = SingleValueSubject<Void>()  // this is the default
+
+            let task = Task {
+                _ = await #expect(throws: CancellationError.self) {
+                    try await subject.execute()
+                }
+            }
+
+            // make sure we don't cancel before the subject operation has begun
+            await Task.megaYield()
+            task.cancel()
+
+            try subject.send()  // doesn't throw
+
+            // this would hang forever if called
+            // await task.value
         }
     }
 }

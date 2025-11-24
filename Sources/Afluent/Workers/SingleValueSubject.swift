@@ -90,6 +90,12 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
         }
     }
 
+    public func cancel() {
+        // custom implementation of cancel() required due to the need to finish the continuation
+        state.cancel()
+        try? self.send(error: CancellationError())
+    }
+
     private func lock() { _lock.lock() }
     private func unlock() { _lock.unlock() }
 
@@ -107,7 +113,9 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
                     self.subjectState = .sentValue(value)
                     continuation.resume(returning: value)
                 default:
-                    throw SubjectError.alreadyCompleted
+                    if self.state.isCancelled == false {
+                        throw SubjectError.alreadyCompleted
+                    }
             }
         }
     }
@@ -125,7 +133,9 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
                     self.subjectState = .sentValue(())
                     continuation.resume(returning: ())
                 default:
-                    throw SubjectError.alreadyCompleted
+                    if self.state.isCancelled == false {
+                        throw SubjectError.alreadyCompleted
+                    }
             }
         }
     }
@@ -144,7 +154,9 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
                     self.subjectState = .sentError(error)
                     continuation.resume(throwing: error)
                 default:
-                    throw SubjectError.alreadyCompleted
+                    if self.state.isCancelled == false {
+                        throw SubjectError.alreadyCompleted
+                    }
             }
         }
     }

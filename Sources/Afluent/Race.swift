@@ -45,6 +45,11 @@
 ///
 /// ## Important
 /// A thrown error is considered to have won the race. Additionally, task groups don't guarantee parallelism, they guarantee concurrency. Consequently, while this is useful for lots of real world scenarios if you have strict parallelism requirements you may need to reach for GCD. [more information](https://forums.swift.org/t/taskgroup-and-parallelism/51039/1)
+///
+/// ## Warning
+/// Tasks that are passed to `Race` must all support cooperative cancellation.
+/// If they do not, this function has the risk of hanging while waiting for the non-cooperative task.
+/// See [this Swift forums thread](https://forums.swift.org/t/withthrowingtaskgroup-doesnt-re-throw-the-error/70958) for more details.
 public func Race<T: Sendable>(
     cancelAllOnWin: Bool = true, _ firstTask: @Sendable () async throws -> T,
     against tasks: (@Sendable () async throws -> T)...

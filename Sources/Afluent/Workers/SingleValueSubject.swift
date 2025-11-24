@@ -90,6 +90,12 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
         }
     }
 
+    public func cancel() {
+        // custom implementation of cancel() required due to the need to finish the continuation
+        state.cancel()
+        try? self.send(error: CancellationError())
+    }
+
     private func lock() { _lock.lock() }
     private func unlock() { _lock.unlock() }
 

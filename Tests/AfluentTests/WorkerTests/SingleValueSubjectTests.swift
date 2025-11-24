@@ -205,4 +205,21 @@ struct SingleValueSubjectTests {
             }
         }
     }
+
+    @Test func singleValueSubjectCancellation() async throws {
+        await withMainSerialExecutor {
+            let subject = SingleValueSubject<Void>()
+
+            let task = Task {
+                _ = await #expect(throws: CancellationError.self) {
+                    try await subject.execute()
+                }
+            }
+
+            // make sure we don't cancel before the subject operation has begun
+            await Task.megaYield()
+            task.cancel()
+            await task.value
+        }
+    }
 }

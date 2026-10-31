@@ -303,4 +303,102 @@ struct CurrentValueSubjectTests {
 
         #expect(await test.count == 3)
     }
+
+    @Test func currentValueSubjectDoesNotReplayValuesSentBeforeSubscribing() async throws {
+        let subject = CurrentValueSubject(0)
+        subject.send(1)
+        subject.send(2)
+        subject.send(3)
+
+        let taskStartedSubject = SingleValueSubject<Void>()
+        let task = Task {
+            var received = [Int]()
+            for try await value in subject.handleEvents(receiveMakeIterator: {
+                try? taskStartedSubject.send()
+            }).prefix(3) {
+                received.append(value)
+            }
+            return received
+        }
+
+        try await taskStartedSubject.execute()
+        subject.send(4)
+        subject.send(5)
+
+        #expect(try await task.value == [3, 4, 5])
+    }
+
+    @Test func currentValueSubjectLateSubscriberStartsAtCurrentValue() async throws {
+        let subject = CurrentValueSubject(1)
+
+        let firstStarted = SingleValueSubject<Void>()
+        let first = Task {
+            var received = [Int]()
+            for try await value in subject.handleEvents(receiveMakeIterator: {
+                try? firstStarted.send()
+            }) {
+                received.append(value)
+            }
+            return received
+        }
+        try await firstStarted.execute()
+        subject.send(2)
+        subject.send(3)
+
+        let secondStarted = SingleValueSubject<Void>()
+        let second = Task {
+            var received = [Int]()
+            for try await value in subject.handleEvents(receiveMakeIterator: {
+                try? secondStarted.send()
+            }) {
+                received.append(value)
+            }
+            return received
+        }
+        try await secondStarted.execute()
+        subject.send(4)
+        subject.send(completion: .finished)
+
+        #expect(try await first.value == [1, 2, 3, 4])
+        #expect(try await second.value == [3, 4])
+    }
+
+    @Test func currentValueSubjectSupportsNilCurrentValue() async throws {
+        let subject = CurrentValueSubject<Int?>(nil)
+        #expect(subject.value == nil)
+
+        let taskStartedSubject = SingleValueSubject<Void>()
+        let task = Task {
+            var received = [Int?]()
+            for try await value in subject.handleEvents(receiveMakeIterator: {
+                try? taskStartedSubject.send()
+            }) {
+                received.append(value)
+            }
+            return received
+        }
+
+        try await taskStartedSubject.execute()
+        subject.send(1)
+        subject.send(nil)
+        subject.send(completion: .finished)
+
+        #expect(try await task.value == [nil, 1, nil])
+        #expect(subject.value == nil)
+    }
+
+    @Test func currentValueSubjectValueCanChangeAfterCompletionWithoutEmitting() async throws {
+        let subject = CurrentValueSubject(1)
+        subject.send(completion: .finished)
+
+        subject.send(2)  // Ignored once finished.
+        #expect(subject.value == 1)
+
+        subject.value = 3  // Assigning `value` still updates it, as before.
+        #expect(subject.value == 3)
+
+        var received = [Int]()
+        for try await value in subject { received.append(value) }
+        #expect(received.isEmpty)
+    }
 }

@@ -197,6 +197,47 @@ struct PassthroughSubjectTests {
         #expect(await test.values == [1])
     }
 
+    @Test func passthroughSubjectDeliversBufferedValuesBeforeFailure() async throws {
+        enum Err: Error, Equatable {
+            case e1
+        }
+
+        actor Test {
+            var values = [Int]()
+            func appendValue(_ value: Int) {
+                values.append(value)
+            }
+        }
+        let test = Test()
+        let subject = PassthroughSubject<Int>()
+        let taskStartedSubject = SingleValueSubject<Void>()
+        let firstValueReceived = SingleValueSubject<Void>()
+        let release = SingleValueSubject<Void>()
+
+        let task = Task {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
+                try? taskStartedSubject.send()
+            }) {
+                await test.appendValue(value)
+                if value == 1 {
+                    try? firstValueReceived.send()
+                    try await release.execute()  // Hold the consumer while more events arrive.
+                }
+            }
+        }
+
+        try await taskStartedSubject.execute()
+        subject.send(1)
+        try await firstValueReceived.execute()
+        subject.send(2)
+        subject.send(completion: .failure(Err.e1))
+        try release.send()
+
+        let result = await task.result
+        try #require(throws: Err.e1, performing: { try result.get() })
+        #expect(await test.values == [1, 2])
+    }
+
     @Test func passthroughSubjectCanSendVoidValues() async throws {
         actor Test {
             var count = 0

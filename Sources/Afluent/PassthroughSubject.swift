@@ -64,7 +64,9 @@ public final class PassthroughSubject<Element: Sendable>: AsyncSequence, @unchec
         var finishedResult: Result<Element?, any Error>?
 
         mutating func emit(_ update: (inout Subscriber) -> Void) {
-            for id in subscribers.keys {
+            // Iterate a snapshot: a live `keys` view keeps the dictionary storage shared, so the first mutation
+            // would copy the dictionary and then every subscriber's buffer on append.
+            for id in Array(subscribers.keys) {
                 update(&subscribers[id]!)
                 subscribers[id]!.drain()
             }

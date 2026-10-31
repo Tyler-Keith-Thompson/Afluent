@@ -21,7 +21,7 @@ struct PassthroughSubjectTests {
         let taskStartedSubject = SingleValueSubject<Void>()
 
         let task = Task {
-            for try await value in subject.handleEvents(receiveNext: {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
                 try? taskStartedSubject.send()
             }) {
                 await test.appendValue(value)
@@ -58,7 +58,7 @@ struct PassthroughSubjectTests {
 
         let taskStartedSubject = SingleValueSubject<Void>()
         let task = Task {
-            for try await value in subject.handleEvents(receiveNext: {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
                 try? taskStartedSubject.send()
             }) {
                 await test.appendValue(value)
@@ -67,7 +67,7 @@ struct PassthroughSubjectTests {
 
         let task2StartedSubject = SingleValueSubject<Void>()
         let task2 = Task {
-            for try await value in subject.handleEvents(receiveNext: {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
                 try? task2StartedSubject.send()
             }) {
                 await test2.appendValue(value)
@@ -104,7 +104,7 @@ struct PassthroughSubjectTests {
         let taskStartedSubject = SingleValueSubject<Void>()
 
         let task = Task {
-            for try await value in subject.handleEvents(receiveNext: {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
                 try? taskStartedSubject.send()
             }) {
                 await test.appendValue(value)
@@ -124,7 +124,7 @@ struct PassthroughSubjectTests {
 
         let task2StartedSubject = SingleValueSubject<Void>()
         let task2 = Task {
-            for try await value in subject.handleEvents(receiveNext: {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
                 try? task2StartedSubject.send()
             }) {
                 await test.appendValue(value)
@@ -158,7 +158,7 @@ struct PassthroughSubjectTests {
         let firstValueReceived = SingleValueSubject<Void>()
 
         let task = Task {
-            for try await value in subject.handleEvents(receiveNext: {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
                 try? taskStartedSubject.send()
             }) {
                 try? firstValueReceived.send()
@@ -180,7 +180,7 @@ struct PassthroughSubjectTests {
 
         let task2StartedSubject = SingleValueSubject<Void>()
         let task2 = Task {
-            for try await value in subject.handleEvents(receiveNext: {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
                 try? task2StartedSubject.send()
             }) {
                 await test.appendValue(value)
@@ -209,7 +209,7 @@ struct PassthroughSubjectTests {
         let taskStartedSubject = SingleValueSubject<Void>()
 
         let task = Task {
-            for try await _ in subject.handleEvents(receiveNext: {
+            for try await _ in subject.handleEvents(receiveMakeIterator: {
                 try? taskStartedSubject.send()
             }) {
                 await test.appendValue()
@@ -229,7 +229,7 @@ struct PassthroughSubjectTests {
 
         let task2StartedSubject = SingleValueSubject<Void>()
         let task2 = Task {
-            for try await _ in subject.handleEvents(receiveNext: {
+            for try await _ in subject.handleEvents(receiveMakeIterator: {
                 try? task2StartedSubject.send()
             }) {
                 await test.appendValue()
@@ -254,7 +254,7 @@ struct PassthroughSubjectTests {
         let taskStartedSubject = SingleValueSubject<Void>()
         let task = Task {
             var received = [Int]()
-            for try await value in subject.handleEvents(receiveNext: {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
                 try? taskStartedSubject.send()
             }).prefix(2) {
                 received.append(value)
@@ -276,7 +276,7 @@ struct PassthroughSubjectTests {
         let firstStarted = SingleValueSubject<Void>()
         let first = Task {
             var received = [Int]()
-            for try await value in subject.handleEvents(receiveNext: {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
                 try? firstStarted.send()
             }) {
                 received.append(value)
@@ -290,7 +290,7 @@ struct PassthroughSubjectTests {
         let secondStarted = SingleValueSubject<Void>()
         let second = Task {
             var received = [Int]()
-            for try await value in subject.handleEvents(receiveNext: {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
                 try? secondStarted.send()
             }) {
                 received.append(value)
@@ -310,7 +310,7 @@ struct PassthroughSubjectTests {
         let taskStartedSubject = SingleValueSubject<Void>()
         let task = Task {
             var received = [Int]()
-            for try await value in subject.handleEvents(receiveNext: {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
                 try? taskStartedSubject.send()
             }) {
                 await Task.yield()
@@ -331,7 +331,7 @@ struct PassthroughSubjectTests {
         let taskStartedSubject = SingleValueSubject<Void>()
         let task = Task {
             var received = [Int]()
-            for try await value in subject.handleEvents(receiveNext: {
+            for try await value in subject.handleEvents(receiveMakeIterator: {
                 try? taskStartedSubject.send()
             }) {
                 received.append(value)

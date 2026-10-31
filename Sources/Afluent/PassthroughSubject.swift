@@ -17,9 +17,8 @@
 /// Values sent while there are no subscribers are discarded; they are never replayed to a later consumer.
 ///
 /// - Important: Starting a `Task` that iterates the subject does not mean it has subscribed yet. If values must
-///   not be missed, wait until the consumer has asked for its first value before sending, for example with
-///   `handleEvents(receiveNext:)`. (`receiveMakeIterator` is too early: it runs before the upstream iterator,
-///   and so the subscription, is created.)
+///   not be missed, wait until the consumer has subscribed before sending, for example with
+///   `handleEvents(receiveMakeIterator:)`.
 ///
 /// ## Example
 /// ```swift
@@ -29,7 +28,7 @@
 /// subject.send(0) // No subscribers yet, so this value is discarded.
 ///
 /// Task {
-///     for try await value in subject.handleEvents(receiveNext: { try? subscribed.send() }) {
+///     for try await value in subject.handleEvents(receiveMakeIterator: { try? subscribed.send() }) {
 ///         print("Received value: \(value)") // prints 1, then 2
 ///     }
 /// }

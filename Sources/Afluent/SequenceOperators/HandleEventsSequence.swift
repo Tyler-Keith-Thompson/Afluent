@@ -79,8 +79,8 @@ extension AsyncSequence where Self: Sendable {
     ///
     /// - Parameters:
     ///   - receiveMakeIterator: A closure that is invoked when an iterator is requested from this sequence, after the
-    ///     upstream's iterator has been created. For a subject, this means the consumer is already subscribed when the
-    ///     closure runs.
+    ///     upstream's iterator has been created. For `PassthroughSubject` and `CurrentValueSubject`, this means the
+    ///     consumer is already subscribed when the closure runs.
     ///   - receiveNext: A closure that is invoked when the next element is requested from this sequence. The closure can throw errors.
     ///   - receiveOutput: A closure that is invoked when the upstream emits a successful output. The closure can throw errors.
     ///   - receiveError: A closure that is invoked when the upstream emits an error. The closure can throw errors.

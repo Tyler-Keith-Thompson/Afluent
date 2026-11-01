@@ -126,36 +126,38 @@ struct HandleEventsSequenceTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func handleCancel() async throws {
-        await withMainSerialExecutor {
-            actor Test {
-                var canceled = false
-                var task: AnyCancellable?
+        actor Test {
+            var canceled = false
+            var task: AnyCancellable?
 
-                func cancel() { canceled = true }
-                func setTask(_ task: AnyCancellable?) {
-                    self.task = task
-                }
+            func cancel() { canceled = true }
+            func setTask(_ task: AnyCancellable?) {
+                self.task = task
             }
-            let test = Test()
-
-            await withCheckedContinuation { continuation in
-                Task {
-                    await test.setTask(
-                        DeferredTask {
-                            await test.task?.cancel()
-                        }
-                        .toAsyncSequence()
-                        .handleEvents(receiveCancel: {
-                            await test.cancel()
-                            continuation.resume()
-                        })
-                        .sink())
-                }
-            }
-
-            let canceled = await test.canceled
-
-            #expect(canceled)
         }
+        let test = Test()
+        // The body cancels itself through the stored handle, so it must not start before the handle is stored.
+        let taskStored = SingleValueSubject<Void>()
+
+        await withCheckedContinuation { continuation in
+            Task {
+                await test.setTask(
+                    DeferredTask {
+                        try await taskStored.execute()
+                        await test.task?.cancel()
+                    }
+                    .toAsyncSequence()
+                    .handleEvents(receiveCancel: {
+                        await test.cancel()
+                        continuation.resume()
+                    })
+                    .sink())
+                try? taskStored.send()
+            }
+        }
+
+        let canceled = await test.canceled
+
+        #expect(canceled)
     }
 }

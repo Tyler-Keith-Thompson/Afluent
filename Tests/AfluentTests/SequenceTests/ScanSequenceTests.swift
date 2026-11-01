@@ -65,18 +65,15 @@ struct ScanSequenceTests {
             continuation.yield(1)
             continuation.yield(2)
             continuation.yield(3)
-            // Delay finish to allow cancellation
-            Task {
-                try? await Task.sleep(nanoseconds: 1_000_000)
-                continuation.finish()
-            }
         }
 
+        // Start iterating only once the task is cancelled (cancellation ends this wait), so the elements can
+        // never all be consumed first.
+        let (gate, _) = AsyncStream<Void>.makeStream()
         let task = Task {
-            try await stream
-                .scan(0) { $0 + $1 }
-                .collect()
-                .first()
+            for await _ in gate { break }
+            let scanned = stream.scan(0) { $0 + $1 }
+            return try await scanned.collect().first()
         }
 
         task.cancel()

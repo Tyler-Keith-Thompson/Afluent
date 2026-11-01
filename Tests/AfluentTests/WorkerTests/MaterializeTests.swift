@@ -63,42 +63,44 @@ struct MaterializeTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func materializeDoesNotInterfereWithCancellation() async throws {
-        try await withMainSerialExecutor {
-            actor Test {
-                var started = false
-                var ended = false
-                var task: AnyCancellable?
+        actor Test {
+            var started = false
+            var ended = false
+            var task: AnyCancellable?
 
-                func start() { started = true }
-                func end() { ended = true }
-                func setTask(_ cancellable: AnyCancellable?) {
-                    self.task = cancellable
-                }
+            func start() { started = true }
+            func end() { ended = true }
+            func setTask(_ cancellable: AnyCancellable?) {
+                self.task = cancellable
             }
-            let test = Test()
-            let sub = SingleValueSubject<Void>()
-
-            await test.setTask(
-                DeferredTask {
-                    await test.start()
-                    await test.task?.cancel()
-                }
-                .handleEvents(receiveCancel: {
-                    try? sub.send()
-                })
-                .map {
-                    await test.end()
-                }
-                .materialize()
-                .subscribe())
-
-            try await sub.execute()
-
-            let started = await test.started
-            let ended = await test.ended
-
-            #expect(started)
-            #expect(!ended)
         }
+        let test = Test()
+        // The body cancels itself through the stored handle, so it must not start before the handle is stored.
+        let taskStored = SingleValueSubject<Void>()
+        let sub = SingleValueSubject<Void>()
+
+        await test.setTask(
+            DeferredTask {
+                try await taskStored.execute()
+                await test.start()
+                await test.task?.cancel()
+            }
+            .handleEvents(receiveCancel: {
+                try? sub.send()
+            })
+            .map {
+                await test.end()
+            }
+            .materialize()
+            .subscribe())
+
+        try taskStored.send()
+        try await sub.execute()
+
+        let started = await test.started
+        let ended = await test.ended
+
+        #expect(started)
+        #expect(!ended)
     }
 }

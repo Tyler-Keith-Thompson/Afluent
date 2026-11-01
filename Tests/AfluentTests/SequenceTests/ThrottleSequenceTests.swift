@@ -453,12 +453,24 @@ struct ThrottleSequenceTests {
             }
 
             // At every element, assert correct elements
-            let elements = await test.elements
             let expectedOutputForStep = expectedOutput.prefix(i + 1)
             let expectedElements = expectedOutputForStep.compactMap { Int(String($0)) }
             let expectedMinimumDuration = max(expectedElements.count - 1, 0) * 10
             let expectError = expectedOutputForStep.contains("e")
             let expectFinish = expectedOutputForStep.contains("|")
+
+            // `megaYield` alone doesn't guarantee the consumer has caught up: the throttle's chain of awaits can
+            // need more scheduling rounds than it provides, especially under CPU load. If the consumer falls
+            // behind, later upstream events overwrite values it hasn't consumed yet and the test fails spuriously.
+            // So wait (bounded, in real time) for the expected state before asserting. If it never arrives, the
+            // timeout is swallowed and the expectations below report the mismatch as before.
+            try? await wait(
+                until: await test.elements == expectedElements
+                    && errorThrown.load(ordering: .sequentiallyConsistent) == expectError
+                    && finished.load(ordering: .sequentiallyConsistent) == expectFinish,
+                timeout: .seconds(2))
+
+            let elements = await test.elements
             lazy var failureDebugMessage: Comment = """
                 function: \(function)
                 test case: \(testCase)

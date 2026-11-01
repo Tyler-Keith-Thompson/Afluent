@@ -6,6 +6,7 @@
 //
 
 import Afluent
+import AfluentTesting
 import Clocks
 import ConcurrencyExtras
 import Foundation
@@ -123,7 +124,7 @@ struct ShareTests {
     }
 
     @Test func sharedTask_cancelsUpstreamWhenCancelled() async throws {
-        let clock = TestClock()
+        let clock = TrackedTestClock()
         let startedSleeping = SingleValueSubject<Void>()
 
         let t = DeferredTask {
@@ -141,7 +142,11 @@ struct ShareTests {
         async let _r3 = Result { try await t.execute() }
 
         try await startedSleeping.execute()
+        // Cancel while the upstream is actually sleeping. Cancellation has to end the sleep by itself; the advance
+        // only stops the test hanging if it doesn't, so the inner expectation fails instead.
+        try await wait(until: clock.sleepingCount == 1, timeout: .seconds(2))
         t.cancel()
+        try? await wait(until: clock.sleepingCount == 0, timeout: .seconds(2))
         await clock.advance(by: .milliseconds(11))
 
         let r1 = await _r1
@@ -160,7 +165,7 @@ struct ShareTests {
     }
 
     @Test func sharedTask_cancelsUpstreamWhenCancelled_whenErased() async throws {
-        let clock = TestClock()
+        let clock = TrackedTestClock()
         let startedSleeping = SingleValueSubject<Void>()
 
         let t = DeferredTask {
@@ -179,7 +184,11 @@ struct ShareTests {
         async let _r3 = Result { try await t.execute() }
 
         try await startedSleeping.execute()
+        // Cancel while the upstream is actually sleeping. Cancellation has to end the sleep by itself; the advance
+        // only stops the test hanging if it doesn't, so the inner expectation fails instead.
+        try await wait(until: clock.sleepingCount == 1, timeout: .seconds(2))
         t.cancel()
+        try? await wait(until: clock.sleepingCount == 0, timeout: .seconds(2))
         await clock.advance(by: .milliseconds(11))
 
         let r1 = await _r1

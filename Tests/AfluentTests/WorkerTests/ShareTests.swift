@@ -15,29 +15,29 @@ import Testing
 struct ShareTests {
     @Test func unsharedTaskExecutesRepeatedly() async throws {
         try await confirmation(expectedCount: 4) { exp in
-            try await withMainSerialExecutor {
-                actor Test {
-                    var arr = [String]()
-                    func append(_ str: String) {
-                        arr.append(str)
-                    }
+            actor Test {
+                var arr = [String]()
+                func append(_ str: String) {
+                    arr.append(str)
                 }
-
-                let test = Test()
-
-                let t = DeferredTask {
-                    await test.append("called")
-                    exp()
-                }
-
-                t.run()
-                t.run()
-                t.run()
-                try await t.execute()
-
-                let copy = await test.arr
-                #expect(copy == ["called", "called", "called", "called"])
             }
+
+            let test = Test()
+
+            let t = DeferredTask {
+                await test.append("called")
+                exp()
+            }
+
+            t.run()
+            t.run()
+            t.run()
+            try await t.execute()
+            // The three `run()` calls are fire-and-forget, so they may still be in flight.
+            try await wait(until: await test.arr.count == 4, timeout: .seconds(2))
+
+            let copy = await test.arr
+            #expect(copy == ["called", "called", "called", "called"])
         }
     }
 

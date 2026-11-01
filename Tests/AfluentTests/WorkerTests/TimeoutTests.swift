@@ -6,6 +6,7 @@
 //
 
 import Afluent
+import AfluentTesting
 import Clocks
 import ConcurrencyExtras
 import Foundation
@@ -14,7 +15,7 @@ import Testing
 struct TimeoutTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func taskDoesNotTimeOutIfItCompletesInTime() async throws {
-        let clock = TestClock()
+        let clock = TrackedTestClock()
         let val = try await DeferredTask { "test" }
             .timeout(.milliseconds(10), clock: clock)
             .execute()
@@ -24,7 +25,7 @@ struct TimeoutTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func taskTimesOutIfItTakesTooLong() async throws {
-        let clock = TestClock()
+        let clock = TrackedTestClock()
 
         let task = Task {
             try await DeferredTask { "test" }
@@ -33,7 +34,8 @@ struct TimeoutTests {
                 .execute()
         }
 
-        await clock.advance(by: .milliseconds(11))
+        // Both the delay's and the timeout's sleeps must be registered before time moves.
+        try await clock.advance(by: .milliseconds(11), whenSleeping: 2)
 
         let res = await task.result
         #expect { try res.get() } throws: { error in
@@ -43,7 +45,7 @@ struct TimeoutTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func taskTimesOutIfItTakesTooLong_withSingleValueSubject() async throws {
-        let clock = TestClock()
+        let clock = TrackedTestClock()
 
         let sub = SingleValueSubject<Void>()
 
@@ -53,7 +55,7 @@ struct TimeoutTests {
                 .execute()
         }
 
-        await clock.advance(by: .milliseconds(11))
+        try await clock.advance(by: .milliseconds(11), whenSleeping: 1)
 
         let res = await task.result
         #expect { try res.get() } throws: { error in
@@ -63,7 +65,7 @@ struct TimeoutTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func taskTimesOutIfItTakesTooLong_AndCanCatchTimeoutError() async throws {
-        let clock = TestClock()
+        let clock = TrackedTestClock()
 
         let task = Task {
             try await DeferredTask { "test" }
@@ -75,7 +77,8 @@ struct TimeoutTests {
                 .execute()
         }
 
-        await clock.advance(by: .milliseconds(11))
+        // Both the delay's and the timeout's sleeps must be registered before time moves.
+        try await clock.advance(by: .milliseconds(11), whenSleeping: 2)
 
         let val = try await task.value
 
@@ -84,7 +87,7 @@ struct TimeoutTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func taskTimesOutIfItTakesTooLong_WithCustomError() async throws {
-        let clock = TestClock()
+        let clock = TrackedTestClock()
 
         enum Err: Error {
             case e1
@@ -97,7 +100,8 @@ struct TimeoutTests {
                 .execute()
         }
 
-        await clock.advance(by: .milliseconds(11))
+        // Both the delay's and the timeout's sleeps must be registered before time moves.
+        try await clock.advance(by: .milliseconds(11), whenSleeping: 2)
 
         let res = await task.result
 

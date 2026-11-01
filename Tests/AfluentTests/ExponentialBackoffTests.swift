@@ -6,6 +6,7 @@
 //
 
 import Afluent
+import AfluentTesting
 import Clocks
 import Foundation
 import Testing
@@ -22,7 +23,7 @@ struct ExponentialbackoffTests {
 
         let test = Test()
         let (stream, continuation) = AsyncStream<Void>.makeStream()
-        let clock = TestClock()
+        let clock = TrackedTestClock()
 
         var iterator = stream.makeAsyncIterator()
         DeferredTask {
@@ -43,19 +44,21 @@ struct ExponentialbackoffTests {
         }
         .run()
 
-        #expect(await test.arr.count == 0)
-        await clock.advance(by: .seconds(2))
+        // Each attempt yields once, so `iterator.next()` returns when that attempt has run. Time only moves
+        // once the backoff sleep is registered.
+        await iterator.next()
+        #expect(await test.arr.count == 1)
+        try await clock.advance(by: .seconds(2), whenSleeping: 1)
         await iterator.next()
         #expect(await test.arr.count == 2)
-        await clock.advance(by: .seconds(4))
+        try await clock.advance(by: .seconds(4), whenSleeping: 1)
         await iterator.next()
         #expect(await test.arr.count == 3)
-        await clock.advance(by: .seconds(4))
+        try await clock.advance(by: .seconds(4), whenSleeping: 1)
         #expect(await test.arr.count == 3)
         await clock.advance(by: .seconds(4))
         await iterator.next()
         #expect(await test.arr.count == 4)
-        await iterator.next()
         await clock.advance(by: .seconds(16))
         #expect(await iterator.next() == nil)
     }
@@ -71,7 +74,7 @@ struct ExponentialbackoffTests {
 
         let test = Test()
         let (stream, continuation) = AsyncStream<Void>.makeStream()
-        let clock = TestClock()
+        let clock = TrackedTestClock()
 
         var iterator = stream.makeAsyncIterator()
         DeferredTask {
@@ -86,14 +89,15 @@ struct ExponentialbackoffTests {
         )
         .run()
 
-        #expect(await test.arr.count == 0)
-        await clock.advance(by: .seconds(1))
+        await iterator.next()
+        #expect(await test.arr.count == 1)
+        try await clock.advance(by: .seconds(1), whenSleeping: 1)
         await iterator.next()
         #expect(await test.arr.count == 2)
-        await clock.advance(by: .seconds(1))
+        try await clock.advance(by: .seconds(1), whenSleeping: 1)
         await iterator.next()
         #expect(await test.arr.count == 3)
-        await clock.advance(by: .seconds(1))
+        try await clock.advance(by: .seconds(1), whenSleeping: 1)
         await iterator.next()
         #expect(await test.arr.count == 4)
     }

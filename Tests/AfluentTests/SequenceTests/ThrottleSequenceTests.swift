@@ -267,7 +267,8 @@ struct ThrottleSequenceTests {
             let test = ElementContainer<Int>()
             let errorThrown = ManagedAtomic<Bool>(false)
             let finished = ManagedAtomic<Bool>(false)
-            let throttledStream = stream.throttle(
+            let upstream = UpstreamProgress()
+            let throttledStream = upstream.observe(stream).throttle(
                 for: .milliseconds(10), clock: testClock, latest: true)
             let task = Task {
                 do {
@@ -287,7 +288,8 @@ struct ThrottleSequenceTests {
                 continuation: continuation,
                 test: test,
                 errorThrown: errorThrown,
-                finished: finished)
+                finished: finished,
+                upstream: upstream)
             task.cancel()
         }
     }
@@ -388,7 +390,8 @@ struct ThrottleSequenceTests {
             let test = ElementContainer<Int>()
             let errorThrown = ManagedAtomic<Bool>(false)
             let finished = ManagedAtomic<Bool>(false)
-            let throttledStream = stream.throttle(
+            let upstream = UpstreamProgress()
+            let throttledStream = upstream.observe(stream).throttle(
                 for: .milliseconds(10), clock: testClock, latest: false)
             let task = Task {
                 do {
@@ -408,7 +411,8 @@ struct ThrottleSequenceTests {
                 continuation: continuation,
                 test: test,
                 errorThrown: errorThrown,
-                finished: finished)
+                finished: finished,
+                upstream: upstream)
             task.cancel()
         }
     }
@@ -421,6 +425,7 @@ struct ThrottleSequenceTests {
         test: ElementContainer<Int>,
         errorThrown: ManagedAtomic<Bool>,
         finished: ManagedAtomic<Bool>,
+        upstream: UpstreamProgress,
         function: StaticString = #function
     ) async {
         #expect(
@@ -431,8 +436,10 @@ struct ThrottleSequenceTests {
             """)
 
         let advancedDuration = ManagedAtomic<Int>(0)
+        var yieldedValues = 0
+        var upstreamTerminated = false
 
-        for (i, step) in streamInput.enumerated() {
+        steps: for (i, step) in streamInput.enumerated() {
             if step == "-" {
                 await testClock.advance(by: .milliseconds(10))
                 await Task.megaYield()
@@ -444,12 +451,37 @@ struct ThrottleSequenceTests {
             } else if let val = Int(String(step)) {
                 continuation.yield(val)
                 await Task.megaYield()
+                if !upstreamTerminated { yieldedValues += 1 }
             } else if step.lowercased() == "e" {
                 continuation.yield(with: .failure(TestError.upstreamError))
                 await Task.megaYield()
+                upstreamTerminated = true
             } else if step == "|" {
                 continuation.finish()
                 await Task.megaYield()
+                upstreamTerminated = true
+            }
+
+            // The consumer's output doesn't show whether the throttle has taken an input that produces no
+            // output yet (for "123|-", the output stays "1" through "2", "3" and "|"). If the clock moves before
+            // it does, the throttle can emit a staged element instead of the expected one, or instead of
+            // finishing. So wait for the throttle's upstream task to catch up first. It stages each element
+            // before asking for the next, so `yieldedValues + 1` requests means every value is staged. The end
+            // of the upstream is seen as it is delivered, one actor call before the throttle records it.
+            let expectedRequests = yieldedValues + (upstreamTerminated ? 0 : 1)
+            let expectTerminated = upstreamTerminated
+            do {
+                try await wait(
+                    until: upstream.requests.load(ordering: .sequentiallyConsistent)
+                        >= expectedRequests
+                        && upstream.terminated.load(ordering: .sequentiallyConsistent)
+                            == expectTerminated,
+                    timeout: .seconds(2))
+                if upstreamTerminated { await Task.megaYield() }
+            } catch {
+                Issue.record(
+                    "The throttle never took input step \(i) (\(step)) of test case \(testCase).")
+                break steps
             }
 
             // At every element, assert correct elements
@@ -463,12 +495,19 @@ struct ThrottleSequenceTests {
             // need more scheduling rounds than it provides, especially under CPU load. If the consumer falls
             // behind, later upstream events overwrite values it hasn't consumed yet and the test fails spuriously.
             // So wait (bounded, in real time) for the expected state before asserting. If it never arrives, the
-            // timeout is swallowed and the expectations below report the mismatch as before.
-            try? await wait(
-                until: await test.elements == expectedElements
-                    && errorThrown.load(ordering: .sequentiallyConsistent) == expectError
-                    && finished.load(ordering: .sequentiallyConsistent) == expectFinish,
-                timeout: .seconds(2))
+            // expectations below report the mismatch and the rest of the case is skipped, so a regression costs
+            // one timeout rather than one per remaining step.
+            let reachedExpectedState: Bool
+            do {
+                try await wait(
+                    until: await test.elements == expectedElements
+                        && errorThrown.load(ordering: .sequentiallyConsistent) == expectError
+                        && finished.load(ordering: .sequentiallyConsistent) == expectFinish,
+                    timeout: .seconds(2))
+                reachedExpectedState = true
+            } catch {
+                reachedExpectedState = false
+            }
 
             let elements = await test.elements
             lazy var failureDebugMessage: Comment = """
@@ -484,8 +523,29 @@ struct ThrottleSequenceTests {
             #expect(receivedError == expectError, failureDebugMessage)
             let receivedFinish = finished.load(ordering: .sequentiallyConsistent)
             #expect(receivedFinish == expectFinish, failureDebugMessage)
+            guard reachedExpectedState else { break steps }
         }
         continuation.finish()
+    }
+}
+
+/// Counts what the throttle's upstream task has asked for and been given.
+private final class UpstreamProgress: Sendable {
+    let requests = ManagedAtomic<Int>(0)
+    let terminated = ManagedAtomic<Bool>(false)
+
+    func observe<S: AsyncSequence & Sendable>(_ upstream: S) -> AsyncSequences.HandleEvents<S>
+    where S.Element: Sendable {
+        upstream.handleEvents(
+            receiveNext: { [requests] in
+                requests.wrappingIncrement(ordering: .sequentiallyConsistent)
+            },
+            receiveError: { [terminated] _ in
+                terminated.store(true, ordering: .sequentiallyConsistent)
+            },
+            receiveComplete: { [terminated] in
+                terminated.store(true, ordering: .sequentiallyConsistent)
+            })
     }
 }
 

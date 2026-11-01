@@ -495,8 +495,8 @@ struct ThrottleSequenceTests {
             // need more scheduling rounds than it provides, especially under CPU load. If the consumer falls
             // behind, later upstream events overwrite values it hasn't consumed yet and the test fails spuriously.
             // So wait (bounded, in real time) for the expected state before asserting. If it never arrives, the
-            // expectations below report the mismatch and the rest of the case is skipped, so a regression costs
-            // one timeout rather than one per remaining step.
+            // timeout is recorded, the expectations below show the mismatch, and the rest of the case is skipped,
+            // so a regression costs one timeout rather than one per remaining step.
             let reachedExpectedState: Bool
             do {
                 try await wait(
@@ -506,6 +506,9 @@ struct ThrottleSequenceTests {
                     timeout: .seconds(2))
                 reachedExpectedState = true
             } catch {
+                // Record the timeout itself: the state may arrive just after it, so the checks below can pass
+                // even though the rest of the case is about to be skipped.
+                Issue.record("Timed out waiting for step \(i) (\(step)) of test case \(testCase).")
                 reachedExpectedState = false
             }
 

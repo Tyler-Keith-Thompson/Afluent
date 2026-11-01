@@ -179,12 +179,17 @@ where Base: Sendable, Base.Element: Sendable {
 
         var id = 0
         var sides = [Int: Side]()
+        /// The upstream's terminal event, once it has been emitted. A side established afterwards starts with it,
+        /// so an iterator created after the upstream finished (or failed) completes instead of waiting forever.
+        var terminal: Terminal?
 
         init() {}
 
         mutating func establish() -> Int {
             defer { id += 1 }
-            sides[id] = Side()
+            var side = Side()
+            side.terminal = terminal
+            sides[id] = side
             return id
         }
 
@@ -217,7 +222,12 @@ where Base: Sendable, Base.Element: Sendable {
         }
 
         mutating func emit(_ result: Result<Element?, Error>) {
-            for id in sides.keys {
+            switch result {
+                case .success(nil): terminal = .finished
+                case .failure(let error): terminal = .failure(error)
+                case .success: break
+            }
+            for id in Array(sides.keys) {
                 sides[id]?.emit(result)
             }
         }

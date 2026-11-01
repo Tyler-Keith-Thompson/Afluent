@@ -17,6 +17,8 @@
 //
 
 import Afluent
+import AfluentTesting
+import Foundation
 import Testing
 
 @Suite struct ShareSequenceTests {
@@ -245,6 +247,60 @@ import Testing
         #expect(results[0] == elements)
         #expect(results[0] == results[1])
     }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @Test func iteratorCreatedAfterUpstreamFinished_finishesImmediately() async throws {
+        let shared = [1, 2, 3].async.broadcast()
+
+        var first = shared.makeAsyncIterator()
+        var received = [Int]()
+        while let value = await first.next() { received.append(value) }
+        #expect(received == [1, 2, 3])
+
+        // The upstream has finished; a new iterator must finish rather than wait forever.
+        let late = Task {
+            var iterator = shared.makeAsyncIterator()
+            return await iterator.next()
+        }
+        let lateFinished = ManagedFlag()
+        Task {
+            _ = await late.value
+            lateFinished.set()
+        }
+        try? await wait(until: lateFinished.isSet, timeout: .seconds(2))
+        let finishedInTime = lateFinished.isSet
+        // Unblocks the iterator if it is stuck, so a regression fails instead of hanging.
+        late.cancel()
+        #expect(finishedInTime, "An iterator created after the upstream finished never finished")
+        #expect(await late.value == nil)
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @Test func iteratorCreatedAfterUpstreamFailed_throwsTheFailure() async throws {
+        let shared = AsyncThrowingStream<Int, any Error> { continuation in
+            continuation.yield(1)
+            continuation.finish(throwing: Failure())
+        }.broadcast()
+
+        var first = shared.makeAsyncIterator()
+        #expect(try await first.next() == 1)
+        await #expect(throws: Failure.self) { _ = try await first.next() }
+
+        let late = Task {
+            var iterator = shared.makeAsyncIterator()
+            return try await iterator.next()
+        }
+        let lateFinished = ManagedFlag()
+        Task {
+            _ = await late.result
+            lateFinished.set()
+        }
+        try? await wait(until: lateFinished.isSet, timeout: .seconds(2))
+        let finishedInTime = lateFinished.isSet
+        late.cancel()
+        #expect(finishedInTime, "An iterator created after the upstream failed never finished")
+        await #expect(throws: Failure.self) { _ = try await late.value }
+    }
 }
 
 final class ReportingSequence<Element>: Sequence, IteratorProtocol {
@@ -333,5 +389,20 @@ extension RangeReplaceableCollection {
         for try await item in source {
             append(item)
         }
+    }
+}
+
+private final class ManagedFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _isSet = false
+    var isSet: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return _isSet
+    }
+    func set() {
+        lock.lock()
+        defer { lock.unlock() }
+        _isSet = true
     }
 }

@@ -5,7 +5,6 @@
 //  Created by Tyler Thompson on 6/30/24.
 //
 
-import Atomics
 import Foundation
 
 /// A serial task queue that ensures tasks are executed one at a time.
@@ -33,22 +32,22 @@ import Foundation
 /// // To cancel all tasks:
 /// queue.cancelAll()
 /// ```
-public final class SerialTaskQueue: @unchecked Sendable {
-    private var subscribers = Set<AnyCancellable>()
-    private let (stream, deferredTaskContinuation) = AsyncStream<AnyAsynchronousUnitOfWork<Void>>
-        .makeStream()
+public final class SerialTaskQueue: Sendable {
+    private let deferredTaskContinuation: AsyncStream<AnyAsynchronousUnitOfWork<Void>>.Continuation
+    /// The task that runs the queued work one at a time. Cancelling it is how ``cancelAll()`` stops the queue.
+    private let consumer: AnyCancellable
 
     public init() {
-        DeferredTask {
+        let (stream, continuation) = AsyncStream<AnyAsynchronousUnitOfWork<Void>>.makeStream()
+        deferredTaskContinuation = continuation
+        consumer = DeferredTask {
             for await task in stream {
                 try? await task.execute()
             }
         }
         .subscribe()
-        .store(in: &subscribers)
     }
-    
-    
+
     /// Queues a task to be executed serially without waiting for completion (fire-and-forget).
     ///
     /// If no task is currently running, the provided task is executed immediately.
@@ -82,15 +81,25 @@ public final class SerialTaskQueue: @unchecked Sendable {
                 continuation.resume(throwing: CancellationError())
                 return
             }
+            // The job can finish and then be cancelled before its unit of work returns, which would reach
+            // `receiveCancel` after the result was delivered. Only the first resume goes through.
+            let resumed = ManagedCriticalState(false)
+            @Sendable func resume(with result: Result<T, any Error>) {
+                let isFirst = resumed.withCriticalRegion { resumed in
+                    defer { resumed = true }
+                    return !resumed
+                }
+                if isFirst { continuation.resume(with: result) }
+            }
             self.deferredTaskContinuation.yield(
                 DeferredTask {
-                    try continuation.resume(returning: await task())
+                    resume(with: .success(try await task()))
                 }.handleEvents(
                     receiveError: { error in
-                        continuation.resume(throwing: error)
+                        resume(with: .failure(error))
                     },
                     receiveCancel: {
-                        continuation.resume(throwing: CancellationError())
+                        resume(with: .failure(CancellationError()))
                     }
                 )
                 .eraseToAnyUnitOfWork()
@@ -116,6 +125,6 @@ public final class SerialTaskQueue: @unchecked Sendable {
 
     /// Cancels all the ongoing tasks in the queue.
     public func cancelAll() {
-        subscribers.removeAll()
+        consumer.cancel()
     }
 }

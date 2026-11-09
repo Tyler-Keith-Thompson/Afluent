@@ -29,6 +29,8 @@ struct SerialTaskQueueTests {
                         let executing = await test.isExecuting
                         #expect(executing == false)
                         await test.store(true)
+                        // The one sleep in this file: a timer wait is what lets a second job overlap this one when
+                        // the queue doesn't serialize. Without it a broken queue passes this test.
                         try await Task.sleep(nanoseconds: 1)
                         await test.store(false)
                         return i
@@ -112,36 +114,34 @@ struct SerialTaskQueueTests {
         }
     }
 
-    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-    @Test func queueCanCancelOngoingTasks_OnDeinit() async throws {
-        try await withMainSerialExecutor {
-            let sub = SingleValueSubject<Void>()
-            let cancelationSubject = SingleValueSubject<Void>()
-            actor StateHolder {
-                var queue: SerialTaskQueue? = SerialTaskQueue()
-                func deinitQueue() {
-                    queue = nil
-                }
-                func getQueue() throws -> SerialTaskQueue {
-                    try #require(queue)
-                }
+    @Test("Releasing the queue cancels the running job", .timeLimit(.minutes(1)))
+    func queueCanCancelOngoingTasks_OnDeinit() async throws {
+        let (started, startedContinuation) = AsyncStream<Void>.makeStream()
+        // The job yields whether it saw cancellation once its wait ends.
+        let (ended, endedContinuation) = AsyncStream<Bool>.makeStream()
+        // The stream never yields, so only cancelling the job ends its wait.
+        let (neverYields, neverYieldsContinuation) = AsyncStream<Void>.makeStream()
+        var queue: SerialTaskQueue? = SerialTaskQueue()
+        // A synchronous closure picks the fire-and-forget overload, which doesn't keep the queue alive.
+        let enqueueWithoutWaiting = { (queue: SerialTaskQueue) in
+            queue.enqueue {
+                startedContinuation.yield()
+                for await _ in neverYields {}
+                endedContinuation.yield(Task.isCancelled)
             }
-            let stateHolder = StateHolder()
-            let executed = ManagedAtomic(false)
-            async let _: Void = try await stateHolder.getQueue().enqueue {
-                try sub.send()
-                try await cancelationSubject.execute()
-                try Task.checkCancellation()
-                try await Task.sleep(for: .milliseconds(20))
-                executed.store(true, ordering: .sequentiallyConsistent)
-            }
-            await Task.yield()
-            try await sub.execute()
-            await stateHolder.deinitQueue()
-            try cancelationSubject.send()
-            let actual = executed.load(ordering: .sequentiallyConsistent)
-            #expect(actual == false)
         }
+        enqueueWithoutWaiting(try #require(queue))
+        for await _ in started { break }
+
+        queue = nil
+
+        var sawCancellation: Bool?
+        for await value in ended {
+            sawCancellation = value
+            break
+        }
+        #expect(sawCancellation == true)
+        neverYieldsContinuation.finish()
     }
 
     @Test func fireAndForgetEnqueueExecutesTasksSerially() async throws {
@@ -222,16 +222,21 @@ struct SerialTaskQueueTests {
             }
         }
 
+        final class Capture: Sendable {}
         let ranAfterCancel = LockIsolated(false)
+        weak var released: Capture?
         // A synchronous closure picks the fire-and-forget overload over the awaiting one.
-        let enqueueWithoutWaiting = { queue.enqueue { ranAfterCancel.setValue(true) } }
-        enqueueWithoutWaiting()
-        // Not running can only be checked within a bound; yielding gives a live consumer every
-        // chance to pick the job up.
-        let yields = 1_000
-        for _ in 0..<yields {
-            await Task.yield()
+        func enqueueWithoutWaiting() {
+            let capture = Capture()
+            released = capture
+            queue.enqueue {
+                _ = capture
+                ranAfterCancel.setValue(true)
+            }
         }
+        enqueueWithoutWaiting()
+        // A cancelled queue drops the job inside enqueue, so it can never run once its captures are gone.
+        #expect(released == nil)
         #expect(ranAfterCancel.value == false)
     }
 
@@ -266,31 +271,35 @@ struct SerialTaskQueueTests {
         #expect(returned.count == expected)
     }
 
-    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @available(macOS 26.0, iOS 26.0, watchOS 26.0, tvOS 26.0, visionOS 26.0, *)
     @Test(
         "A job still waiting to start at cancelAll() throws CancellationError to its awaiter",
         .timeLimit(.minutes(1)))
     func pendingJobThrowsCancellationErrorAtCancelAll() async throws {
-        await withMainSerialExecutor {
-            let queue = SerialTaskQueue()
-            let (started, startedContinuation) = AsyncStream<Void>.makeStream()
-            let running = Task {
-                try await queue.enqueue {
-                    startedContinuation.yield()
-                    try await Task.sleep(for: .seconds(3600))
-                }
+        let queue = SerialTaskQueue()
+        let (started, startedContinuation) = AsyncStream<Void>.makeStream()
+        // The stream never yields, so only cancelling the running job ends its wait.
+        let (neverYields, neverYieldsContinuation) = AsyncStream<Void>.makeStream()
+        let running = Task {
+            try await queue.enqueue {
+                startedContinuation.yield()
+                for await _ in neverYields {}
+                try Task.checkCancellation()
             }
-            for await _ in started { break }
-            let pending = Task { try await queue.enqueue { 1 } }
-            await Task.megaYield()
-
-            queue.cancelAll()
-
-            let pendingResult = await pending.result
-            #expect(throws: CancellationError.self) { try pendingResult.get() }
-            let runningResult = await running.result
-            #expect(throws: CancellationError.self) { try runningResult.get() }
         }
+        for await _ in started { break }
+        // Runs synchronously until the job is queued and its awaiter suspends, so it is pending at cancelAll().
+        let pending = Task.immediate { try await queue.enqueue { 1 } }
+
+        queue.cancelAll()
+
+        let pendingResult = await pending.result
+        func getPendingResult() throws -> Int { try pendingResult.get() }
+        #expect(throws: CancellationError.self, performing: getPendingResult)
+        let runningResult = await running.result
+        func getRunningResult() throws { try runningResult.get() }
+        #expect(throws: CancellationError.self, performing: getRunningResult)
+        neverYieldsContinuation.finish()
     }
 
     @Test("A job queued after cancelAll() throws CancellationError without running", .timeLimit(.minutes(1)))
@@ -306,34 +315,36 @@ struct SerialTaskQueueTests {
         #expect(actual == false)
     }
 
-    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @available(macOS 26.0, iOS 26.0, watchOS 26.0, tvOS 26.0, visionOS 26.0, *)
     @Test(
         "Every job waiting at cancelAll() throws CancellationError to its awaiter",
         .timeLimit(.minutes(1)))
     func everyPendingJobThrowsCancellationErrorAtCancelAll() async throws {
-        await withMainSerialExecutor {
-            let queue = SerialTaskQueue()
-            let (started, startedContinuation) = AsyncStream<Void>.makeStream()
-            let running = Task {
-                try await queue.enqueue {
-                    startedContinuation.yield()
-                    try await Task.sleep(for: .seconds(3600))
-                }
+        let queue = SerialTaskQueue()
+        let (started, startedContinuation) = AsyncStream<Void>.makeStream()
+        // The stream never yields, so only cancelling the running job ends its wait.
+        let (neverYields, neverYieldsContinuation) = AsyncStream<Void>.makeStream()
+        let running = Task {
+            try await queue.enqueue {
+                startedContinuation.yield()
+                for await _ in neverYields {}
+                try Task.checkCancellation()
             }
-            for await _ in started { break }
-            let waiting = 8
-            let pending = (0..<waiting).map { value in Task { try await queue.enqueue { value } } }
-            await Task.megaYield()
-
-            queue.cancelAll()
-
-            var cancelled = 0
-            for job in pending {
-                if case .failure(let error) = await job.result, error is CancellationError { cancelled += 1 }
-            }
-            #expect(cancelled == waiting)
-            _ = await running.result
         }
+        for await _ in started { break }
+        let waiting = 8
+        // Each runs synchronously until its job is queued, so all of them are pending at cancelAll().
+        let pending = (0..<waiting).map { value in Task.immediate { try await queue.enqueue { value } } }
+
+        queue.cancelAll()
+
+        var cancelled = 0
+        for job in pending {
+            if case .failure(let error) = await job.result, error is CancellationError { cancelled += 1 }
+        }
+        #expect(cancelled == waiting)
+        _ = await running.result
+        neverYieldsContinuation.finish()
     }
 
     @Test(

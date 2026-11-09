@@ -43,14 +43,18 @@ struct FlatMapSequenceTests {
         let clock = TestClock()
         let cancellableTask = Task {
             try await AsyncThrowingStream { continuation in
-                DeferredTask { continuation }
-                    .delay(for: .milliseconds(1), clock: clock)
-                    .map {
-                        continuation.yield(seq1)
-                        $0.yield(seq2)
-                        $0.finish()
-                    }
-                    .run()
+                let producer = Task {
+                    try await DeferredTask { continuation }
+                        .delay(for: .milliseconds(1), clock: clock)
+                        .map {
+                            continuation.yield(seq1)
+                            $0.yield(seq2)
+                            $0.finish()
+                        }
+                        .execute()
+                }
+                // The clock never advances, so stop the producer when the stream ends rather than leave it asleep.
+                continuation.onTermination = { _ in producer.cancel() }
             }
             .flatMap(maxSubscriptions: .unlimited) { $0 }
             .first()

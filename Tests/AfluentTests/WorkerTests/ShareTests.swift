@@ -25,8 +25,9 @@ struct ShareTests {
             let test = Test()
 
             let t = DeferredTask {
-                await test.append("called")
+                // Confirm before appending, so four entries means four confirmations.
                 exp()
+                await test.append("called")
             }
 
             t.run()

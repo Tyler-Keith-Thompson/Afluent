@@ -60,12 +60,23 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
                     continuation.resume(throwing: CancellationError())
                     return
                 }
-                // One critical region either finds the result or stores the continuation, so a `send` between
-                // the fast path and here is never missed. The continuation is resumed after the lock is released.
+                // One critical region either finds the result or adds the continuation to the waiters, so a
+                // `send` between the fast path and here is never missed. The continuation is resumed after the
+                // lock is released.
                 let sent: Result<Success, any Error>? = self._lock.protect {
-                    if let sent = self.sentResult { return sent }
-                    self.subjectState = .hasContinuation(continuation)
-                    return nil
+                    switch self.subjectState {
+                        case .sentValue(let value): return .success(value)
+                        case .sentError(let error): return .failure(error)
+                        case .noValue:
+                            self.subjectState = .waiting([continuation])
+                            return nil
+                        case .waiting(var continuations):
+                            // Released first, so the array is uniquely referenced and appends in place.
+                            self.subjectState = .noValue
+                            continuations.append(continuation)
+                            self.subjectState = .waiting(continuations)
+                            return nil
+                    }
                 }
                 if let sent { continuation.resume(with: sent) }
             }
@@ -77,7 +88,7 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
         switch subjectState {
             case .sentValue(let success): return .success(success)
             case .sentError(let error): return .failure(error)
-            case .noValue, .hasContinuation: return nil
+            case .noValue, .waiting: return nil
         }
     }
 
@@ -89,63 +100,58 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
 
     /// Sends a value to the subject.
     ///
-    /// Completes the subject with the provided value. If the subject is already completed, this method throws a `SubjectError.alreadyCompleted`.
+    /// Completes the subject with the provided value, and every pending `execute()` returns it. If the subject is
+    /// already completed, this method throws a `SubjectError.alreadyCompleted`.
     ///
     /// - Parameter value: The success value to send.
     /// - Throws: `SubjectError.alreadyCompleted` if the subject is already completed.
+    /// - Complexity: O(*n*), where *n* is the number of pending `execute()` calls.
     public func send(_ value: Success) throws {
-        try _lock.protect {
-            switch self.subjectState {
-                case .noValue: self.subjectState = .sentValue(value)
-                case .hasContinuation(let continuation):
-                    self.subjectState = .sentValue(value)
-                    continuation.resume(returning: value)
-                default:
-                    if self.state.isCancelled == false {
-                        throw SubjectError.alreadyCompleted
-                    }
-            }
+        if case .waiting(let waiters) = try complete(.sentValue(value)) {
+            for waiter in waiters { waiter.resume(returning: value) }
         }
     }
 
     /// Sends a value to the subject.
     ///
-    /// Completes the subject with the provided value. If the subject is already completed, this method throws a `SubjectError.alreadyCompleted`.
+    /// Completes the subject, and every pending `execute()` returns. If the subject is already completed, this method
+    /// throws a `SubjectError.alreadyCompleted`.
     ///
     /// - Throws: `SubjectError.alreadyCompleted` if the subject is already completed.
+    /// - Complexity: O(*n*), where *n* is the number of pending `execute()` calls.
     public func send() throws where Success == Void {
-        try _lock.protect {
-            switch self.subjectState {
-                case .noValue: self.subjectState = .sentValue(())
-                case .hasContinuation(let continuation):
-                    self.subjectState = .sentValue(())
-                    continuation.resume(returning: ())
-                default:
-                    if self.state.isCancelled == false {
-                        throw SubjectError.alreadyCompleted
-                    }
-            }
+        if case .waiting(let waiters) = try complete(.sentValue(())) {
+            for waiter in waiters { waiter.resume(returning: ()) }
         }
     }
 
     /// Sends an error to the subject.
     ///
-    /// Completes the subject with the provided error. If the subject is already completed, this method throws a `SubjectError.alreadyCompleted`.
+    /// Completes the subject with the provided error, and every pending `execute()` throws it. If the subject is
+    /// already completed, this method throws a `SubjectError.alreadyCompleted`.
     ///
     /// - Parameter error: The error to send.
     /// - Throws: `SubjectError.alreadyCompleted` if the subject is already completed.
+    /// - Complexity: O(*n*), where *n* is the number of pending `execute()` calls.
     public func send(error: Error) throws {
+        if case .waiting(let waiters) = try complete(.sentError(error)) {
+            for waiter in waiters { waiter.resume(throwing: error) }
+        }
+    }
+
+    /// Records the completed state under the lock and returns the state it replaced, so the caller resumes any
+    /// waiters after the lock is released.
+    private func complete(_ completed: State) throws -> State {
         try _lock.protect {
-            switch self.subjectState {
-                case .noValue: self.subjectState = .sentError(error)
-                case .hasContinuation(let continuation):
-                    self.subjectState = .sentError(error)
-                    continuation.resume(throwing: error)
-                default:
+            let previous = self.subjectState
+            switch previous {
+                case .noValue, .waiting: self.subjectState = completed
+                case .sentValue, .sentError:
                     if self.state.isCancelled == false {
                         throw SubjectError.alreadyCompleted
                     }
             }
+            return previous
         }
     }
 }
@@ -153,8 +159,8 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
 extension SingleValueSubject {
     private enum State {
         case noValue
+        case waiting([UnsafeContinuation<Success, any Error>])
         case sentValue(Success)
-        case sentError(Error)
-        case hasContinuation(UnsafeContinuation<Success, Error>)
+        case sentError(any Error)
     }
 }

@@ -123,8 +123,7 @@ A feature is done when it has all of these. Copy what its sibling features in th
 have.
 
 1. **Code and docs.** The implementation, with doc comments per "Docs" below. A new module gets a
-   row in `scripts/modules.py`, then `just modules`, and the same module in every
-   `Package@swift-*.swift` ("Afluent" below).
+   row in `scripts/modules.py`, then `just modules`.
 2. **Tests** in `Tests/<Module>Tests`:
    - hand-worked cases;
    - edge cases: empty input, one element, the boundaries of every range;

@@ -287,4 +287,99 @@ struct SingleValueSubjectTests {
         #expect(before == false)
         #expect(after == true)
     }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(
+        "Every execute() pending before send(_:) returns the value", .timeLimit(.minutes(1)))
+    func everyPendingExecuteReturnsTheSentValue() async throws {
+        try await withMainSerialExecutor {
+            let waiterCount = 8
+            let expected = 42
+            let subject = SingleValueSubject<Int>()
+            let waiters = (0..<waiterCount).map { _ in Task { try await subject.execute() } }
+            await Task.megaYield()
+
+            try subject.send(expected)
+
+            var received = [Int]()
+            for waiter in waiters { received.append(try await waiter.value) }
+            let everyWaiterGotTheValue = Array(repeating: expected, count: waiterCount)
+            #expect(received == everyWaiterGotTheValue)
+        }
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(
+        "Every execute() pending before send(error:) throws the error", .timeLimit(.minutes(1)))
+    func everyPendingExecuteThrowsTheSentError() async throws {
+        struct Sent: Error {}
+        try await withMainSerialExecutor {
+            let waiterCount = 8
+            let subject = SingleValueSubject<Int>()
+            let waiters = (0..<waiterCount).map { _ in Task { try await subject.execute() } }
+            await Task.megaYield()
+
+            try subject.send(error: Sent())
+
+            var threwTheSentError = [Bool]()
+            for waiter in waiters {
+                let result = await waiter.result
+                guard case .failure(let error) = result else {
+                    threwTheSentError.append(false)
+                    continue
+                }
+                threwTheSentError.append(error is Sent)
+            }
+            let everyWaiterThrew = Array(repeating: true, count: waiterCount)
+            #expect(threwTheSentError == everyWaiterThrew)
+        }
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(
+        "Every execute() pending before send() on a Void subject returns", .timeLimit(.minutes(1)))
+    func everyPendingExecuteReturnsWhenVoidIsSent() async throws {
+        try await withMainSerialExecutor {
+            let waiterCount = 8
+            let subject = SingleValueSubject<Void>()
+            let waiters = (0..<waiterCount).map { _ in Task { try await subject.execute() } }
+            await Task.megaYield()
+
+            try subject.send()
+
+            var returned = 0
+            for waiter in waiters {
+                try await waiter.value
+                returned += 1
+            }
+            #expect(returned == waiterCount)
+        }
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(
+        "Cancelling the subject makes every pending execute() throw CancellationError",
+        .timeLimit(.minutes(1)))
+    func cancelEndsEveryPendingExecute() async {
+        await withMainSerialExecutor {
+            let waiterCount = 8
+            let subject = SingleValueSubject<Int>()
+            let waiters = (0..<waiterCount).map { _ in Task { try await subject.execute() } }
+            await Task.megaYield()
+
+            subject.cancel()
+
+            var threwCancellation = [Bool]()
+            for waiter in waiters {
+                let result = await waiter.result
+                guard case .failure(let error) = result else {
+                    threwCancellation.append(false)
+                    continue
+                }
+                threwCancellation.append(error is CancellationError)
+            }
+            let everyWaiterThrew = Array(repeating: true, count: waiterCount)
+            #expect(threwCancellation == everyWaiterThrew)
+        }
+    }
 }

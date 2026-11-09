@@ -65,24 +65,22 @@ struct EraseToAnyAsynchronousUnitOfWorkTests {
                 functionCalls.append(#function)
                 return try await upstream.execute(priority: priority)
             }
-            #if swift(>=6)
-                @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-                public func run(
-                    executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?
-                ) {
-                    functionCalls.append(#function)
-                    return upstream.run(executorPreference: taskExecutor, priority: priority)
-                }
-                @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-                @discardableResult
-                public func execute(
-                    executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?
-                ) async throws -> Success {
-                    functionCalls.append(#function)
-                    return try await upstream.execute(
-                        executorPreference: taskExecutor, priority: priority)
-                }
-            #endif
+            @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+            public func run(
+                executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?
+            ) {
+                functionCalls.append(#function)
+                return upstream.run(executorPreference: taskExecutor, priority: priority)
+            }
+            @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+            @discardableResult
+            public func execute(
+                executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?
+            ) async throws -> Success {
+                functionCalls.append(#function)
+                return try await upstream.execute(
+                    executorPreference: taskExecutor, priority: priority)
+            }
             @Sendable
             public func _operation() async throws -> AsynchronousOperation<Success> {
                 functionCalls.append(#function)
@@ -113,17 +111,15 @@ struct EraseToAnyAsynchronousUnitOfWorkTests {
         #expect(worker.functionCalls == ["execute(priority:)"])
         worker.functionCalls.removeAll()
 
-        #if swift(>=6)
-            if #available(macOS 15.0, *) {
-                erased.run(executorPreference: nil, priority: nil)
-                #expect(worker.functionCalls == ["run(executorPreference:priority:)"])
-                worker.functionCalls.removeAll()
+        if #available(macOS 15.0, *) {
+            erased.run(executorPreference: nil, priority: nil)
+            #expect(worker.functionCalls == ["run(executorPreference:priority:)"])
+            worker.functionCalls.removeAll()
 
-                try await erased.execute(executorPreference: nil, priority: nil)
-                #expect(worker.functionCalls == ["execute(executorPreference:priority:)"])
-                worker.functionCalls.removeAll()
-            }
-        #endif
+            try await erased.execute(executorPreference: nil, priority: nil)
+            #expect(worker.functionCalls == ["execute(executorPreference:priority:)"])
+            worker.functionCalls.removeAll()
+        }
 
         _ = try await erased._operation()
         #expect(worker.functionCalls == ["_operation()"])

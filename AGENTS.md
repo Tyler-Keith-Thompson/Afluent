@@ -4,8 +4,7 @@ Afluent adds reactive operators to async/await: `DeferredTask` and the `Asynchro
 operators for one value, `AsyncSequence` operators, subjects and caches for many, with Combine's
 names so code moves from Combine with little change; `AfluentTesting` helps test code built on
 it. It is a published library for app and package developers on every Apple platform and Linux.
-Development is on Swift 6.3; the published package also builds on Swift 5.9 and later ("Afluent"
-below). Bazel is the development build; SwiftPM is the published package. `README.md` is the user-facing
+Development and the published package are on Swift 6.4 and later. Bazel is the development build; SwiftPM is the published package. `README.md` is the user-facing
 overview.
 
 This file came from a project template. Sections marked *default* describe how the owner likes
@@ -90,16 +89,8 @@ Every shell command gets a timeout. macOS has no `timeout`; use
 
 ## Afluent
 
-- **Older toolchains.** `Package.swift` is generated and needs Swift 6.3. `Package@swift-6.0.swift`,
-  `Package@swift-5.10.swift` and `Package@swift-5.9.swift` are kept by hand for older toolchains
-  (SwiftPM reads the newest one no newer than the toolchain): a module, dependency or platform
-  added to `scripts/modules.py` goes in each of them too, with `exclude: ["BUILD.bazel"]`. Code
-  must still compile on Swift 5.9: check with
-  `docker run --rm -v "$PWD":/src:ro swift:5.9 bash -c 'cp -r /src /w && cd /w && rm -rf .build && swift build'`
-  (and `swift:5.10`, `swift:6.0`) after language-level changes.
 - **CI is Bazel**, cached by BuildBuddy, with one SwiftPM test job (CI.yml). Compatibility.yml
-  adds SwiftPM builds on 5.9, 5.10 and 6.0, which only SwiftPM can check, and `bazel test
-  //Platforms` on macOS: Afluent built for each Apple platform at its minimum version
+  adds `bazel test //Platforms` on macOS: Afluent built for each Apple platform at its minimum version
   (`Platforms/BUILD.bazel`, `just platforms`; keep it in step with `PLATFORMS`). Trunk's merge
   queue waits for every job (`.trunk/trunk.yaml`); a job renamed in a workflow is renamed there.
 - **OHHTTPStubs** is Objective-C and Apple-only (`APPLE_ONLY_PACKAGES`): tests that use it sit
@@ -133,8 +124,7 @@ A feature is done when it has all of these. Copy what its sibling features in th
 have.
 
 1. **Code and docs.** The implementation, with doc comments per "Docs" below. A new module gets a
-   row in `scripts/modules.py`, then `just modules`, and the same module in every
-   `Package@swift-*.swift` ("Afluent" below).
+   row in `scripts/modules.py`, then `just modules`.
 2. **Tests** in `Tests/<Module>Tests`:
    - hand-worked cases;
    - edge cases: empty input, one element, the boundaries of every range;

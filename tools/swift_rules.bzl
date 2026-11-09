@@ -33,7 +33,7 @@ _FIRST_PARTY_FEATURES = [
     "swift.emit_swiftsourceinfo",
 ]
 
-# Package.swift uses tools version 6.3, so SwiftPM compiles in the Swift 6 language mode.
+# Package.swift uses tools version 6.4, so SwiftPM compiles in the Swift 6 language mode.
 # rules_swift defaults to Swift 5, under which concurrency checking differs, so first-party
 # targets are pinned to match the published package.
 _FIRST_PARTY_COPTS = ["-swift-version", "6"]

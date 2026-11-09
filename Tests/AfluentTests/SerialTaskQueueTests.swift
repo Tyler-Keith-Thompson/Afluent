@@ -86,9 +86,7 @@ struct SerialTaskQueueTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     @Test(
-        .disabled(
-            if: SwiftVersion.isSwift6,
-            "There's some kind of Xcode 16 bug where this crashes intermittently"))
+        .disabled("There's some kind of Xcode 16 bug where this crashes intermittently"))
     func queueCanCancelOngoingTasks() async throws {
         try await withMainSerialExecutor {
             let sub = SingleValueSubject<Void>()
@@ -108,39 +106,37 @@ struct SerialTaskQueueTests {
         }
     }
 
-    #if swift(>=6.0)
-        @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-        @Test func queueCanCancelOngoingTasks_OnDeinit() async throws {
-            try await withMainSerialExecutor {
-                let sub = SingleValueSubject<Void>()
-                let cancelationSubject = SingleValueSubject<Void>()
-                actor StateHolder {
-                    var queue: SerialTaskQueue? = SerialTaskQueue()
-                    func deinitQueue() {
-                        queue = nil
-                    }
-                    func getQueue() throws -> SerialTaskQueue {
-                        try #require(queue)
-                    }
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @Test func queueCanCancelOngoingTasks_OnDeinit() async throws {
+        try await withMainSerialExecutor {
+            let sub = SingleValueSubject<Void>()
+            let cancelationSubject = SingleValueSubject<Void>()
+            actor StateHolder {
+                var queue: SerialTaskQueue? = SerialTaskQueue()
+                func deinitQueue() {
+                    queue = nil
                 }
-                let stateHolder = StateHolder()
-                let executed = ManagedAtomic(false)
-                async let _: Void = try await stateHolder.getQueue().enqueue {
-                    try sub.send()
-                    try await cancelationSubject.execute()
-                    try Task.checkCancellation()
-                    try await Task.sleep(for: .milliseconds(20))
-                    executed.store(true, ordering: .sequentiallyConsistent)
+                func getQueue() throws -> SerialTaskQueue {
+                    try #require(queue)
                 }
-                await Task.yield()
-                try await sub.execute()
-                await stateHolder.deinitQueue()
-                try cancelationSubject.send()
-                let actual = executed.load(ordering: .sequentiallyConsistent)
-                #expect(actual == false)
             }
+            let stateHolder = StateHolder()
+            let executed = ManagedAtomic(false)
+            async let _: Void = try await stateHolder.getQueue().enqueue {
+                try sub.send()
+                try await cancelationSubject.execute()
+                try Task.checkCancellation()
+                try await Task.sleep(for: .milliseconds(20))
+                executed.store(true, ordering: .sequentiallyConsistent)
+            }
+            await Task.yield()
+            try await sub.execute()
+            await stateHolder.deinitQueue()
+            try cancelationSubject.send()
+            let actual = executed.load(ordering: .sequentiallyConsistent)
+            #expect(actual == false)
         }
-    #endif
+    }
 
     @Test func fireAndForgetEnqueueExecutesTasksSerially() async throws {
         let queue = SerialTaskQueue()
@@ -201,14 +197,35 @@ struct SerialTaskQueueTests {
         }
         #expect(result == expected)
     }
-}
 
-enum SwiftVersion {
-    static var isSwift6: Bool {
-        #if swift(>=6.0)
-            return true
-        #else
-            return false
-        #endif
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @Test(
+        "cancelAll from several tasks at once returns, and work enqueued afterwards does not run",
+        .timeLimit(.minutes(1)))
+    func concurrentCancelAllStopsTheQueue() async throws {
+        let queue = SerialTaskQueue()
+        // A job that finishes shows the consumer is running before it is cancelled.
+        let warmUp = 1
+        let warmedUp = try await queue.enqueue { warmUp }
+        #expect(warmedUp == warmUp)
+
+        let cancellers = 16
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<cancellers {
+                group.addTask { queue.cancelAll() }
+            }
+        }
+
+        let ranAfterCancel = LockIsolated(false)
+        // A synchronous closure picks the fire-and-forget overload over the awaiting one.
+        let enqueueWithoutWaiting = { queue.enqueue { ranAfterCancel.setValue(true) } }
+        enqueueWithoutWaiting()
+        // Not running can only be checked within a bound; yielding gives a live consumer every
+        // chance to pick the job up.
+        let yields = 1_000
+        for _ in 0..<yields {
+            await Task.yield()
+        }
+        #expect(ranAfterCancel.value == false)
     }
 }

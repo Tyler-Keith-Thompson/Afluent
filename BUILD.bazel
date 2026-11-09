@@ -84,6 +84,9 @@ docc_site(
     tags = ["manual"],
 )
 
+# The root manifest, which each benchmark's measurement stages (Benchmarks/BUILD.bazel).
+exports_files(["Package.swift"])
+
 # Package.swift must name the same targets with the same dependencies as the Bazel graph, so a
 # commit cannot carry regenerated BUILD.bazel files without the manifest (see tools/swiftpm.bzl).
 # Every library under Sources/ and every test library under Tests/, derived from the layout.

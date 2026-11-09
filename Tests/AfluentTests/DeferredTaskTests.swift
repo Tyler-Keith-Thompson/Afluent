@@ -16,6 +16,7 @@ struct AfluentTests {
             await test.fire()
         }
 
+        // No event shows that something didn't happen, so this waits: an eager task would have fired by now.
         try await Task.sleep(for: .milliseconds(1))
         let fired = await test.fired
 

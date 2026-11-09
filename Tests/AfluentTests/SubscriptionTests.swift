@@ -412,8 +412,6 @@ struct SubscriptionTests {
 
             try await completedChannel.execute()
 
-            try await Task.sleep(for: .milliseconds(9))
-
             let started = await test.started
             let ended = await test.ended
             let output = await test.output
@@ -461,8 +459,6 @@ struct SubscriptionTests {
             noop(subscription)
 
             try await completedChannel.execute()
-
-            try await Task.sleep(for: .milliseconds(10))
 
             let started = await test.started
             let ended = await test.ended
@@ -563,8 +559,6 @@ struct SubscriptionTests {
         // The failure completes the subscription by itself; cancelling afterwards must not change that.
         try await completedChannel.execute()
         subscription.cancel()
-
-        try await Task.sleep(for: .milliseconds(9))
 
         let started = await test.started
         let ended = await test.ended

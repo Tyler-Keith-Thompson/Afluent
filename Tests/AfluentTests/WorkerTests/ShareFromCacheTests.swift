@@ -300,4 +300,52 @@ struct ShareFromCacheTests {
         let result = await execution.result
         #expect(throws: CancellationError.self) { try result.get() }
     }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(
+        "Releasing the cache cancels its work after the cache's lock is released",
+        .timeLimit(.minutes(1)))
+    func releasingTheCacheCancelsOutsideItsLock() async throws {
+        // A unit of work whose cancel runs its cancellation handler inline, on the thread releasing the cache.
+        final class Work: AsynchronousUnitOfWork {
+            let state = TaskState<Void>()
+            let body: @Sendable () async throws -> Void
+            init(_ body: @escaping @Sendable () async throws -> Void) { self.body = body }
+            func _operation() async throws -> AsynchronousOperation<Void> {
+                AsynchronousOperation(operation: body)
+            }
+        }
+        let (started, startedContinuation) = AsyncStream<Void>.makeStream()
+        let lockWasFree = LockIsolated<Bool?>(nil)
+        var cache: AUOWCache? = AUOWCache()
+        let cacheLock = try #require(cache).lock
+        @Sendable func recordWhetherTheCacheLockIsFree() {
+            // Another thread takes the lock, so a lock the releasing thread still holds shows up as a timeout
+            // rather than as recursive re-entry.
+            let acquired = DispatchSemaphore(value: 0)
+            Thread {
+                cacheLock.lock()
+                cacheLock.unlock()
+                acquired.signal()
+            }.start()
+            lockWasFree.setValue(acquired.wait(timeout: .now() + .seconds(10)) == .success)
+        }
+        let work = Work {
+            let (pending, keepOpen) = AsyncStream<Void>.makeStream()
+            await withTaskCancellationHandler {
+                startedContinuation.yield()
+                for await _ in pending {}
+            } onCancel: {
+                recordWhetherTheCacheLockIsFree()
+                keepOpen.finish()
+            }
+        }
+        _ = try #require(cache).create(unitOfWork: work, keyedBy: 0)
+        work.run()
+        for await _ in started { break }
+
+        cache = nil
+
+        #expect(lockWasFree.value == true)
+    }
 }

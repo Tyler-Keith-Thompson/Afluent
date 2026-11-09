@@ -343,6 +343,37 @@ import Testing
         let received = try await receiving.value
         #expect(received == [1])
     }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(
+        "Cancelling the last consumer of a shared sequence cancels the upstream iteration",
+        .timeLimit(.minutes(1)))
+    func cancellingTheLastConsumerCancelsTheUpstream() async throws {
+        let (started, startedContinuation) = AsyncStream<Void>.makeStream()
+        let (upstreamCancelled, upstreamCancelledContinuation) = AsyncStream<Void>.makeStream()
+        let (pending, keepOpen) = AsyncStream<Int>.makeStream()
+        keepOpen.onTermination = { termination in
+            if case .cancelled = termination { upstreamCancelledContinuation.yield() }
+        }
+        let upstream = pending.handleEvents(receiveMakeIterator: { startedContinuation.yield() })
+
+        // Only the consumer's iterator holds the shared iteration, so cancelling it is the last cancel.
+        let consumer = Task {
+            for try await _ in upstream.share() {}
+        }
+        for await _ in started { break }
+
+        consumer.cancel()
+        _ = await consumer.result
+
+        var cancelled = false
+        for await _ in upstreamCancelled {
+            cancelled = true
+            break
+        }
+        keepOpen.finish()
+        #expect(cancelled)
+    }
 }
 
 final class ReportingSequence<Element>: Sequence, IteratorProtocol {

@@ -48,6 +48,10 @@ extension AsyncSequences {
             }
         }
 
+        /// The upstream iterator where `next(isolation:)` exists, so it advances in this
+        /// actor's isolation without a lock.
+        private var iterator: Upstream.AsyncIterator?
+        /// The upstream, and on older OS versions its iterator behind a lock.
         private let state: State
         private let strategy: Strategy
 
@@ -70,10 +74,32 @@ extension AsyncSequences {
             return next
         }
 
+        private func advance() async throws -> Upstream.Element? {
+            #if swift(>=6)
+                if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                    var current = iterator ?? state.upstream.makeAsyncIterator()
+                    let element = try await current.next(isolation: self)
+                    iterator = current
+                    return element
+                }
+            #endif
+            return try await advanceAndSet(iterator: state.iterator)
+        }
+
+        private func restart() {
+            #if swift(>=6)
+                if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                    iterator = state.upstream.makeAsyncIterator()
+                    return
+                }
+            #endif
+            state.iterator = state.upstream.makeAsyncIterator()
+        }
+
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                return try await advanceAndSet(iterator: state.iterator)
+                return try await advance()
             } catch {
                 try error.throwIf(CancellationError.self)
 
@@ -83,7 +109,7 @@ extension AsyncSequences {
                         for try await _ in try await state.transform($0) {}
                     })
                 {
-                    state.iterator = state.upstream.makeAsyncIterator()
+                    restart()
                     return try await next()
                 } else {
                     throw error
@@ -137,6 +163,10 @@ extension AsyncSequences {
             }
         }
 
+        /// The upstream iterator where `next(isolation:)` exists, so it advances in this
+        /// actor's isolation without a lock.
+        private var iterator: Upstream.AsyncIterator?
+        /// The upstream, and on older OS versions its iterator behind a lock.
         private let state: State
         private let strategy: Strategy
 
@@ -160,10 +190,32 @@ extension AsyncSequences {
             return next
         }
 
+        private func advance() async throws -> Upstream.Element? {
+            #if swift(>=6)
+                if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                    var current = iterator ?? state.upstream.makeAsyncIterator()
+                    let element = try await current.next(isolation: self)
+                    iterator = current
+                    return element
+                }
+            #endif
+            return try await advanceAndSet(iterator: state.iterator)
+        }
+
+        private func restart() {
+            #if swift(>=6)
+                if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                    iterator = state.upstream.makeAsyncIterator()
+                    return
+                }
+            #endif
+            state.iterator = state.upstream.makeAsyncIterator()
+        }
+
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                return try await advanceAndSet(iterator: state.iterator)
+                return try await advance()
             } catch {
                 try error.throwIf(CancellationError.self)
                     .throwIf(not: state.error)
@@ -175,7 +227,7 @@ extension AsyncSequences {
                         {}
                     })
                 {
-                    state.iterator = state.upstream.makeAsyncIterator()
+                    restart()
                     return try await next()
                 } else {
                     throw error
@@ -229,6 +281,10 @@ extension AsyncSequences {
             }
         }
 
+        /// The upstream iterator where `next(isolation:)` exists, so it advances in this
+        /// actor's isolation without a lock.
+        private var iterator: Upstream.AsyncIterator?
+        /// The upstream, and on older OS versions its iterator behind a lock.
         private let state: State
         private let strategy: Strategy
 
@@ -252,10 +308,32 @@ extension AsyncSequences {
             return next
         }
 
+        private func advance() async throws -> Upstream.Element? {
+            #if swift(>=6)
+                if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                    var current = iterator ?? state.upstream.makeAsyncIterator()
+                    let element = try await current.next(isolation: self)
+                    iterator = current
+                    return element
+                }
+            #endif
+            return try await advanceAndSet(iterator: state.iterator)
+        }
+
+        private func restart() {
+            #if swift(>=6)
+                if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                    iterator = state.upstream.makeAsyncIterator()
+                    return
+                }
+            #endif
+            state.iterator = state.upstream.makeAsyncIterator()
+        }
+
         public func next() async throws -> Upstream.Element? {
             do {
                 try Task.checkCancellation()
-                return try await advanceAndSet(iterator: state.iterator)
+                return try await advance()
             } catch {
                 try error.throwIf(CancellationError.self)
                     .throwIf(not: state.error)
@@ -267,7 +345,7 @@ extension AsyncSequences {
                         {}
                     })
                 {
-                    state.iterator = state.upstream.makeAsyncIterator()
+                    restart()
                     return try await next()
                 } else {
                     throw error

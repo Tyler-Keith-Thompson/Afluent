@@ -95,10 +95,13 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
     ///
     /// This ensures no hanging work remains in memory if the cache is released.
     deinit {
-        lock.lock()
-        defer { lock.unlock() }
-        cache.values.forEach { $0.cancel() }
-        cache.removeAll()
+        // Take the work out under the lock and cancel it after: cancelling runs cancellation handlers inline,
+        // and they may call back into Afluent locks.
+        let cached = lock.protect {
+            defer { cache.removeAll() }
+            return Array(cache.values)
+        }
+        for unitOfWork in cached { unitOfWork.cancel() }
     }
 }
 

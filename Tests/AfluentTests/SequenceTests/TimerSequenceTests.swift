@@ -126,7 +126,12 @@ struct TimerSequenceTests {
                 TimerSequence.publish(every: .milliseconds(10), clock: testClock)
                     .makeAsyncIterator())
 
-            async let nextCalled: Void? = try await wrappedIterator.nextCalled.first()
+            // Wait until the `first()` consumer has subscribed: PassthroughSubject drops values sent before that.
+            let nextCalledSubscribed = SingleValueSubject<Void>()
+            async let nextCalled: Void? = try await wrappedIterator.nextCalled
+                .handleEvents(receiveMakeIterator: { try? nextCalledSubscribed.send() })
+                .first()
+            try await nextCalledSubscribed.execute()
             let task = try await Task.waitUntilExecutionStarted {
                 for _ in 0..<expectedCount {
                     if let output = try await wrappedIterator.next() {

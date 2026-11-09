@@ -49,6 +49,20 @@ def swift_version():
     return subprocess.run(command, capture_output=True, text=True, check=True).stdout.strip()
 
 
+def baseline_path(target, baseline):
+    """Where ordo-one keeps a target's recorded baseline."""
+    return os.path.join(BENCHMARKS_DIR, ".benchmarkBaselines", target, baseline, "results.json")
+
+
+def read_json(path):
+    """The JSON document at `path`, or None when there is no file."""
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+
+
 def write_if_changed(path, text):
     """Leaves an unchanged file alone, so its timestamp doesn't move."""
     try:
@@ -150,7 +164,18 @@ def main(argv):
         print("Measuring without the cache: only --target selects cached results.", file=sys.stderr)
         command = [binary, "baseline", "update", baseline, "--package-path", BENCHMARKS_DIR]
         command += [arg for target in targets for arg in ("--target", target)] + uncached
-        sys.exit(subprocess.run(command).returncode)
+        # The harness writes its own encoding; rewrite what it wrote the way the cached path does,
+        # so a re-record with these options keeps the format and the unmoved entries too.
+        paths = {target: baseline_path(target, baseline) for target in targets or benchmark_targets()}
+        recorded = {} if fresh else {target: read_json(path) for target, path in paths.items()}
+        returncode = subprocess.run(command).returncode
+        if returncode:
+            sys.exit(returncode)
+        for target, path in paths.items():
+            measured = read_json(path)
+            if measured is not None:
+                write_if_changed(path, encode(keep_unmoved(recorded.get(target), measured)) + "\n")
+        sys.exit(0)
 
     known = benchmark_targets()
     unknown = [t for t in targets if t not in known]
@@ -167,11 +192,8 @@ def main(argv):
         # The measurement records the baseline under the name "bazel"; ordo-one reads the name
         # from the file.
         measured["baselineName"] = baseline
-        path = os.path.join(BENCHMARKS_DIR, ".benchmarkBaselines", target, baseline, "results.json")
-        recorded = None
-        if not fresh and os.path.exists(path):
-            with open(path) as f:
-                recorded = json.load(f)
+        path = baseline_path(target, baseline)
+        recorded = None if fresh else read_json(path)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         write_if_changed(path, encode(keep_unmoved(recorded, measured)) + "\n")
         print(f"Wrote baseline '{baseline}' for {target}")
@@ -226,7 +248,11 @@ def moved(recorded, measured):
             return old_values != new_values
         for p, threshold in THRESHOLDS.items():
             base, comparison = percentile(old_values, p), percentile(new_values, p)
-            difference = 100 - 100 * base / comparison if comparison else 0.0
+            if not comparison:
+                # Dropping to zero (a benchmark that stopped allocating) is a move; staying at zero isn't.
+                difference = 100.0 if base else 0.0
+            else:
+                difference = 100 - 100 * base / comparison
             if abs(difference) > threshold:
                 return True
     return False

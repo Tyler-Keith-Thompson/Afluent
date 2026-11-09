@@ -85,8 +85,7 @@ struct SerialTaskQueueTests {
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-    @Test(
-        .disabled("There's some kind of Xcode 16 bug where this crashes intermittently"))
+    @Test(.timeLimit(.minutes(1)))
     func queueCanCancelOngoingTasks() async throws {
         try await withMainSerialExecutor {
             let sub = SingleValueSubject<Void>()
@@ -241,5 +240,92 @@ struct SerialTaskQueueTests {
         let expected = 2
         let second = try await queue.enqueue { expected }
         #expect(second == expected)
+    }
+
+    @Test("enqueue takes a task that captures a non-Sendable value and returns a non-Sendable value")
+    func enqueueTakesANonSendableTask() async throws {
+        final class Counter {
+            var count = 0
+        }
+        let queue = SerialTaskQueue()
+        let captured = Counter()
+        let returned = try await queue.enqueue {
+            captured.count += 1
+            let result = Counter()
+            result.count = captured.count
+            return result
+        }
+        let expected = 1
+        #expect(returned.count == expected)
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @Test(
+        "A job still waiting to start at cancelAll() throws CancellationError to its awaiter",
+        .timeLimit(.minutes(1)))
+    func pendingJobThrowsCancellationErrorAtCancelAll() async throws {
+        await withMainSerialExecutor {
+            let queue = SerialTaskQueue()
+            let (started, startedContinuation) = AsyncStream<Void>.makeStream()
+            let running = Task {
+                try await queue.enqueue {
+                    startedContinuation.yield()
+                    try await Task.sleep(for: .seconds(3600))
+                }
+            }
+            for await _ in started { break }
+            let pending = Task { try await queue.enqueue { 1 } }
+            await Task.megaYield()
+
+            queue.cancelAll()
+
+            let pendingResult = await pending.result
+            #expect(throws: CancellationError.self) { try pendingResult.get() }
+            let runningResult = await running.result
+            #expect(throws: CancellationError.self) { try runningResult.get() }
+        }
+    }
+
+    @Test("A job queued after cancelAll() throws CancellationError without running", .timeLimit(.minutes(1)))
+    func jobQueuedAfterCancelAllThrowsCancellationError() async throws {
+        let queue = SerialTaskQueue()
+        queue.cancelAll()
+        let ran = ManagedAtomic(false)
+        let result = await Task {
+            try await queue.enqueue { ran.store(true, ordering: .sequentiallyConsistent) }
+        }.result
+        #expect(throws: CancellationError.self) { try result.get() }
+        let actual = ran.load(ordering: .sequentiallyConsistent)
+        #expect(actual == false)
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @Test(
+        "Every job waiting at cancelAll() throws CancellationError to its awaiter",
+        .timeLimit(.minutes(1)))
+    func everyPendingJobThrowsCancellationErrorAtCancelAll() async throws {
+        await withMainSerialExecutor {
+            let queue = SerialTaskQueue()
+            let (started, startedContinuation) = AsyncStream<Void>.makeStream()
+            let running = Task {
+                try await queue.enqueue {
+                    startedContinuation.yield()
+                    try await Task.sleep(for: .seconds(3600))
+                }
+            }
+            for await _ in started { break }
+            let waiting = 8
+            let pending = (0..<waiting).map { value in Task { try await queue.enqueue { value } } }
+            await Task.megaYield()
+
+            queue.cancelAll()
+
+            var cancelled = 0
+            for job in pending {
+                if case .failure(let error) = await job.result, error is CancellationError { cancelled += 1 }
+            }
+            #expect(cancelled == waiting)
+            _ = await running.result
+        }
     }
 }

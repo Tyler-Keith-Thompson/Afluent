@@ -25,7 +25,9 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// sequence.
     ///
     /// `broadcast` creates a new shared sequence that manages buffering and
-    /// distribution of elements to all active iterators.
+    /// distribution of elements to all active iterators. A consumer receives the
+    /// elements the shared sequence reads from the upstream after the consumer
+    /// creates its iterator; elements already read and handed out are not replayed.
     ///
     /// The `broadcast` and `share` operators are functionally equivalent and
     /// can be used interchangeably.
@@ -46,17 +48,17 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///     for await value in sharedSequence {
     ///         print("First consumer received \(value)")
     ///     }
-    ///     // prints 4, 3, 5 (or whatever random values were generated)
+    ///     // prints the values the shared sequence reads after this consumer subscribed
     /// }
     ///
     /// async let secondConsumer = Task {
     ///     for await value in sharedSequence {
     ///         print("Second consumer received \(value)")
     ///     }
-    ///     // prints 4, 3, 5 (or whatever random values were generated)
+    ///     // prints the values the shared sequence reads after this consumer subscribed
     /// }
     ///
-    /// // Both consumers receive the same values produced by the upstream AsyncStream.
+    /// // A consumer that subscribes after the shared sequence has handed out values misses them.
     /// await firstConsumer.value
     /// await secondConsumer.value
     /// ```
@@ -71,8 +73,9 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///
     /// This operator is an alias for `broadcast()`, providing identical behavior.
     /// It enables multicasting of values from the upstream sequence to multiple
-    /// concurrent consumers, so each consumer receives the same elements without
-    /// duplicating upstream work.
+    /// concurrent consumers without duplicating upstream work. A consumer receives
+    /// the elements the shared sequence reads from the upstream after the consumer
+    /// creates its iterator; elements already read and handed out are not replayed.
     ///
     /// ## Example
     /// ```swift
@@ -90,17 +93,17 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///     for await value in sharedSequence {
     ///         print("First consumer received \(value)")
     ///     }
-    ///     // prints 4, 3, 5 (or whatever random values were generated)
+    ///     // prints the values the shared sequence reads after this consumer subscribed
     /// }
     ///
     /// async let secondConsumer = Task {
     ///     for await value in sharedSequence {
     ///         print("Second consumer received \(value)")
     ///     }
-    ///     // prints 4, 3, 5 (or whatever random values were generated)
+    ///     // prints the values the shared sequence reads after this consumer subscribed
     /// }
     ///
-    /// // Both consumers receive the same values produced by the upstream AsyncStream.
+    /// // A consumer that subscribes after the shared sequence has handed out values misses them.
     /// await firstConsumer.value
     /// await secondConsumer.value
     /// ```

@@ -22,28 +22,51 @@ import Foundation
 import Testing
 
 @Suite struct ShareSequenceTests {
+    // A consumer receives only what the base produces after it creates its iterator, so every
+    // two-consumer test below has each consumer create its iterator, report it, and wait for `go` to finish.
+    // The base, or the channel's producer, starts once both consumers have reported.
+
     @Test func BasicBroadcasting() async {
+        let (subscribed, subscribedContinuation) = AsyncStream<Void>.makeStream()
+        let (goSignal, open) = AsyncStream<Void>.makeStream()
+        let go = Task { for await _ in goSignal {} }
         let base = [1, 2, 3, 4].async
         let a = base.broadcast()
         let b = a
         let results = await withTaskGroup(of: [Int].self) { group in
-            group.addTask {
-                await Array(a)
+            for shared in [a, b] {
+                group.addTask {
+                    var iterator = shared.makeAsyncIterator()
+                    subscribedContinuation.yield()
+                    await go.value
+                    var received = [Int]()
+                    while let element = await iterator.next() {
+                        received.append(element)
+                    }
+                    return received
+                }
             }
-            group.addTask {
-                await Array(b)
+            var subscribers = 0
+            for await _ in subscribed {
+                subscribers += 1
+                if subscribers == 2 { break }
             }
+            open.finish()
             return await Array(group)
         }
         #expect(results[0] == results[1])
     }
 
     @Test func BasicBroadcastingFromChannel() async {
+        let (subscribed, subscribedContinuation) = AsyncStream<Void>.makeStream()
+        let (goSignal, open) = AsyncStream<Void>.makeStream()
+        let go = Task { for await _ in goSignal {} }
         let (base, continuation) = AsyncStream<Int>.makeStream()
         let a = base.broadcast()
         let b = a
         let results = await withTaskGroup(of: [Int].self) { group in
             group.addTask {
+                await go.value
                 var sent = [Int]()
                 for i in 0..<10 {
                     sent.append(i)
@@ -52,12 +75,24 @@ import Testing
                 continuation.finish()
                 return sent
             }
-            group.addTask {
-                await Array(a)
+            for shared in [a, b] {
+                group.addTask {
+                    var iterator = shared.makeAsyncIterator()
+                    subscribedContinuation.yield()
+                    await go.value
+                    var received = [Int]()
+                    while let element = await iterator.next() {
+                        received.append(element)
+                    }
+                    return received
+                }
             }
-            group.addTask {
-                await Array(b)
+            var subscribers = 0
+            for await _ in subscribed {
+                subscribers += 1
+                if subscribers == 2 { break }
             }
+            open.finish()
             return await Array(group)
         }
         #expect(results[0] == results[1])
@@ -65,6 +100,9 @@ import Testing
 
     @Test func ABaseSequence_BroadcastingToTwoTasks_TheBaseSequenceIsIteratedOnce() async {
         // Given
+        let (subscribed, subscribedContinuation) = AsyncStream<Void>.makeStream()
+        let (goSignal, open) = AsyncStream<Void>.makeStream()
+        let go = Task { for await _ in goSignal {} }
         let elements = (0..<10).map { $0 }
         let base = ReportingAsyncSequence(elements)
 
@@ -73,12 +111,20 @@ import Testing
         // When
         let broadcasted = base.broadcast()
         await withTaskGroup(of: Void.self) { group in
-            group.addTask {
-                for await _ in broadcasted {}
+            for _ in 0..<2 {
+                group.addTask {
+                    var iterator = broadcasted.makeAsyncIterator()
+                    subscribedContinuation.yield()
+                    await go.value
+                    while await iterator.next() != nil {}
+                }
             }
-            group.addTask {
-                for await _ in broadcasted {}
+            var subscribers = 0
+            for await _ in subscribed {
+                subscribers += 1
+                if subscribers == 2 { break }
             }
+            open.finish()
             await group.waitForAll()
         }
 
@@ -91,39 +137,39 @@ import Testing
 
     @Test func ABaseSequence_BroadcastingToTwoTasks_TheyReceiveTheBaseElements() async {
         // Given
+        let (subscribed, subscribedContinuation) = AsyncStream<Void>.makeStream()
+        let (goSignal, open) = AsyncStream<Void>.makeStream()
+        let go = Task { for await _ in goSignal {} }
         let base = (0..<10).map { $0 }
         let expected = (0...4).map { $0 }
 
         // When
         let broadcasted = base.async.map { try throwOn(5, $0) }.broadcast()
         let results = await withTaskGroup(of: [Int].self) { group in
-            group.addTask {
-                var received = [Int]()
-                do {
-                    for try await element in broadcasted {
-                        received.append(element)
+            for _ in 0..<2 {
+                group.addTask {
+                    var iterator = broadcasted.makeAsyncIterator()
+                    subscribedContinuation.yield()
+                    await go.value
+                    var received = [Int]()
+                    do {
+                        while let element = try await iterator.next() {
+                            received.append(element)
+                        }
+                        Issue.record("The broadcast should fail before finish")
+                    } catch {
+                        #expect(error is Failure)
                     }
-                    Issue.record("The broadcast should fail before finish")
-                } catch {
-                    #expect(error is Failure)
+
+                    return received
                 }
-
-                return received
             }
-            group.addTask {
-                var received = [Int]()
-                do {
-                    for try await element in broadcasted {
-                        received.append(element)
-                    }
-                    Issue.record("The broadcast should fail before finish")
-                } catch {
-                    #expect(error is Failure)
-                }
-
-                return received
+            var subscribers = 0
+            for await _ in subscribed {
+                subscribers += 1
+                if subscribers == 2 { break }
             }
-
+            open.finish()
             return await Array(group)
         }
 
@@ -136,17 +182,32 @@ import Testing
         async
     {
         // Given
+        let (subscribed, subscribedContinuation) = AsyncStream<Void>.makeStream()
+        let (goSignal, open) = AsyncStream<Void>.makeStream()
+        let go = Task { for await _ in goSignal {} }
         let base = (0..<10).map { $0 }
 
         // When
         let broadcasted = base.async.broadcast()
         let results = await withTaskGroup(of: [Int].self) { group in
-            group.addTask {
-                await Array(broadcasted)
+            for _ in 0..<2 {
+                group.addTask {
+                    var iterator = broadcasted.makeAsyncIterator()
+                    subscribedContinuation.yield()
+                    await go.value
+                    var received = [Int]()
+                    while let element = await iterator.next() {
+                        received.append(element)
+                    }
+                    return received
+                }
             }
-            group.addTask {
-                await Array(broadcasted)
+            var subscribers = 0
+            for await _ in subscribed {
+                subscribers += 1
+                if subscribers == 2 { break }
             }
+            open.finish()
             return await Array(group)
         }
 
@@ -157,33 +218,40 @@ import Testing
 
     @Test func ABaseSequence_BroadcastingToTwoTasks_TheyReceiveFinishAndPastEndIsNil() async {
         // Given
+        let (subscribed, subscribedContinuation) = AsyncStream<Void>.makeStream()
+        let (goSignal, open) = AsyncStream<Void>.makeStream()
+        let go = Task { for await _ in goSignal {} }
         let base = (0..<10).map { $0 }
 
         // When
         let broadcasted = base.async.broadcast()
         await withTaskGroup(of: Void.self) { group in
-            group.addTask {
-                var iterator = broadcasted.makeAsyncIterator()
-                while await iterator.next() != nil {}
-                let pastEnd = await iterator.next()
+            for _ in 0..<2 {
+                group.addTask {
+                    var iterator = broadcasted.makeAsyncIterator()
+                    subscribedContinuation.yield()
+                    await go.value
+                    while await iterator.next() != nil {}
+                    let pastEnd = await iterator.next()
 
-                // Then
-                #expect(pastEnd == nil)
+                    // Then
+                    #expect(pastEnd == nil)
+                }
             }
-            group.addTask {
-                var iterator = broadcasted.makeAsyncIterator()
-                while await iterator.next() != nil {}
-                let pastEnd = await iterator.next()
-
-                // Then
-                #expect(pastEnd == nil)
+            var subscribers = 0
+            for await _ in subscribed {
+                subscribers += 1
+                if subscribers == 2 { break }
             }
-
+            open.finish()
             await group.waitForAll()
         }
     }
 
     @Test func ABaseSequence_BroadcastingToTwoTasks_TheBufferIsUsed() async {
+        let (subscribed, subscribedContinuation) = AsyncStream<Void>.makeStream()
+        let (goSignal, open) = AsyncStream<Void>.makeStream()
+        let go = Task { for await _ in goSignal {} }
         let task1IsIsFinished = SingleValueSubject<Void>()
 
         // Given
@@ -193,13 +261,21 @@ import Testing
         let broadcasted = base.async.broadcast()
         let results = await withTaskGroup(of: [Int].self) { group in
             group.addTask {
-                let result = await Array(broadcasted)
+                var iterator = broadcasted.makeAsyncIterator()
+                subscribedContinuation.yield()
+                await go.value
+                var result = [Int]()
+                while let element = await iterator.next() {
+                    result.append(element)
+                }
                 try? task1IsIsFinished.send()
                 return result
             }
             group.addTask {
-                var result = [Int]()
                 var iterator = broadcasted.makeAsyncIterator()
+                subscribedContinuation.yield()
+                await go.value
+                var result = [Int]()
                 let firstElement = await iterator.next()
                 result.append(firstElement!)
                 try? await task1IsIsFinished.execute()
@@ -210,6 +286,12 @@ import Testing
 
                 return result
             }
+            var subscribers = 0
+            for await _ in subscribed {
+                subscribers += 1
+                if subscribers == 2 { break }
+            }
+            open.finish()
             return await Array(group)
         }
 
@@ -220,12 +302,16 @@ import Testing
 
     @Test func AChannel_BroadcastingToTwoTasks_TheyReceivedTheChannelElements() async {
         // Given
+        let (subscribed, subscribedContinuation) = AsyncStream<Void>.makeStream()
+        let (goSignal, open) = AsyncStream<Void>.makeStream()
+        let go = Task { for await _ in goSignal {} }
         let elements = (0..<10).map { $0 }
         let (base, continuation) = AsyncStream<Int>.makeStream()
         // When
         let broadcasted = base.broadcast()
         let results = await withTaskGroup(of: [Int].self) { group in
             group.addTask {
+                await go.value
                 var sent = [Int]()
                 for element in elements {
                     sent.append(element)
@@ -234,12 +320,24 @@ import Testing
                 continuation.finish()
                 return sent
             }
-            group.addTask {
-                await Array(broadcasted)
+            for _ in 0..<2 {
+                group.addTask {
+                    var iterator = broadcasted.makeAsyncIterator()
+                    subscribedContinuation.yield()
+                    await go.value
+                    var received = [Int]()
+                    while let element = await iterator.next() {
+                        received.append(element)
+                    }
+                    return received
+                }
             }
-            group.addTask {
-                await Array(broadcasted)
+            var subscribers = 0
+            for await _ in subscribed {
+                subscribers += 1
+                if subscribers == 2 { break }
             }
+            open.finish()
             return await Array(group)
         }
 

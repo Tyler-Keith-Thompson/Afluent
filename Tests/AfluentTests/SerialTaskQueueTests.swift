@@ -201,6 +201,37 @@ struct SerialTaskQueueTests {
         }
         #expect(result == expected)
     }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @Test(
+        "cancelAll from several tasks at once returns, and work enqueued afterwards does not run",
+        .timeLimit(.minutes(1)))
+    func concurrentCancelAllStopsTheQueue() async throws {
+        let queue = SerialTaskQueue()
+        // A job that finishes shows the consumer is running before it is cancelled.
+        let warmUp = 1
+        let warmedUp = try await queue.enqueue { warmUp }
+        #expect(warmedUp == warmUp)
+
+        let cancellers = 16
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<cancellers {
+                group.addTask { queue.cancelAll() }
+            }
+        }
+
+        let ranAfterCancel = LockIsolated(false)
+        // A synchronous closure picks the fire-and-forget overload over the awaiting one.
+        let enqueueWithoutWaiting = { queue.enqueue { ranAfterCancel.setValue(true) } }
+        enqueueWithoutWaiting()
+        // Not running can only be checked within a bound; yielding gives a live consumer every
+        // chance to pick the job up.
+        let yields = 1_000
+        for _ in 0..<yields {
+            await Task.yield()
+        }
+        #expect(ranAfterCancel.value == false)
+    }
 }
 
 enum SwiftVersion {

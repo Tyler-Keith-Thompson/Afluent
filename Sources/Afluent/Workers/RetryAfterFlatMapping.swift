@@ -35,9 +35,11 @@ extension Workers {
                     return try await self.upstream._operation()()
                 } catch {
                     var err = error
-                    while try await strategy.handle(
-                        error: err, beforeRetry: { _ = try await self.transform($0).operation() })
-                    {
+                    while true {
+                        // Checked before the strategy, so an error that isn't retried spends no retry or backoff.
+                        try err.throwIf(CancellationError.self)
+                        guard try await strategy.handle(
+                            error: err, beforeRetry: { _ = try await self.transform($0).operation() }) else { break }
                         do {
                             return try await self.upstream._operation()()
                         } catch {
@@ -79,16 +81,16 @@ extension Workers {
                     return try await self.upstream._operation()()
                 } catch {
                     var err = error
-                    while try await strategy.handle(
-                        error: err,
-                        beforeRetry: { err in
-                            guard let e = err as? Failure, e == self.error else { return }
-                            _ = try await self.transform(e).operation()
-                        })
-                    {
+                    while true {
+                        // Checked before the strategy, so an error that isn't retried spends no retry or backoff.
                         try err.throwIf(CancellationError.self)
                             .throwIf(not: self.error)
-
+                        guard try await strategy.handle(
+                            error: err,
+                            beforeRetry: { err in
+                                guard let e = err as? Failure, e == self.error else { return }
+                                _ = try await self.transform(e).operation()
+                            }) else { break }
                         do {
                             return try await self.upstream._operation()()
                         } catch {
@@ -130,16 +132,16 @@ extension Workers {
                     return try await self.upstream._operation()()
                 } catch {
                     var err = error
-                    while try await strategy.handle(
-                        error: err,
-                        beforeRetry: { err in
-                            guard let e = err as? Failure else { return }
-                            _ = try await self.transform(e).operation()
-                        })
-                    {
+                    while true {
+                        // Checked before the strategy, so an error that isn't retried spends no retry or backoff.
                         try err.throwIf(CancellationError.self)
                             .throwIf(not: self.error)
-
+                        guard try await strategy.handle(
+                            error: err,
+                            beforeRetry: { err in
+                                guard let e = err as? Failure else { return }
+                                _ = try await self.transform(e).operation()
+                            }) else { break }
                         do {
                             return try await self.upstream._operation()()
                         } catch {

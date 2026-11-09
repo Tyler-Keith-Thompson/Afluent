@@ -28,21 +28,18 @@ import Foundation
 ///
 /// - Note: Once completed, any further send or error will throw `SubjectError.alreadyCompleted`.
 /// - Important: This is conceptually similar to a Combine subject, but for async/await. Prefer `SingleValueChannel` for most bridging tasks—use this type when manual, thread-safe completion is required.
-public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork, @unchecked
-    Sendable
-{
+public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork, Sendable {
     /// Errors specific to `SingleValueSubject`.
     public enum SubjectError: Error {
         /// Indicates that the subject has already been completed and cannot accept further values or errors.
         case alreadyCompleted
     }
 
-    private let _lock = NSRecursiveLock()
     public let state = TaskState<Success>()
     var alreadySent: Bool {
-        _lock.protect { sentResult != nil }
+        subjectState.withCriticalRegion { $0.sentResult != nil }
     }
-    private var subjectState = State.noValue
+    private let subjectState = CriticalState(State.noValue)
 
     /// Creates a new `SingleValueSubject`.
     public init() {}
@@ -52,7 +49,7 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
             guard let self else { throw CancellationError() }
 
             // Fast path: the value is already here, so no continuation is needed.
-            let alreadySent: Result<Success, any Error>? = self._lock.protect { self.sentResult }
+            let alreadySent = self.subjectState.withCriticalRegion { $0.sentResult }
             if let alreadySent { return try alreadySent.get() }
 
             return try await withUnsafeThrowingContinuation { [weak self] continuation in
@@ -63,32 +60,23 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
                 // One critical region either finds the result or adds the continuation to the waiters, so a
                 // `send` between the fast path and here is never missed. The continuation is resumed after the
                 // lock is released.
-                let sent: Result<Success, any Error>? = self._lock.protect {
-                    switch self.subjectState {
+                let sent: Result<Success, any Error>? = self.subjectState.withCriticalRegion { subjectState in
+                    switch subjectState {
                         case .sentValue(let value): return .success(value)
                         case .sentError(let error): return .failure(error)
                         case .noValue:
-                            self.subjectState = .waiting([continuation])
+                            subjectState = .waiting([continuation])
                             return nil
                         case .waiting(var continuations):
                             // Released first, so the array is uniquely referenced and appends in place.
-                            self.subjectState = .noValue
+                            subjectState = .noValue
                             continuations.append(continuation)
-                            self.subjectState = .waiting(continuations)
+                            subjectState = .waiting(continuations)
                             return nil
                     }
                 }
                 if let sent { continuation.resume(with: sent) }
             }
-        }
-    }
-
-    /// The value or error the subject completed with, or `nil` if it hasn't completed. Read it inside `_lock`.
-    private var sentResult: Result<Success, any Error>? {
-        switch subjectState {
-            case .sentValue(let success): return .success(success)
-            case .sentError(let error): return .failure(error)
-            case .noValue, .waiting: return nil
         }
     }
 
@@ -142,10 +130,10 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     /// Records the completed state under the lock and returns the state it replaced, so the caller resumes any
     /// waiters after the lock is released.
     private func complete(_ completed: State) throws -> State {
-        try _lock.protect {
-            let previous = self.subjectState
+        try subjectState.withCriticalRegion { subjectState in
+            let previous = subjectState
             switch previous {
-                case .noValue, .waiting: self.subjectState = completed
+                case .noValue, .waiting: subjectState = completed
                 case .sentValue, .sentError:
                     if self.state.isCancelled == false {
                         throw SubjectError.alreadyCompleted
@@ -162,5 +150,14 @@ extension SingleValueSubject {
         case waiting([UnsafeContinuation<Success, any Error>])
         case sentValue(Success)
         case sentError(any Error)
+
+        /// The value or error the subject completed with, or `nil` if it hasn't completed.
+        var sentResult: Result<Success, any Error>? {
+            switch self {
+                case .sentValue(let success): return .success(success)
+                case .sentError(let error): return .failure(error)
+                case .noValue, .waiting: return nil
+            }
+        }
     }
 }

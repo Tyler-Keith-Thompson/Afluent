@@ -1,4 +1,3 @@
-import Atomics
 import Foundation
 
 /// Represents an asynchronous unit of work.
@@ -182,14 +181,17 @@ public actor AsynchronousOperation<Success: Sendable> {
     }
 }
 
-public final class TaskState<Success: Sendable>: @unchecked Sendable {
-    private let lock = NSRecursiveLock()
-    private var tasks = [Task<Success, Error>]()
+public final class TaskState<Success: Sendable>: Sendable {
+    /// The tasks this state created and whether ``cancel()`` has run, in one critical region.
+    private struct State {
+        var tasks = [Task<Success, Error>]()
+        var isCancelled = false
+    }
 
-    private let _isCancelled = ManagedAtomic<Bool>(false)
+    private let state = CriticalState(State())
 
     var isCancelled: Bool {
-        _isCancelled.load(ordering: .sequentiallyConsistent)
+        state.withCriticalRegion { $0.isCancelled }
     }
 
     public init() {}
@@ -232,9 +234,9 @@ public final class TaskState<Success: Sendable>: @unchecked Sendable {
     /// is never missed. The task is cancelled after the lock is released: cancelling runs its cancellation
     /// handlers inline, and they may call back into this state.
     private func track(_ task: Task<Success, Error>) {
-        let alreadyCancelled = lock.protect {
-            guard !isCancelled else { return true }
-            tasks.append(task)
+        let alreadyCancelled = state.withCriticalRegion { state in
+            guard !state.isCancelled else { return true }
+            state.tasks.append(task)
             return false
         }
         if alreadyCancelled { task.cancel() }
@@ -246,11 +248,11 @@ public final class TaskState<Success: Sendable>: @unchecked Sendable {
     /// is released: cancelling runs their cancellation handlers inline, and those handlers call back into
     /// ``cancel()`` and into other Afluent locks.
     func cancel() {
-        let cancelled: [Task<Success, Error>] = lock.protect {
-            guard !isCancelled else { return [] }
-            _isCancelled.store(true, ordering: .sequentiallyConsistent)
-            defer { tasks.removeAll() }
-            return tasks
+        let cancelled: [Task<Success, Error>] = state.withCriticalRegion { state in
+            guard !state.isCancelled else { return [] }
+            state.isCancelled = true
+            defer { state.tasks.removeAll() }
+            return state.tasks
         }
         for task in cancelled { task.cancel() }
     }

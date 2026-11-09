@@ -22,6 +22,7 @@ swift_library(
         "//Sources/AfluentTesting",
         "@swiftpkg_swift_concurrency_extras//:ConcurrencyExtras",
         "@swiftpkg_swift_clocks//:Clocks",
+        "@swiftpkg_swift_atomics//:Atomics",
     ] + select({
         # Apple-only packages (APPLE_ONLY_PACKAGES in scripts/modules.py).
         "@platforms//os:macos": [

@@ -11,8 +11,8 @@ import Synchronization
 /// State that one critical region at a time can read and change.
 ///
 /// It is a `Synchronization.Mutex` wherever the OS has one: macOS 15, iOS 18, tvOS 18, watchOS 11, visionOS 2 and
-/// later, and Linux. Older Apple OSes get an `os_unfair_lock` beside the state in one allocation. The tier is chosen
-/// once, in `init`.
+/// later, and Linux. Older Apple OSes get an `os_unfair_lock` beside the state in a `ManagedBuffer`, which costs one more
+/// allocation when the state is made and none per call. The tier is chosen once, in `init`.
 struct CriticalState<State>: Sendable {
     private var storage: any AnyObject & Sendable
 
@@ -84,7 +84,8 @@ final class MutexStorage<State>: Sendable {
     /// which keeps the lock at a fixed address.
     ///
     /// It is `@unchecked Sendable` because every access to the state goes through ``withLock(_:)``, which holds the
-    /// lock. `ManagedBuffer` opts out of `Sendable`, so the buffer is held rather than subclassed.
+    /// lock. `ManagedBuffer` opts out of `Sendable`, so the buffer is held rather than subclassed: two allocations
+    /// when the state is made, and one pointer hop per call through the cached pointers.
     final class UnfairLockStorage<State>: @unchecked Sendable {
         /// The lock as the header and the state as the one element; `deinit` deinitializes the state.
         private final class Buffer: ManagedBuffer<os_unfair_lock, State> {

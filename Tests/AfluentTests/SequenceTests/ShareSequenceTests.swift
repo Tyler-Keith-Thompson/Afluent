@@ -301,6 +301,48 @@ import Testing
         #expect(finishedInTime, "An iterator created after the upstream failed never finished")
         await #expect(throws: Failure.self) { _ = try await late.value }
     }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(
+        "One consumer of a shared subject cancelling leaves the other consumer receiving values",
+        .timeLimit(.minutes(1)))
+    func cancellingOneConsumerLeavesTheOtherReceiving() async throws {
+        let subject = PassthroughSubject<Int>()
+        let (baseSubscribed, baseSubscribedContinuation) = AsyncStream<Void>.makeStream()
+        let (consumersSubscribed, consumersSubscribedContinuation) = AsyncStream<Void>.makeStream()
+        let shared = subject
+            .handleEvents(receiveMakeIterator: { baseSubscribedContinuation.yield() })
+            .share()
+
+        let cancelled = Task {
+            for try await _ in shared.handleEvents(receiveMakeIterator: {
+                consumersSubscribedContinuation.yield()
+            }) {}
+        }
+        let receiving = Task {
+            var received = [Int]()
+            for try await value in shared.handleEvents(receiveMakeIterator: {
+                consumersSubscribedContinuation.yield()
+            }) {
+                received.append(value)
+            }
+            return received
+        }
+        var subscribed = 0
+        for await _ in consumersSubscribed {
+            subscribed += 1
+            if subscribed == 2 { break }
+        }
+        for await _ in baseSubscribed { break }
+
+        cancelled.cancel()
+        _ = await cancelled.result
+        subject.send(1)
+        subject.send(completion: .finished)
+
+        let received = try await receiving.value
+        #expect(received == [1])
+    }
 }
 
 final class ReportingSequence<Element>: Sequence, IteratorProtocol {

@@ -276,4 +276,28 @@ struct ShareFromCacheTests {
         _ = try r1.get()
         _ = try r2.get()
     }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(
+        "Releasing the cache while its shared work is running cancels the work",
+        .timeLimit(.minutes(1)))
+    func releasingTheCacheCancelsRunningSharedWork() async throws {
+        let (started, startedContinuation) = AsyncStream<Void>.makeStream()
+        var cache: AUOWCache? = AUOWCache()
+        let work = DeferredTask {
+            startedContinuation.yield()
+            let (pending, keepOpen) = AsyncStream<Void>.makeStream()
+            for await _ in pending {}
+            keepOpen.finish()
+            try Task.checkCancellation()
+        }
+        .shareFromCache(try #require(cache), strategy: .cacheUntilCompletionOrCancellation)
+        let execution = Task { try await work.execute() }
+        for await _ in started { break }
+
+        cache = nil
+
+        let result = await execution.result
+        #expect(throws: CancellationError.self) { try result.get() }
+    }
 }

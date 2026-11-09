@@ -275,14 +275,12 @@ where Base: Sendable, Base.Element: Sendable {
             return true
         }
 
-        mutating func cancel() {
-            switch status {
-                case .iterating(let task):
-                    task.cancel()
-                default:
-                    break
-            }
-            status = .terminal
+        /// Ends the iteration and returns the task that was iterating the base, for the caller to cancel once it
+        /// has left the critical region.
+        mutating func cancel() -> Task<Void, Never>? {
+            defer { status = .terminal }
+            guard case .iterating(let task) = status else { return nil }
+            return task
         }
 
         static func start(
@@ -292,7 +290,8 @@ where Base: Sendable, Base.Element: Sendable {
         }
 
         static func cancel(_ iteration: ManagedCriticalState<Iteration>) {
-            iteration.withCriticalRegion { $0.cancel() }
+            // Cancelling runs the base's cancellation handlers inline, so it happens outside the region.
+            iteration.withCriticalRegion { $0.cancel() }?.cancel()
         }
     }
 

@@ -54,7 +54,7 @@ MOCKING = "mockable/Mockable"
 
 # (name, group, description, dependencies)
 MODULES = [
-    ("Afluent", "Library", "Reactive operators over async/await: DeferredTask, AsyncSequence operators, subjects and caches.", ["swift-atomics/Atomics"]),
+    ("Afluent", "Library", "Reactive operators over async/await: DeferredTask, AsyncSequence operators, subjects and caches.", []),
     ("AfluentTesting", "Testing", "Helpers for testing code built on Afluent: waiting until a condition holds or work is scheduled.", ["Afluent"]),
 ]
 
@@ -68,7 +68,7 @@ EXECUTABLES = [
 # holds tests. (name, dependencies)
 TEST_TARGETS = [
     ("AfluentTests", ["Afluent", "AfluentTesting", "ohhttpstubs/OHHTTPStubs", "ohhttpstubs/OHHTTPStubsSwift",
-                      "swift-concurrency-extras/ConcurrencyExtras", "swift-clocks/Clocks"]),
+                      "swift-concurrency-extras/ConcurrencyExtras", "swift-clocks/Clocks", "swift-atomics/Atomics"]),
 ]
 
 # The modules the test-support target depends on (fixtures are usually written against the

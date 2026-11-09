@@ -5,7 +5,6 @@
 //  Created by Tyler Thompson on 11/28/23.
 //
 
-import Atomics
 import Foundation
 
 extension AsyncSequences {

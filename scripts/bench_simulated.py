@@ -106,13 +106,19 @@ def prepare_harness(harness_checkout):
                 if name.endswith(".bundle"):
                     shutil.copytree(os.path.join(release, name), os.path.join(snapshot, name))
             lock.close()
-            for stale in ("benchmark-harness",):  # the symlink an earlier version wrote
-                if os.path.islink(os.path.join(STAMP_DIR, stale)):
-                    os.remove(os.path.join(STAMP_DIR, stale))
-            mirror(snapshot, bin_dir)
-    # The binary and its bundles are inputs (Bazel hashes them). The stamp adds what the counts
-    # depend on beyond them: the kind of host and the Swift that builds the harness's tools.
-    write_if_changed(os.path.join(STAMP_DIR, "stamp"), f"{platform.system()} {platform.machine()}\n{swift_version()}\n")
+            # Runs in this checkout take turns copying the harness in. The lock file sits outside
+            # bin/, which mirror() prunes, and outside the files Bazel hashes (tools/benchmarks.bzl:
+            # the binary, its bundles and the stamp).
+            os.makedirs(STAMP_DIR, exist_ok=True)
+            with open(os.path.join(STAMP_DIR, "checkout.lock"), "w") as checkout_lock:
+                fcntl.flock(checkout_lock, fcntl.LOCK_EX)
+                stale = os.path.join(STAMP_DIR, "benchmark-harness")  # the symlink an earlier version wrote
+                if os.path.islink(stale):
+                    os.remove(stale)
+                mirror(snapshot, bin_dir)
+                # The binary and its bundles are inputs (Bazel hashes them). The stamp adds what the
+                # counts depend on beyond them: the host's kind and the Swift that builds the tools.
+                write_if_changed(os.path.join(STAMP_DIR, "stamp"), f"{platform.system()} {platform.machine()}\n{swift_version()}\n")
     return os.path.join(bin_dir, "benchmark-harness")
 
 

@@ -31,7 +31,7 @@ __pycache__/
 Benchmarks/.benchmarkBaselines/*/*
 !Benchmarks/.benchmarkBaselines/*/main/
 !Benchmarks/.benchmarkBaselines/*/simulated/
-# The harness binary and toolchain stamp scripts/bench_simulated.py writes for Bazel, per machine.
+# The harness copy, toolchain stamp and lock scripts/bench_simulated.py writes for Bazel, per machine.
 Benchmarks/.harness/
 
 *.swp

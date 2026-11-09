@@ -74,12 +74,20 @@ let benchmarks: @Sendable () -> Void = {
 
     // MARK: PassthroughSubject: every value sent reaches each subscriber.
 
+    // Every subscriber must see every value, so a change that drops values fails instead of
+    // looking faster.
+    let expectedTotal = count * (count - 1) / 2
+    @Sendable func check(_ total: Int) throws {
+        guard total == expectedTotal else { throw MissingValues(total: total, expected: expectedTotal) }
+        blackHole(total)
+    }
+
     for subscribers in [1, 8] {
         // The hand-written form: one AsyncStream per subscriber, each value yielded to every one.
         Benchmark("PassthroughSubject \(subscribers): BASELINE AsyncStream per subscriber") { benchmark in
             for _ in benchmark.scaledIterations {
                 let streams = (0 ..< subscribers).map { _ in AsyncStream<Int>.makeStream() }
-                await withTaskGroup(of: Int.self) { group in
+                try await withThrowingTaskGroup(of: Int.self) { group in
                     for (stream, _) in streams {
                         group.addTask { await sum(of: stream) }
                     }
@@ -91,8 +99,8 @@ let benchmarks: @Sendable () -> Void = {
                     for (_, continuation) in streams {
                         continuation.finish()
                     }
-                    for await total in group {
-                        blackHole(total)
+                    for try await total in group {
+                        try check(total)
                     }
                 }
             }
@@ -102,13 +110,13 @@ let benchmarks: @Sendable () -> Void = {
             for _ in benchmark.scaledIterations {
                 let subject = PassthroughSubject<Int>()
                 let (subscribed, subscribedContinuation) = AsyncStream<Void>.makeStream()
-                await withTaskGroup(of: Int.self) { group in
+                try await withThrowingTaskGroup(of: Int.self) { group in
                     for _ in 0 ..< subscribers {
                         group.addTask {
                             let values = subject.handleEvents(receiveMakeIterator: {
                                 subscribedContinuation.yield()
                             })
-                            return (try? await sum(of: values)) ?? 0
+                            return try await sum(of: values)
                         }
                     }
                     // A subject drops values sent before a subscriber exists, so wait for all of them.
@@ -121,8 +129,8 @@ let benchmarks: @Sendable () -> Void = {
                         subject.send(value)
                     }
                     subject.send(completion: .finished)
-                    for await total in group {
-                        blackHole(total)
+                    for try await total in group {
+                        try check(total)
                     }
                 }
             }
@@ -248,4 +256,9 @@ func sum<S: AsyncSequence>(of values: S) async rethrows -> Int where S.Element =
         total &+= value
     }
     return total
+}
+
+struct MissingValues: Error {
+    let total: Int
+    let expected: Int
 }

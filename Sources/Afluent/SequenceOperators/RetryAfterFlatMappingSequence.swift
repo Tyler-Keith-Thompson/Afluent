@@ -15,26 +15,25 @@ extension AsyncSequences {
     where Upstream.Element == Downstream.Element, Upstream.Element: Sendable {
         public typealias Element = Upstream.Element
         private final class State: @unchecked Sendable {
-            let lock = NSRecursiveLock()
+            /// Guards the iterator on older OS versions; nothing re-enters it.
+            let region = CriticalState(())
             let upstream: Upstream
             let transform: @Sendable (Error) async throws -> Downstream
 
             private var _iterator: Upstream.AsyncIterator?
             var iterator: Upstream.AsyncIterator {
                 get {
-                    lock.lock()
-                    defer { lock.unlock() }
-                    guard let _iterator else {
-                        let val = upstream.makeAsyncIterator()
-                        self._iterator = val
-                        return val
+                    // Set inside the region and read after it, on this thread.
+                    nonisolated(unsafe) var iterator: Upstream.AsyncIterator?
+                    region.withCriticalRegion { _ in
+                        if _iterator == nil { _iterator = upstream.makeAsyncIterator() }
+                        iterator = _iterator
                     }
-                    return _iterator
+                    return iterator.unsafelyUnwrapped
                 }
                 set {
-                    lock.lock()
-                    defer { lock.unlock() }
-                    _iterator = newValue
+                    nonisolated(unsafe) let newValue = newValue
+                    region.withCriticalRegion { _ in _iterator = newValue }
                 }
             }
 
@@ -124,7 +123,8 @@ extension AsyncSequences {
     where Upstream.Element == Downstream.Element, Upstream.Element: Sendable {
         public typealias Element = Upstream.Element
         private final class State: @unchecked Sendable {
-            let lock = NSRecursiveLock()
+            /// Guards the iterator on older OS versions; nothing re-enters it.
+            let region = CriticalState(())
             let upstream: Upstream
             let error: Failure
             let transform: @Sendable (Failure) async throws -> Downstream
@@ -132,19 +132,17 @@ extension AsyncSequences {
             private var _iterator: Upstream.AsyncIterator?
             var iterator: Upstream.AsyncIterator {
                 get {
-                    lock.lock()
-                    defer { lock.unlock() }
-                    guard let _iterator else {
-                        let val = upstream.makeAsyncIterator()
-                        self._iterator = val
-                        return val
+                    // Set inside the region and read after it, on this thread.
+                    nonisolated(unsafe) var iterator: Upstream.AsyncIterator?
+                    region.withCriticalRegion { _ in
+                        if _iterator == nil { _iterator = upstream.makeAsyncIterator() }
+                        iterator = _iterator
                     }
-                    return _iterator
+                    return iterator.unsafelyUnwrapped
                 }
                 set {
-                    lock.lock()
-                    defer { lock.unlock() }
-                    _iterator = newValue
+                    nonisolated(unsafe) let newValue = newValue
+                    region.withCriticalRegion { _ in _iterator = newValue }
                 }
             }
 
@@ -238,7 +236,8 @@ extension AsyncSequences {
     where Upstream.Element == Downstream.Element, Upstream.Element: Sendable {
         public typealias Element = Upstream.Element
         private final class State: @unchecked Sendable {
-            let lock = NSRecursiveLock()
+            /// Guards the iterator on older OS versions; nothing re-enters it.
+            let region = CriticalState(())
             let upstream: Upstream
             let error: Failure.Type
             let transform: @Sendable (Failure) async throws -> Downstream
@@ -246,19 +245,17 @@ extension AsyncSequences {
             private var _iterator: Upstream.AsyncIterator?
             var iterator: Upstream.AsyncIterator {
                 get {
-                    lock.lock()
-                    defer { lock.unlock() }
-                    guard let _iterator else {
-                        let val = upstream.makeAsyncIterator()
-                        self._iterator = val
-                        return val
+                    // Set inside the region and read after it, on this thread.
+                    nonisolated(unsafe) var iterator: Upstream.AsyncIterator?
+                    region.withCriticalRegion { _ in
+                        if _iterator == nil { _iterator = upstream.makeAsyncIterator() }
+                        iterator = _iterator
                     }
-                    return _iterator
+                    return iterator.unsafelyUnwrapped
                 }
                 set {
-                    lock.lock()
-                    defer { lock.unlock() }
-                    _iterator = newValue
+                    nonisolated(unsafe) let newValue = newValue
+                    region.withCriticalRegion { _ in _iterator = newValue }
                 }
             }
 

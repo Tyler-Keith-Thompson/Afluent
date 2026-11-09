@@ -374,6 +374,28 @@ import Testing
         keepOpen.finish()
         #expect(cancelled)
     }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(
+        "A consumer already cancelled when it asks a shared sequence for an element finishes",
+        .timeLimit(.minutes(1)))
+    func consumerCancelledBeforeAskingFinishes() async throws {
+        let (pending, keepOpen) = AsyncStream<Int>.makeStream()
+        let shared = pending.share()
+
+        let consumer = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            var received = [Int]()
+            for try await value in shared {
+                received.append(value)
+            }
+            return received
+        }
+
+        let received = try await consumer.value
+        keepOpen.finish()
+        #expect(received.isEmpty)
+    }
 }
 
 final class ReportingSequence<Element>: Sequence, IteratorProtocol {

@@ -210,6 +210,12 @@ where Base: Sendable, Base.Element: Sendable {
         mutating func next(
             _ id: Int, continuation: UnsafeContinuation<Result<Element?, Error>, Never>
         ) {
+            // A side cancelled before its iterator asked for an element is already gone; it ends rather than
+            // leaving the continuation unresumed.
+            guard sides[id] != nil else {
+                continuation.resume(returning: .success(nil))
+                return
+            }
             sides[id]?.next(continuation)
         }
 

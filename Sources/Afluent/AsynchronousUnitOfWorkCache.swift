@@ -22,9 +22,15 @@ public typealias AnySendableReference = AnyObject & Sendable
 ///     .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "user42")
 /// let _ = try await work.execute()
 /// ```
-public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
-    let lock = NSRecursiveLock()
-    var cache = [Int: any AsynchronousUnitOfWork & AnySendableReference]()
+public final class AsynchronousUnitOfWorkCache: Sendable {
+    // Values leave the region by being returned, never released in it: releasing a unit of work can run a `deinit`
+    // that calls back into Afluent locks.
+    let state = CriticalState([Int: any AsynchronousUnitOfWork & AnySendableReference]())
+
+    /// A snapshot of the cached units of work.
+    var cache: [Int: any AsynchronousUnitOfWork & AnySendableReference] {
+        state.withCriticalRegion { $0 }
+    }
 
     public init() {}
 
@@ -35,10 +41,7 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
     public func retrieve(
         keyedBy key: Int
     ) -> (any AsynchronousUnitOfWork & AnySendableReference)? {
-        lock.lock()
-        let fromCache = cache[key]
-        lock.unlock()
-        return fromCache
+        state.withCriticalRegion { $0[key] }
     }
 
     /// Stores a unit of work in the cache for the given key.
@@ -52,9 +55,8 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
     public func create<A: AsynchronousUnitOfWork & AnySendableReference>(
         unitOfWork: A, keyedBy key: Int
     ) -> A {
-        lock.lock()
-        cache[key] = unitOfWork
-        lock.unlock()
+        // The replaced value, if any, is released once the region returns, outside the lock.
+        _ = state.withCriticalRegion { $0.updateValue(unitOfWork, forKey: key) }
         return unitOfWork
     }
 
@@ -69,15 +71,12 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
     public func retrieveOrCreate<A: AsynchronousUnitOfWork & AnySendableReference>(
         unitOfWork: A, keyedBy key: Int
     ) -> A {
-        lock.lock()
-        if let fromCache: A = cache[key] as? A {
-            lock.unlock()
-            return fromCache
+        // The replaced value, if any, is released once the region returns, outside the lock.
+        let (fromCache, _) = state.withCriticalRegion { cache -> (A?, (any AsynchronousUnitOfWork & AnySendableReference)?) in
+            if let fromCache = cache[key] as? A { return (fromCache, nil) }
+            return (nil, cache.updateValue(unitOfWork, forKey: key))
         }
-
-        cache[key] = unitOfWork
-        lock.unlock()
-        return unitOfWork
+        return fromCache ?? unitOfWork
     }
 
     /// Removes the cached unit of work for the given key, if present.
@@ -86,9 +85,8 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
     ///
     /// - Parameter key: The integer cache key to clear.
     public func clearAsynchronousUnitOfWork(withKey key: Int) {
-        lock.lock()
-        defer { lock.unlock() }
-        cache.removeValue(forKey: key)
+        // The removed value is released once the region returns, outside the lock.
+        _ = state.withCriticalRegion { $0.removeValue(forKey: key) }
     }
 
     /// Cancels all cached units of work and removes them from the cache upon deinitialization.
@@ -97,7 +95,7 @@ public final class AsynchronousUnitOfWorkCache: @unchecked Sendable {
     deinit {
         // Take the work out under the lock and cancel it after: cancelling runs cancellation handlers inline,
         // and they may call back into Afluent locks.
-        let cached = lock.protect {
+        let cached = state.withCriticalRegion { cache in
             defer { cache.removeAll() }
             return Array(cache.values)
         }

@@ -12,9 +12,7 @@ import Foundation
 import Testing
 
 struct DeferredTests {
-    @Test(
-        .disabled("There's some kind of Xcode 16 bug where this crashes intermittently"))
-    func upstreamSequenceDefersExecutionUntilIteration() async throws {
+    @Test func upstreamSequenceDefersExecutionUntilIteration() async throws {
         let started = ManagedAtomic<Bool>(false)
         let sent = Array(0...9)
 

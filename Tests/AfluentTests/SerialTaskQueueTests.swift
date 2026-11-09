@@ -174,6 +174,33 @@ struct SerialTaskQueueTests {
         let executionOrder = await test.getExecutionOrder()
         #expect(executionOrder == [1, 2, 3])
     }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @Test("A queue nothing references any more is deallocated")
+    func unreferencedQueueIsDeallocated() async throws {
+        weak var released: SerialTaskQueue?
+        do {
+            let queue = SerialTaskQueue()
+            released = queue
+            let result = try await queue.enqueue { 1 }
+            #expect(result == 1)
+        }
+        #expect(released == nil)
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @Test(
+        "A job that cancels its queue just before returning still delivers its value once",
+        .timeLimit(.minutes(1)))
+    func jobCancellingItsQueueDeliversItsValueOnce() async throws {
+        let queue = SerialTaskQueue()
+        let expected = 1
+        let result = try await queue.enqueue {
+            queue.cancelAll()
+            return expected
+        }
+        #expect(result == expected)
+    }
 }
 
 enum SwiftVersion {

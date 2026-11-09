@@ -205,8 +205,11 @@ struct ShareFromCacheTests {
         async let d2 = DeferredTask {}
             .delay(for: .milliseconds(5), clock: clock)
             .flatMap {
+                // Look up the cached work before signalling, so the test cannot let d1 finish and clear the
+                // cache while d2 has yet to find it.
+                let work = unitOfWork()
                 d2Resolved.store(true, ordering: .sequentiallyConsistent)
-                return unitOfWork()
+                return work
             }
             .execute()
 

@@ -22,25 +22,27 @@ permissions:
 jobs:
   docs:
     runs-on: ubuntu-26.04-arm
-    # rules_swift's Linux toolchain is whatever swiftc is on the PATH; docc comes from beside it.
-    container: swift:6.3
-    env:
-      # The image has clang but no gcc, which is where rules_cc looks first.
-      CC: clang
+    # Swift with Bazel already in it (ci-image/ in the project template): rules_swift's Linux
+    # toolchain is whatever swiftc is on the PATH, docc comes from beside it, and Bazelisk runs
+    # the Bazel in .bazelversion.
+    container: ghcr.io/tyler-keith-thompson/swift-bazel:6.3-9.3.1
     steps:
       - uses: actions/checkout@v7
-      - name: Install Bazel
-        run: |
-          apt-get update && apt-get install -y --no-install-recommends ca-certificates curl python3
-          # Bazelisk runs the Bazel in .bazelversion.
-          curl -fsSL -o /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.29.0/bazelisk-linux-arm64
-          chmod +x /usr/local/bin/bazel
+      - name: Restore Bazel's downloads
+        # The repository cache: rules, toolchains and packages Bazel fetched, by content hash.
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/bazel-repository
+          key: bazel-repository-${{ runner.arch }}-${{ hashFiles('MODULE.bazel.lock', 'swift/Package.resolved') }}
+          restore-keys: |
+            bazel-repository-${{ runner.arch }}-
       - name: Configure the remote cache
         env:
           BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
         run: |
           # The runner is thrown away, so .bazelrc's local disk cache would only cost copying.
           echo "build --disk_cache=" > user.bazelrc
+          echo "common --repository_cache=$HOME/.cache/bazel-repository" >> user.bazelrc
           if [ -n "$BUILDBUDDY_API_KEY" ]; then
             {
               echo "build --bes_results_url=https://app.buildbuddy.io/invocation/"

@@ -31,12 +31,24 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
+      - name: Restore Bazel and its downloads
+        # The Bazel in .bazelversion, which the runner's Bazelisk downloads, and the repository
+        # cache: rules, toolchains and packages Bazel fetched, by content hash.
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/Library/Caches/bazelisk
+            ~/.cache/bazel-repository
+          key: bazel-macos-${{ runner.arch }}-${{ hashFiles('.bazelversion', 'MODULE.bazel.lock', 'swift/Package.resolved') }}
+          restore-keys: |
+            bazel-macos-${{ runner.arch }}-
       - name: Configure the remote cache
         env:
           BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
         run: |
           # .bazelrc imports user.bazelrc when present. Without the key the build is uncached.
           echo "build --disk_cache=" > user.bazelrc
+          echo "common --repository_cache=$HOME/.cache/bazel-repository" >> user.bazelrc
           if [ -n "$BUILDBUDDY_API_KEY" ]; then
             {
               echo "build --bes_results_url=https://app.buildbuddy.io/invocation/"

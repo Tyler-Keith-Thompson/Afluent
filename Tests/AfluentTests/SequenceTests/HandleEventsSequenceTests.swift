@@ -12,6 +12,32 @@ import Foundation
 import Testing
 
 struct HandleEventsSequenceTests {
+    @Test func handleMakeIterator_RunsAfterUpstreamIteratorIsCreated() {
+        // Only touched synchronously on this test's thread, so no locking is needed.
+        final class Events: @unchecked Sendable {
+            private(set) var log = [String]()
+            func append(_ event: String) { log.append(event) }
+        }
+        struct Upstream: AsyncSequence, Sendable {
+            typealias Element = Int
+            let events: Events
+            struct AsyncIterator: AsyncIteratorProtocol {
+                mutating func next() async throws -> Int? { nil }
+            }
+            func makeAsyncIterator() -> AsyncIterator {
+                events.append("upstream")
+                return AsyncIterator()
+            }
+        }
+
+        let events = Events()
+        _ = Upstream(events: events)
+            .handleEvents(receiveMakeIterator: { events.append("hook") })
+            .makeAsyncIterator()
+
+        #expect(events.log == ["upstream", "hook"])
+    }
+
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func handleMakeIterator() async throws {
         let iteratorMade = ManagedAtomic(false)

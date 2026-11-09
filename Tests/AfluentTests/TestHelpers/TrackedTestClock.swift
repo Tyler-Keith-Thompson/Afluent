@@ -10,8 +10,10 @@ import Foundation
 
 /// A manually advanced test clock that knows exactly how many tasks are sleeping on it.
 ///
-/// It behaves like swift-clocks' `TestClock` (same `Instant` type, same rules for when a sleep returns and when
-/// `advance` wakes it), but keeps its own list of registered sleeps. `TestClock.advance(by:)` only yields a fixed
+/// It behaves like swift-clocks' `TestClock` (same `Instant` type, same rules for when `advance` wakes a sleep),
+/// but keeps its own list of registered sleeps. Like a real clock, a sleep whose deadline has already been reached
+/// returns at once. Otherwise a sleep that registers just after an advance to exactly its deadline would wait for
+/// an advance that never comes. `TestClock.advance(by:)` only yields a fixed
 /// number of times for sleepers to register; under load a sleep can register after the advance, so its deadline
 /// is computed from the advanced time and it never fires (or it returns at once with the wrong time). Use
 /// ``advance(by:whenSleeping:)`` right after starting work that sleeps, so time only moves once every expected
@@ -48,7 +50,7 @@ final class TrackedTestClock: Clock, @unchecked Sendable {
         let id = UUID()
         do {
             let stream: AsyncThrowingStream<Never, Error>? = sync {
-                guard deadline >= _now else { return nil }
+                guard deadline > _now else { return nil }
                 return AsyncThrowingStream { continuation in
                     suspensions.append(
                         Suspension(id: id, deadline: deadline, continuation: continuation))

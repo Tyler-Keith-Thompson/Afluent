@@ -24,10 +24,27 @@ extension Workers {
 
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
-                async let u = try await upstream.operation()
-                async let d = try await downstream.operation()
-                return try (await u, await d)
+                // A task group rather than `async let`, so whichever side fails first ends the zip
+                // and cancels the rest instead of waiting for the sides awaited before it.
+                try await withThrowingTaskGroup(of: Part.self) { group in
+                    group.addTask { .upstream(try await upstream.operation()) }
+                    group.addTask { .downstream(try await downstream.operation()) }
+                    var u: Upstream.Success?
+                    var d: Downstream.Success?
+                    for try await part in group {
+                        switch part {
+                            case .upstream(let value): u = value
+                            case .downstream(let value): d = value
+                        }
+                    }
+                    return (u!, d!)
+                }
             }
+        }
+
+        enum Part: Sendable {
+            case upstream(Upstream.Success)
+            case downstream(Downstream.Success)
         }
     }
 
@@ -50,12 +67,31 @@ extension Workers {
 
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
-                async let u = try await upstream.operation()
-                async let d_0 = try await d0.operation()
-                async let d_1 = try await d1.operation()
-
-                return try (await u, await d_0, await d_1)
+                // A task group rather than `async let`, so whichever side fails first ends the zip
+                // and cancels the rest instead of waiting for the sides awaited before it.
+                try await withThrowingTaskGroup(of: Part.self) { group in
+                    group.addTask { .upstream(try await upstream.operation()) }
+                    group.addTask { .d0(try await d0.operation()) }
+                    group.addTask { .d1(try await d1.operation()) }
+                    var u: Upstream.Success?
+                    var d_0: Downstream0.Success?
+                    var d_1: Downstream1.Success?
+                    for try await part in group {
+                        switch part {
+                            case .upstream(let value): u = value
+                            case .d0(let value): d_0 = value
+                            case .d1(let value): d_1 = value
+                        }
+                    }
+                    return (u!, d_0!, d_1!)
+                }
             }
+        }
+
+        enum Part: Sendable {
+            case upstream(Upstream.Success)
+            case d0(Downstream0.Success)
+            case d1(Downstream1.Success)
         }
     }
 
@@ -82,13 +118,35 @@ extension Workers {
 
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
-                async let u = try await upstream.operation()
-                async let d_0 = try await d0.operation()
-                async let d_1 = try await d1.operation()
-                async let d_2 = try await d2.operation()
-
-                return try (await u, await d_0, await d_1, await d_2)
+                // A task group rather than `async let`, so whichever side fails first ends the zip
+                // and cancels the rest instead of waiting for the sides awaited before it.
+                try await withThrowingTaskGroup(of: Part.self) { group in
+                    group.addTask { .upstream(try await upstream.operation()) }
+                    group.addTask { .d0(try await d0.operation()) }
+                    group.addTask { .d1(try await d1.operation()) }
+                    group.addTask { .d2(try await d2.operation()) }
+                    var u: Upstream.Success?
+                    var d_0: Downstream0.Success?
+                    var d_1: Downstream1.Success?
+                    var d_2: Downstream2.Success?
+                    for try await part in group {
+                        switch part {
+                            case .upstream(let value): u = value
+                            case .d0(let value): d_0 = value
+                            case .d1(let value): d_1 = value
+                            case .d2(let value): d_2 = value
+                        }
+                    }
+                    return (u!, d_0!, d_1!, d_2!)
+                }
             }
+        }
+
+        enum Part: Sendable {
+            case upstream(Upstream.Success)
+            case d0(Downstream0.Success)
+            case d1(Downstream1.Success)
+            case d2(Downstream2.Success)
         }
     }
 }

@@ -17,38 +17,32 @@ import Foundation
 /// let shared = sequence.shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: "myKey")
 /// for await value in shared { print(value) }
 /// ```
-public final class AsyncSequenceCache: @unchecked Sendable {
-    let lock = NSRecursiveLock()
-    var cache = [Int: any AsyncSequence]()
+public final class AsyncSequenceCache: Sendable {
+    // Values leave the region by being returned, never released in it: releasing a sequence can run a `deinit`
+    // that calls back into Afluent locks.
+    private let state = CriticalState([Int: any AsyncSequence & Sendable]())
 
-    /// Creates a new, empty async sequence cache.
+    /// A snapshot of the cached sequences.
+    var cache: [Int: any AsyncSequence & Sendable] {
+        state.withCriticalRegion { $0 }
+    }
+
     public init() {}
 
-    func retrieveOrCreate<A: AsyncSequence>(
+    func retrieveOrCreate<A: AsyncSequence & Sendable>(
         unitOfWork: A, keyedBy key: Int
     ) -> A {
-        lock.lock()
-        if let fromCache: A = cache[key] as? A {
-            lock.unlock()
-            return fromCache
+        // The replaced value, if any, is released once the region returns, outside the lock.
+        let (fromCache, _) = state.withCriticalRegion { cache -> (A?, (any AsyncSequence & Sendable)?) in
+            if let fromCache = cache[key] as? A { return (fromCache, nil) }
+            return (nil, cache.updateValue(unitOfWork, forKey: key))
         }
-
-        cache[key] = unitOfWork
-        lock.unlock()
-        return unitOfWork
+        return fromCache ?? unitOfWork
     }
 
     func clearAsynchronousUnitOfWork(withKey key: Int) {
-        lock.lock()
-        defer { lock.unlock() }
-        cache.removeValue(forKey: key)
-    }
-
-    /// Removes all cached sequences when the cache is deallocated.
-    deinit {
-        lock.lock()
-        defer { lock.unlock() }
-        cache.removeAll()
+        // The removed value is released once the region returns, outside the lock.
+        _ = state.withCriticalRegion { $0.removeValue(forKey: key) }
     }
 }
 

@@ -318,14 +318,13 @@ struct ShareFromCacheTests {
         let (started, startedContinuation) = AsyncStream<Void>.makeStream()
         let lockWasFree = LockIsolated<Bool?>(nil)
         var cache: AUOWCache? = AUOWCache()
-        let cacheLock = try #require(cache).lock
+        let cacheState = try #require(cache).state
         @Sendable func recordWhetherTheCacheLockIsFree() {
             // Another thread takes the lock, so a lock the releasing thread still holds shows up as a timeout
             // rather than as recursive re-entry.
             let acquired = DispatchSemaphore(value: 0)
             Thread {
-                cacheLock.lock()
-                cacheLock.unlock()
+                cacheState.withCriticalRegion { _ in }
                 acquired.signal()
             }.start()
             lockWasFree.setValue(acquired.wait(timeout: .now() + .seconds(10)) == .success)

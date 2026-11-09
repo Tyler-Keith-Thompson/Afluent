@@ -34,21 +34,19 @@ public struct AnyAsynchronousUnitOfWork<Success: Sendable>: AsynchronousUnitOfWo
     public func execute(priority: TaskPriority?) async throws -> Success {
         try await upstream.execute(priority: priority)
     }
-    #if swift(>=6)
-        @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-        public func run(
-            executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?
-        ) {
-            upstream.run(executorPreference: taskExecutor, priority: priority)
-        }
-        @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-        @discardableResult
-        public func execute(
-            executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?
-        ) async throws -> Success {
-            try await upstream.execute(executorPreference: taskExecutor, priority: priority)
-        }
-    #endif
+    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+    public func run(
+        executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?
+    ) {
+        upstream.run(executorPreference: taskExecutor, priority: priority)
+    }
+    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+    @discardableResult
+    public func execute(
+        executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?
+    ) async throws -> Success {
+        try await upstream.execute(executorPreference: taskExecutor, priority: priority)
+    }
     @Sendable
     public func _operation() async throws -> AsynchronousOperation<Success> {
         try await upstream._operation()

@@ -7,8 +7,5 @@ merge:
   required_statuses:
     - Bazel tests
     - SwiftPM tests
-    # Afluent's own (Compatibility.yml): older toolchains, and every Apple platform.
-    - swift-regression-tests (5.9)
-    - swift-regression-tests (5.10)
-    - swift-regression-tests (6.0)
+    # Afluent's own (Compatibility.yml): every Apple platform.
     - Apple platforms

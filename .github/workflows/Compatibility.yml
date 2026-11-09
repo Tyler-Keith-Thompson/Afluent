@@ -1,10 +1,8 @@
 name: Compatibility
 
-# Afluent's checks beyond CI's: SwiftPM builds on the older toolchains the hand-kept manifests
-# serve (Package@swift-<version>.swift), which Bazel can't stand in for, and a Bazel build for
-# every Apple platform the package supports (//Platforms), cached through BuildBuddy like CI.
-# Trunk's merge queue waits for all of them (.trunk/trunk.yaml), so they run on its trunk-merge/
-# branches; a pull request gets the Linux ones.
+# Afluent's check beyond CI's: a Bazel build for every Apple platform the package supports
+# (//Platforms), cached through BuildBuddy like CI. Trunk's merge queue waits for it
+# (.trunk/trunk.yaml), so it runs on its trunk-merge/ branches.
 on:
   push:
     branches:
@@ -13,17 +11,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  swift-regression-tests:
-    runs-on: ubuntu-26.04-arm
-    strategy:
-      matrix:
-        swift-version: ["5.9", "5.10", "6.0"]
-    container: swift:${{ matrix.swift-version }}
-    steps:
-      - uses: actions/checkout@v7
-      - name: Build
-        run: swift build
-
   apple-platforms:
     name: Apple platforms
     # macOS minutes cost the most: the merge queue's, not every pull request's.

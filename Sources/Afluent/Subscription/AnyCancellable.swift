@@ -103,16 +103,14 @@ extension AsynchronousUnitOfWork {
         return AnyCancellable(self)
     }
 
-    #if swift(>=6)
-        /// Executes the current asynchronous unit of work and returns an AnyCancellable token to cancel the subscription
-        @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-        public func subscribe(
-            executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority? = nil
-        ) -> AnyCancellable {
-            defer { run(executorPreference: taskExecutor, priority: priority) }
-            return AnyCancellable(self)
-        }
-    #endif
+    /// Executes the current asynchronous unit of work and returns an AnyCancellable token to cancel the subscription
+    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+    public func subscribe(
+        executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority? = nil
+    ) -> AnyCancellable {
+        defer { run(executorPreference: taskExecutor, priority: priority) }
+        return AnyCancellable(self)
+    }
 }
 
 extension AsyncSequence where Self: Sendable {

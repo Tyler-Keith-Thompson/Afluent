@@ -6,13 +6,12 @@ on:
       target:
         required: true
         type: string
-    secrets:
-      TOKEN:
-        required: true
 
 jobs:
   release:
     runs-on: macos-15
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Generate DocC Static Site
@@ -32,6 +31,6 @@ jobs:
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs
           destination_dir: ${{ inputs.target }}

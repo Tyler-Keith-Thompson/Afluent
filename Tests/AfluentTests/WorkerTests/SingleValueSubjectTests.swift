@@ -5,10 +5,11 @@
 //  Created by Tyler Thompson on 11/10/23.
 //
 
-import Afluent
 import ConcurrencyExtras
 import Foundation
 import Testing
+
+@testable import Afluent
 
 struct SingleValueSubjectTests {
     @Test func singleValueSubjectEmittingValueBeforeTaskRuns() async throws {
@@ -225,5 +226,65 @@ struct SingleValueSubjectTests {
             // should not throw, even though the subject was cancelled
             try subject.send()
         }
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(
+        "A value sent while execute() is starting to wait always reaches the waiter",
+        .timeLimit(.minutes(1)))
+    func valueSentWhileExecuteStartsToWaitReachesTheWaiter() async throws {
+        let iterations = 1_000
+        for iteration in 0..<iterations {
+            let subject = SingleValueSubject<Int>()
+            let waiter = Task.detached { try await subject.execute() }
+            let sender = Task.detached { try subject.send(iteration) }
+            try await sender.value
+            let received = try await waiter.value
+            #expect(received == iteration)
+        }
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(
+        "An error sent while execute() is starting to wait always reaches the waiter",
+        .timeLimit(.minutes(1)))
+    func errorSentWhileExecuteStartsToWaitReachesTheWaiter() async throws {
+        struct Sent: Error, Equatable {}
+        let iterations = 1_000
+        for _ in 0..<iterations {
+            let subject = SingleValueSubject<Int>()
+            let waiter = Task.detached { try await subject.execute() }
+            let sender = Task.detached { try subject.send(error: Sent()) }
+            try await sender.value
+            let result = await waiter.result
+            #expect(throws: Sent.self) { try result.get() }
+        }
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(
+        "Cancelling the subject while execute() is starting to wait ends the wait",
+        .timeLimit(.minutes(1)))
+    func cancelWhileExecuteStartsToWaitEndsTheWait() async throws {
+        let iterations = 1_000
+        for _ in 0..<iterations {
+            let subject = SingleValueSubject<Int>()
+            let waiter = Task.detached { try await subject.execute() }
+            let canceller = Task.detached { subject.cancel() }
+            await canceller.value
+            let result = await waiter.result
+            #expect(throws: CancellationError.self) { try result.get() }
+        }
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test("alreadySent becomes true once a value is sent, and not before")
+    func alreadySentReflectsCompletion() throws {
+        let subject = SingleValueSubject<Int>()
+        let before = subject.alreadySent
+        try subject.send(1)
+        let after = subject.alreadySent
+        #expect(before == false)
+        #expect(after == true)
     }
 }

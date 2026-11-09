@@ -79,7 +79,8 @@ import Testing
         }
     }
 
-    #if os(Linux)
+    // Dispatch on Linux declares the conformance itself from Swift 6.3.
+    #if os(Linux) && !compiler(>=6.3)
         extension DispatchQoS.QoSClass: @unchecked Sendable {}
     #endif
 

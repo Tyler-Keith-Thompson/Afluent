@@ -208,9 +208,7 @@ public final class TaskState<Success: Sendable>: @unchecked Sendable {
         let task = Task(executorPreference: taskExecutor, priority: priority) {
             try await operation()
         }
-        lock.protect {
-            tasks.append(task)
-        }
+        track(task)
         return task
     }
 
@@ -224,17 +222,36 @@ public final class TaskState<Success: Sendable>: @unchecked Sendable {
             return task
         }
         let task = Task(priority: priority) { try await operation() }
-        lock.protect {
-            tasks.append(task)
-        }
+        track(task)
         return task
     }
 
-    func cancel() {
-        guard !isCancelled else { return }
-        _isCancelled.store(true, ordering: .sequentiallyConsistent)
-        lock.protect {
-            tasks.forEach { $0.cancel() }
+    /// Records `task` so that ``cancel()`` reaches it, or cancels it at once if ``cancel()`` already ran.
+    ///
+    /// The check and the append happen in one critical region, so a task created while another thread cancels
+    /// is never missed. The task is cancelled after the lock is released: cancelling runs its cancellation
+    /// handlers inline, and they may call back into this state.
+    private func track(_ task: Task<Success, Error>) {
+        let alreadyCancelled = lock.protect {
+            guard !isCancelled else { return true }
+            tasks.append(task)
+            return false
         }
+        if alreadyCancelled { task.cancel() }
+    }
+
+    /// Cancels every task this state created and every task it creates from now on.
+    ///
+    /// The flag is set and the tasks are taken out in one critical region, and they are cancelled after the lock
+    /// is released: cancelling runs their cancellation handlers inline, and those handlers call back into
+    /// ``cancel()`` and into other Afluent locks.
+    func cancel() {
+        let cancelled: [Task<Success, Error>] = lock.protect {
+            guard !isCancelled else { return [] }
+            _isCancelled.store(true, ordering: .sequentiallyConsistent)
+            defer { tasks.removeAll() }
+            return tasks
+        }
+        for task in cancelled { task.cancel() }
     }
 }

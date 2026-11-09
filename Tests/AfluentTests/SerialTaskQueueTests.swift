@@ -91,17 +91,24 @@ struct SerialTaskQueueTests {
             let sub = SingleValueSubject<Void>()
             let queue = SerialTaskQueue()
             let executed = ManagedAtomic(false)
-            async let _: Void = try await queue.enqueue {
-                try sub.send()
-                try Task.checkCancellation()
-                try await Task.sleep(for: .milliseconds(20))
-                executed.store(true, ordering: .sequentiallyConsistent)
+            // The stream never yields, so only cancelling the job ends its wait.
+            let (neverYields, continuation) = AsyncStream<Void>.makeStream()
+            let job = Task {
+                try await queue.enqueue {
+                    try sub.send()
+                    for await _ in neverYields {}
+                    try Task.checkCancellation()
+                    executed.store(true, ordering: .sequentiallyConsistent)
+                }
             }
-            await Task.yield()
             try await sub.execute()
             queue.cancelAll()
+            let result = await job.result
+            func getResult() throws { try result.get() }
+            #expect(throws: CancellationError.self, performing: getResult)
             let actual = executed.load(ordering: .sequentiallyConsistent)
             #expect(actual == false)
+            continuation.finish()
         }
     }
 

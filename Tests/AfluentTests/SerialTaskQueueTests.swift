@@ -228,4 +228,18 @@ struct SerialTaskQueueTests {
         }
         #expect(ranAfterCancel.value == false)
     }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @Test(
+        "A job that cancels its own task doesn't stop the jobs after it", .timeLimit(.minutes(1)))
+    func selfCancellingJobDoesNotStopTheQueue() async throws {
+        let queue = SerialTaskQueue()
+        @Sendable func cancelOwnTask() {
+            withUnsafeCurrentTask { $0?.cancel() }
+        }
+        _ = try? await queue.enqueue { cancelOwnTask() }
+        let expected = 2
+        let second = try await queue.enqueue { expected }
+        #expect(second == expected)
+    }
 }

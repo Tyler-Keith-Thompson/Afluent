@@ -35,8 +35,8 @@ import Foundation
 public final class SerialTaskQueue: Sendable {
     /// The queued jobs, in order. Each runs to completion before the next starts.
     private let jobs: AsyncStream<@Sendable () async -> Void>.Continuation
-    /// The task that runs the queued jobs one at a time, inline. Cancelling it is how ``cancelAll()`` stops the
-    /// queue: the running job sees the cancellation, and the jobs after it don't start.
+    /// The task that runs the queued jobs one at a time, each in a child task. Cancelling it is how ``cancelAll()``
+    /// stops the queue: the running job's child task is cancelled with it, and the jobs after it don't start.
     private let consumer: AnyCancellable
 
     public init() {
@@ -44,7 +44,10 @@ public final class SerialTaskQueue: Sendable {
         jobs = continuation
         consumer = DeferredTask {
             for await job in stream {
-                await job()
+                // A child task: cancellation reaches the job from the queue, but a job that cancels its own task
+                // can't cancel the queue.
+                async let finished: Void = job()
+                await finished
             }
         }
         .subscribe()
@@ -82,7 +85,7 @@ public final class SerialTaskQueue: Sendable {
                 continuation.resume(throwing: CancellationError())
                 return
             }
-            // The job runs inline in the queue's consumer task, and every path resumes the continuation once.
+            // The job runs in a child of the queue's consumer task, and every path resumes the continuation once.
             self.jobs.yield {
                 guard !Task.isCancelled else {
                     continuation.resume(throwing: CancellationError())

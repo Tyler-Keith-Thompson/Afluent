@@ -10,22 +10,23 @@ import Synchronization
 
 /// State that one critical region at a time can read and change.
 ///
-/// It is a `Synchronization.Mutex` wherever the OS has one: macOS 15, iOS 18, tvOS 18, watchOS 11, visionOS 2 and
-/// later, and Linux. Older Apple OSes get an `os_unfair_lock` beside the state in a `ManagedBuffer`, which costs one more
-/// allocation when the state is made and none per call. The tier is chosen once, in `init`.
+/// It is a `Synchronization.Mutex` on every platform but Apple OSes older than macOS 15, iOS 18, tvOS 18, watchOS 11
+/// and visionOS 2, which get an `os_unfair_lock` beside the state in a `ManagedBuffer`: one more allocation when the
+/// state is made and none per call. Off Apple platforms the choice is made at compile time, so a platform without
+/// `Mutex` fails to build; on Apple platforms it is made once, in `init`.
 struct CriticalState<State>: Sendable {
     private var storage: any AnyObject & Sendable
 
     init(_ initial: consuming sending State) {
-        if #available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
-            storage = MutexStorage(initial)
-        } else {
-            #if canImport(Darwin)
+        #if canImport(Darwin)
+            if #available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
+                storage = MutexStorage(initial)
+            } else {
                 storage = UnfairLockStorage.make(initial)
-            #else
-                preconditionFailure("Every non-Apple platform has Mutex")
-            #endif
-        }
+            }
+        #else
+            storage = MutexStorage(initial)
+        #endif
     }
 
     /// Runs `body` with exclusive access to the state.
@@ -33,30 +34,31 @@ struct CriticalState<State>: Sendable {
     /// - Complexity: O(1) plus the cost of `body`.
     @inline(__always)
     func withCriticalRegion<R>(_ body: (inout sending State) throws -> sending R) rethrows -> sending R {
-        if #available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
-            assert(storage is MutexStorage<State>)
-            return try unsafeDowncast(storage, to: MutexStorage<State>.self).mutex.withLock(body)
-        } else {
-            #if canImport(Darwin)
+        #if canImport(Darwin)
+            if #available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
+                assert(storage is MutexStorage<State>)
+                return try unsafeDowncast(storage, to: MutexStorage<State>.self).mutex.withLock(body)
+            } else {
                 assert(storage is UnfairLockStorage<State>)
                 return try unsafeDowncast(storage, to: UnfairLockStorage<State>.self).withLock(body)
-            #else
-                preconditionFailure("Every non-Apple platform has Mutex")
-            #endif
-        }
+            }
+        #else
+            assert(storage is MutexStorage<State>)
+            return try unsafeDowncast(storage, to: MutexStorage<State>.self).mutex.withLock(body)
+        #endif
     }
 
     /// Whether this is the only value that refers to the state.
     mutating func isKnownUniquelyReferenced() -> Bool {
-        if #available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
-            return isKnownUniquelyReferenced(as: MutexStorage<State>.self)
-        } else {
-            #if canImport(Darwin)
+        #if canImport(Darwin)
+            if #available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
+                return isKnownUniquelyReferenced(as: MutexStorage<State>.self)
+            } else {
                 return isKnownUniquelyReferenced(as: UnfairLockStorage<State>.self)
-            #else
-                preconditionFailure("Every non-Apple platform has Mutex")
-            #endif
-        }
+            }
+        #else
+            return isKnownUniquelyReferenced(as: MutexStorage<State>.self)
+        #endif
     }
 
     /// Checks the storage as the tier's class. `isKnownUniquelyReferenced(&storage)` on the existential checks a copy

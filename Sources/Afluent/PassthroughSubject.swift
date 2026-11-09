@@ -38,13 +38,13 @@
 /// subject.send(2)
 /// subject.send(completion: .finished)
 /// ```
-public final class PassthroughSubject<Element: Sendable>: AsyncSequence, @unchecked Sendable {
+public final class PassthroughSubject<Element: Sendable>: AsyncSequence, Sendable {
     private let broadcaster = SubjectBroadcaster<Element>()
 
     /// Creates a `PassthroughSubject`.
     public init() {}
 
-    public struct Iterator: AsyncIteratorProtocol, @unchecked Sendable {
+    public struct Iterator: AsyncIteratorProtocol, Sendable {
         let subscription: SubjectBroadcaster<Element>.Subscription
 
         public mutating func next() async throws -> Element? {

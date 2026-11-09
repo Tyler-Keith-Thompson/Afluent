@@ -1,149 +1,122 @@
-//===----------------------------------------------------------------------===//
-//
-// This source file is part of the Swift Async Algorithms open source project
-//
-// Copyright (c) 2022 Apple Inc. and the Swift project authors
-// Licensed under Apache License v2.0 with Runtime Library Exception
-//
-// See https://swift.org/LICENSE.txt for license information
-//
-//===----------------------------------------------------------------------===//
-
 //
 //  PlatformLock.swift
 //  Afluent
 //
-//  Modified by Tyler Thompson on 9/29/24.
-//
 
 #if canImport(Darwin)
     import Darwin
-#elseif canImport(Glibc)
-    import Glibc
-#elseif canImport(WinSDK)
-    import WinSDK
 #endif
+import Synchronization
 
-internal struct Lock {
-    #if canImport(Darwin)
-        typealias Primitive = os_unfair_lock
-    #elseif canImport(Glibc)
-        typealias Primitive = pthread_mutex_t
-    #elseif canImport(WinSDK)
-        typealias Primitive = SRWLOCK
-    #endif
+/// State that one critical region at a time can read and change.
+///
+/// It is a `Synchronization.Mutex` on every platform but Apple OSes older than macOS 15, iOS 18, tvOS 18, watchOS 11
+/// and visionOS 2, which get an `os_unfair_lock` beside the state in a `ManagedBuffer`: one more allocation when the
+/// state is made and none per call. Off Apple platforms the choice is made at compile time, so a platform without
+/// `Mutex` fails to build; on Apple platforms it is made once, in `init`.
+struct CriticalState<State>: Sendable {
+    private var storage: any AnyObject & Sendable
 
-    typealias PlatformLock = UnsafeMutablePointer<Primitive>
-    let platformLock: PlatformLock
-
-    private init(_ platformLock: PlatformLock) {
-        self.platformLock = platformLock
-    }
-
-    fileprivate static func initialize(_ platformLock: PlatformLock) {
+    init(_ initial: consuming sending State) {
         #if canImport(Darwin)
-            platformLock.initialize(to: os_unfair_lock())
-        #elseif canImport(Glibc)
-            pthread_mutex_init(platformLock, nil)
-        #elseif canImport(WinSDK)
-            InitializeSRWLock(platformLock)
+            if #available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
+                storage = MutexStorage(initial)
+            } else {
+                storage = UnfairLockStorage.make(initial)
+            }
+        #else
+            storage = MutexStorage(initial)
         #endif
     }
 
-    fileprivate static func deinitialize(_ platformLock: PlatformLock) {
-        #if canImport(Glibc)
-            pthread_mutex_destroy(platformLock)
-        #endif
-        platformLock.deinitialize(count: 1)
-    }
-
-    fileprivate static func lock(_ platformLock: PlatformLock) {
-        #if canImport(Darwin)
-            os_unfair_lock_lock(platformLock)
-        #elseif canImport(Glibc)
-            pthread_mutex_lock(platformLock)
-        #elseif canImport(WinSDK)
-            AcquireSRWLockExclusive(platformLock)
-        #endif
-    }
-
-    fileprivate static func unlock(_ platformLock: PlatformLock) {
-        #if canImport(Darwin)
-            os_unfair_lock_unlock(platformLock)
-        #elseif canImport(Glibc)
-            pthread_mutex_unlock(platformLock)
-        #elseif canImport(WinSDK)
-            ReleaseSRWLockExclusive(platformLock)
-        #endif
-    }
-
-    static func allocate() -> Lock {
-        let platformLock = PlatformLock.allocate(capacity: 1)
-        initialize(platformLock)
-        return Lock(platformLock)
-    }
-
-    func deinitialize() {
-        Lock.deinitialize(platformLock)
-    }
-
-    func lock() {
-        Lock.lock(platformLock)
-    }
-
-    func unlock() {
-        Lock.unlock(platformLock)
-    }
-
-    /// Acquire the lock for the duration of the given block.
+    /// Runs `body` with exclusive access to the state.
     ///
-    /// This convenience method should be preferred to `lock` and `unlock` in
-    /// most situations, as it ensures that the lock will be released regardless
-    /// of how `body` exits.
-    ///
-    /// - Parameter body: The block to execute while holding the lock.
-    /// - Returns: The value returned by the block.
-    func withLock<T>(_ body: () throws -> T) rethrows -> T {
-        self.lock()
-        defer {
-            self.unlock()
-        }
-        return try body()
+    /// - Complexity: O(1) plus the cost of `body`.
+    @inline(__always)
+    func withCriticalRegion<R>(_ body: (inout sending State) throws -> sending R) rethrows -> sending R {
+        #if canImport(Darwin)
+            if #available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
+                assert(storage is MutexStorage<State>)
+                return try unsafeDowncast(storage, to: MutexStorage<State>.self).mutex.withLock(body)
+            } else {
+                assert(storage is UnfairLockStorage<State>)
+                return try unsafeDowncast(storage, to: UnfairLockStorage<State>.self).withLock(body)
+            }
+        #else
+            assert(storage is MutexStorage<State>)
+            return try unsafeDowncast(storage, to: MutexStorage<State>.self).mutex.withLock(body)
+        #endif
     }
 
-    // specialise Void return (for performance)
-    func withLockVoid(_ body: () throws -> Void) rethrows {
-        try self.withLock(body)
-    }
-}
-
-struct ManagedCriticalState<State> {
-    private final class LockedBuffer: ManagedBuffer<State, Lock.Primitive> {
-        deinit {
-            withUnsafeMutablePointerToElements { Lock.deinitialize($0) }
-        }
-    }
-
-    private var buffer: ManagedBuffer<State, Lock.Primitive>
-
-    init(_ initial: State) {
-        buffer = LockedBuffer.create(minimumCapacity: 1) { buffer in
-            buffer.withUnsafeMutablePointerToElements { Lock.initialize($0) }
-            return initial
-        }
-    }
-
-    func withCriticalRegion<R>(_ critical: (inout State) throws -> R) rethrows -> R {
-        try buffer.withUnsafeMutablePointers { header, lock in
-            Lock.lock(lock)
-            defer { Lock.unlock(lock) }
-            return try critical(&header.pointee)
-        }
-    }
-
+    /// Whether this is the only value that refers to the state.
     mutating func isKnownUniquelyReferenced() -> Bool {
-        Swift.isKnownUniquelyReferenced(&buffer)
+        #if canImport(Darwin)
+            if #available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *) {
+                return isKnownUniquelyReferenced(as: MutexStorage<State>.self)
+            } else {
+                return isKnownUniquelyReferenced(as: UnfairLockStorage<State>.self)
+            }
+        #else
+            return isKnownUniquelyReferenced(as: MutexStorage<State>.self)
+        #endif
+    }
+
+    /// Checks the storage as the tier's class. `isKnownUniquelyReferenced(&storage)` on the existential checks a copy
+    /// in unoptimized Swift 6 builds, which is never unique; the slot holds one class reference either way.
+    private mutating func isKnownUniquelyReferenced<Storage: AnyObject>(as _: Storage.Type) -> Bool {
+        assert(storage is Storage)
+        return withUnsafeMutablePointer(to: &storage) { slot in
+            slot.withMemoryRebound(to: Storage.self, capacity: 1) { Swift.isKnownUniquelyReferenced(&$0.pointee) }
+        }
     }
 }
 
-extension ManagedCriticalState: @unchecked Sendable where State: Sendable {}
+/// The ``CriticalState`` tier for OSes with `Mutex`.
+@available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+final class MutexStorage<State>: Sendable {
+    let mutex: Mutex<State>
+
+    init(_ initial: consuming sending State) {
+        mutex = Mutex(initial)
+    }
+}
+
+#if canImport(Darwin)
+    /// The ``CriticalState`` tier for Apple OSes without `Mutex`: the state and an `os_unfair_lock` in one buffer,
+    /// which keeps the lock at a fixed address.
+    ///
+    /// It is `@unchecked Sendable` because every access to the state goes through ``withLock(_:)``, which holds the
+    /// lock. `ManagedBuffer` opts out of `Sendable`, so the buffer is held rather than subclassed: two allocations
+    /// when the state is made, and one pointer hop per call through the cached pointers.
+    final class UnfairLockStorage<State>: @unchecked Sendable {
+        /// The lock as the header and the state as the one element; `deinit` deinitializes the state.
+        private final class Buffer: ManagedBuffer<os_unfair_lock, State> {
+            deinit {
+                _ = withUnsafeMutablePointerToElements { $0.deinitialize(count: 1) }
+            }
+        }
+
+        private let buffer: ManagedBuffer<os_unfair_lock, State>
+        private let lock: UnsafeMutablePointer<os_unfair_lock>
+        private let state: UnsafeMutablePointer<State>
+
+        private init(_ initial: consuming sending State) {
+            let buffer = Buffer.create(minimumCapacity: 1) { _ in os_unfair_lock() }
+            self.buffer = buffer
+            // The pointers stay valid while `buffer`, which this object holds, is alive.
+            lock = buffer.withUnsafeMutablePointerToHeader { $0 }
+            state = buffer.withUnsafeMutablePointerToElements { $0 }
+            state.initialize(to: initial)
+        }
+
+        static func make(_ initial: consuming sending State) -> UnfairLockStorage<State> {
+            UnfairLockStorage(initial)
+        }
+
+        func withLock<R>(_ body: (inout sending State) throws -> sending R) rethrows -> sending R {
+            os_unfair_lock_lock(lock)
+            defer { os_unfair_lock_unlock(lock) }
+            return try body(&state.pointee)
+        }
+    }
+#endif

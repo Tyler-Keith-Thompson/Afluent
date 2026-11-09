@@ -33,7 +33,7 @@
 /// subject.send(3)
 /// subject.send(completion: .finished)
 /// ```
-public final class CurrentValueSubject<Element: Sendable>: AsyncSequence, @unchecked Sendable {
+public final class CurrentValueSubject<Element: Sendable>: AsyncSequence, Sendable {
     private let broadcaster: SubjectBroadcaster<Element>
 
     /// The current value of the subject. This property is thread-safe.
@@ -57,7 +57,7 @@ public final class CurrentValueSubject<Element: Sendable>: AsyncSequence, @unche
         self.init(())
     }
 
-    public struct Iterator: AsyncIteratorProtocol, @unchecked Sendable {
+    public struct Iterator: AsyncIteratorProtocol, Sendable {
         let subscription: SubjectBroadcaster<Element>.Subscription
 
         public mutating func next() async throws -> Element? {

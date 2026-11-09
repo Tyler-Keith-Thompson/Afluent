@@ -36,3 +36,10 @@ so worktrees don't share one) and runs outside Bazel's sandbox, which can't star
 `Benchmarks/.harness/` (untracked) holds this checkout's copy of the harness binary and its resource
 bundles, and a stamp of the host and Swift version, all inputs. `--filter`, `--skip` and the
 harness's other options measure directly, uncached.
+
+The `simulated` baseline is pretty-printed, keys and benchmarks sorted, so each benchmark's entry
+has lines of its own. Re-recording rewrites only the entries whose instruction or malloc counts
+moved past `baseline compare`'s threshold (5% at p25, p50 and p75); the others keep their recorded
+entry, whose cache-miss and branch counts would otherwise vary a little from run to run. Branches
+that change different benchmarks of one target therefore merge cleanly. `bench-simulated-compare`
+writes `simulated-current` as measured.

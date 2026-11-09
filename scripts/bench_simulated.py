@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Record simulated benchmark counts as an ordo-one baseline, measuring only what changed.
 
-    scripts/bench_simulated.py <baseline> [--target <Target>]...
+    scripts/bench_simulated.py <baseline> [--target <Target>]... [--fresh]
 
 Each benchmark target (BENCHMARKS in scripts/modules.py) is a Bazel target, //Benchmarks:<Target>,
 whose output is its counts from BenchmarkHarness (tools/benchmarks.bzl). Counts are deterministic,
 so Bazel measures a target again only when its sources, the modules it imports, the manifests or
 the harness changed, and serves the rest from the disk cache or BuildBuddy. The results are
 written to Benchmarks/.benchmarkBaselines/<Target>/<baseline>/results.json, where
-`swift package benchmark baseline compare` reads them.
+`swift package benchmark baseline compare` reads them: pretty-printed, keys and benchmarks sorted.
+A benchmark whose instruction and malloc counts moved less than compare's threshold keeps the entry
+already recorded there, so the file changes only where a benchmark did; --fresh writes every entry
+as measured.
 
 Any other option (--filter, --skip, --iterations, ...) runs the harness directly on the package,
 uncached, as `benchmark-harness baseline update` would.
@@ -19,6 +22,7 @@ BENCHMARK_HARNESS names the BenchmarkHarness checkout (default ~/workspace/Bench
 import fcntl
 import importlib.util
 import json
+import math
 import os
 import platform
 import shutil
@@ -128,10 +132,13 @@ def main(argv):
     baseline, options = argv[0], argv[1:]
     harness_checkout = os.environ.get("BENCHMARK_HARNESS", os.path.expanduser("~/workspace/BenchmarkHarness"))
 
-    targets, uncached = [], []
+    targets, uncached, fresh = [], [], False
     index = 0
     while index < len(options):
-        if options[index] == "--target" and index + 1 < len(options):
+        if options[index] == "--fresh":
+            fresh = True
+            index += 1
+        elif options[index] == "--target" and index + 1 < len(options):
             targets.append(options[index + 1])
             index += 2
         else:
@@ -156,17 +163,112 @@ def main(argv):
 
     for target in targets:
         with open(os.path.join(bin_dir, "Benchmarks", f"{target}.json")) as f:
-            results = f.read()
+            measured = json.load(f)
         # The measurement records the baseline under the name "bazel"; ordo-one reads the name
-        # from the file, so it is changed to the one asked for and nothing else. Replacing the
-        # text keeps the harness's bytes and key order; the new name is encoded as a JSON string.
-        marker = '"baselineName":"bazel"'
-        assert results.count(marker) == 1, f"{target}: no baseline name in the harness's output"
-        destination = os.path.join(BENCHMARKS_DIR, ".benchmarkBaselines", target, baseline)
-        os.makedirs(destination, exist_ok=True)
-        with open(os.path.join(destination, "results.json"), "w") as f:
-            f.write(results.replace(marker, f'"baselineName":{json.dumps(baseline)}'))
+        # from the file.
+        measured["baselineName"] = baseline
+        path = os.path.join(BENCHMARKS_DIR, ".benchmarkBaselines", target, baseline, "results.json")
+        recorded = None
+        if not fresh and os.path.exists(path):
+            with open(path) as f:
+                recorded = json.load(f)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        write_if_changed(path, encode(keep_unmoved(recorded, measured)) + "\n")
         print(f"Wrote baseline '{baseline}' for {target}")
+
+
+# The metrics that decide whether a benchmark moved: the counts the code determines. Cache misses,
+# mispredicted branches and the cycle estimate follow them, but also vary between runs of the same
+# binary, so they alone never rewrite an entry.
+DECIDING_METRICS = ("instructions", "mallocCountTotal")
+# ordo-one's default relative thresholds (BenchmarkThresholds.Relative.default), which
+# `baseline compare` applies: a percentile moved when it differs by more than this many percent.
+THRESHOLDS = {25.0: 5.0, 50.0: 5.0, 75.0: 5.0}
+
+
+def histogram_values(histogram):
+    """The values an HdrHistogram recorded, each at the highest value its bucket stands for."""
+    half = histogram["subBucketHalfCountMagnitude"]
+    unit = histogram["unitMagnitude"]
+    values = []
+    for index, count in enumerate(histogram["counts"]):
+        if count:
+            bucket, sub_bucket = (index >> half) - 1, (index & ((1 << half) - 1)) + (1 << half)
+            if bucket < 0:
+                bucket, sub_bucket = 0, sub_bucket - (1 << half)
+            lowest = sub_bucket << (bucket + unit)
+            values += [min(lowest + (1 << (bucket + unit)) - 1, histogram["maxValue"])] * count
+    return values
+
+
+def percentile(values, p):
+    """HdrHistogram's valueAtPercentile: the smallest value at least p percent of the values reach."""
+    return values[max(1, math.ceil(math.nextafter(p, 0) * len(values) / 100)) - 1]
+
+
+def moved(recorded, measured):
+    """Whether `baseline compare` would see a benchmark's deciding metrics change between two entries."""
+    def metrics(entry):
+        return {json.dumps(result["metric"], sort_keys=True): result for result in entry}
+    before, after = metrics(recorded), metrics(measured)
+    if before.keys() != after.keys():
+        return True
+    deciding = [key for key, result in after.items() if any(m in result["metric"] for m in DECIDING_METRICS)]
+    if not deciding:
+        return recorded != measured
+    for key in deciding:
+        old, new = before[key], after[key]
+        if old["scalingFactor"] != new["scalingFactor"]:
+            return True
+        old_values = sorted(histogram_values(old["statistics"]["histogram"]))
+        new_values = sorted(histogram_values(new["statistics"]["histogram"]))
+        if not old_values or not new_values:
+            return old_values != new_values
+        for p, threshold in THRESHOLDS.items():
+            base, comparison = percentile(old_values, p), percentile(new_values, p)
+            difference = 100 - 100 * base / comparison if comparison else 0.0
+            if abs(difference) > threshold:
+                return True
+    return False
+
+
+def entries(document):
+    """A baseline's benchmarks: ordo-one encodes the dictionary as alternating keys and values."""
+    results = document["results"]
+    return {json.dumps(results[i], sort_keys=True): (results[i], results[i + 1]) for i in range(0, len(results), 2)}
+
+
+def keep_unmoved(recorded, measured):
+    """The measured baseline, where every benchmark that didn't move keeps its recorded entry.
+
+    Re-recording a target measures all of its benchmarks, and the counts of one that didn't change
+    still vary a little between runs. Keeping its entry leaves those lines untouched, so branches
+    that each change a different benchmark of a target merge without a conflict.
+    """
+    kept = entries(recorded) if recorded else {}
+    results = []
+    for key, (identifier, entry) in sorted(entries(measured).items(), key=lambda item: (item[1][0].get("target", ""), item[1][0].get("name", ""))):
+        if key in kept and not moved(kept[key][1], entry):
+            entry = kept[key][1]
+        results += [identifier, entry]
+    return {**measured, "results": results}
+
+
+def encode(value, indent=""):
+    """JSON with sorted keys, one member per line, and an array of plain values on one line.
+
+    A benchmark's entry spans its own lines, so a change to one benchmark touches none of the
+    lines of another, and a histogram's counts stay on one line rather than thousands.
+    """
+    inner = indent + "  "
+    if isinstance(value, dict):
+        if not value:
+            return "{}"
+        members = [f"{inner}{json.dumps(key)}: {encode(value[key], inner)}" for key in sorted(value)]
+        return "{\n" + ",\n".join(members) + "\n" + indent + "}"
+    if isinstance(value, list) and any(isinstance(item, (dict, list)) for item in value):
+        return "[\n" + ",\n".join(inner + encode(item, inner) for item in value) + "\n" + indent + "]"
+    return json.dumps(value, separators=(",", ":"))
 
 
 if __name__ == "__main__":

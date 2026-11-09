@@ -81,7 +81,7 @@ bench-compare:
 bench-simulated *args="": (_simulated-baseline "simulated" args)
 
 [doc("Record simulated counts as simulated-current and compare them against the simulated baseline, e.g. just bench-simulated-compare --target X")]
-bench-simulated-compare *args="": (_simulated-baseline "simulated-current" args)
+bench-simulated-compare *args="": (_simulated-baseline "simulated-current" "--fresh " + args)
     cd {{PROJECT_ROOT}}/Benchmarks && {{SWIFT}} package --allow-writing-to-package-directory benchmark baseline compare simulated simulated-current {{args}}
 
 [private]

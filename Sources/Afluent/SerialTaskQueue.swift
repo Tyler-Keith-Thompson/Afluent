@@ -45,30 +45,42 @@ public final class SerialTaskQueue: Sendable {
     }
 
     /// The jobs waiting to start, in order, and the consumer when it waits for one.
+    ///
+    /// Jobs leave it only by being moved out, never released in it: releasing a job's captures can run a `deinit`
+    /// that calls back into the queue, which would take the lock again.
     private struct State {
-        /// The queued jobs; the ones before `head` have been taken.
-        var pending: [Job] = []
+        /// The queued jobs, from `head` on; the slots before `head` were taken and are empty.
+        var pending: [Job?] = []
         var head = 0
         /// The consumer, suspended until a job is queued or the queue is cancelled.
         var waitingConsumer: UnsafeContinuation<Job?, Never>?
         var isCancelled = false
 
-        /// The next queued job, if any.
+        /// Moves the next queued job out, if any.
+        ///
+        /// - Complexity: Amortized O(1): the empty prefix is dropped once it is half the array.
         mutating func takeNext() -> Job? {
             guard head < pending.count else { return nil }
-            let job = pending[head]
+            let job = pending[head].take()
             head += 1
             if head == pending.count {
                 pending.removeAll(keepingCapacity: true)
+                head = 0
+            } else if head * 2 >= pending.count {
+                pending.removeFirst(head)
                 head = 0
             }
             return job
         }
 
-        /// Marks the queue cancelled and takes every job that hasn't started.
+        /// Marks the queue cancelled and moves out every job that hasn't started.
         mutating func cancel() -> [Job] {
             isCancelled = true
-            let unstarted = Array(pending[head...])
+            var unstarted = [Job]()
+            unstarted.reserveCapacity(pending.count - head)
+            for index in head..<pending.count {
+                if let job = pending[index].take() { unstarted.append(job) }
+            }
             pending = []
             head = 0
             return unstarted
@@ -85,8 +97,9 @@ public final class SerialTaskQueue: Sendable {
         consumer = DeferredTask {
             while let job = await Self.next(state) {
                 // A child task: cancellation reaches the job from the queue, but a job that cancels its own task
-                // can't cancel the queue.
-                async let finished: Void = job.run()
+                // can't cancel the queue. ``cancelAll()`` cancels this task before it returns, so a job taken just
+                // before it is cancelled rather than started.
+                async let finished: Void = Self.start(job)
                 await finished
             }
         }
@@ -95,6 +108,15 @@ public final class SerialTaskQueue: Sendable {
 
     deinit {
         Self.cancel(state)
+    }
+
+    /// Runs `job`, or cancels it when the queue was cancelled after the consumer took it.
+    private static func start(_ job: Job) async {
+        if Task.isCancelled {
+            job.cancel()
+        } else {
+            await job.run()
+        }
     }
 
     /// Waits for the next job; `nil` once the queue is cancelled.
@@ -209,7 +231,8 @@ public final class SerialTaskQueue: Sendable {
     /// Cancels the running task and every queued task that hasn't started; those throw `CancellationError` to their
     /// awaiters, as does any task queued afterwards.
     public func cancelAll() {
-        Self.cancel(state)
+        // The consumer first, so a job it has already taken sees the cancellation and doesn't start.
         consumer.cancel()
+        Self.cancel(state)
     }
 }

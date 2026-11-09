@@ -328,4 +328,68 @@ struct SerialTaskQueueTests {
             _ = await running.result
         }
     }
+
+    @Test(
+        "A finished job whose captures call back into the queue when released doesn't deadlock it",
+        .timeLimit(.minutes(1)))
+    func releasingAFinishedJobsCapturesCanCallBackIntoTheQueue() async throws {
+        final class EnqueuesOnDeinit: Sendable {
+            let queue: SerialTaskQueue
+            init(_ queue: SerialTaskQueue) { self.queue = queue }
+            deinit { queue.enqueue {} }
+        }
+        // A synchronous caller picks the fire-and-forget overload over the awaiting one.
+        func enqueueWithoutWaiting(_ queue: SerialTaskQueue, _ job: sending @escaping () async -> Void) {
+            queue.enqueue(job)
+        }
+        let queue = SerialTaskQueue()
+        let (gate, open) = AsyncStream<Void>.makeStream()
+        enqueueWithoutWaiting(queue) {
+            for await _ in gate { break }
+        }
+        do {
+            let capture = EnqueuesOnDeinit(queue)
+            enqueueWithoutWaiting(queue) { _ = capture }
+        }
+        enqueueWithoutWaiting(queue) {}
+        open.yield()
+
+        let expected = 3
+        let last = try await queue.enqueue { expected }
+        #expect(last == expected)
+    }
+
+    @Test(
+        "A finished job's captures are released while later jobs still wait", .timeLimit(.minutes(1)))
+    func finishedJobsCapturesAreReleasedWhileOthersWait() async throws {
+        final class Capture: Sendable {}
+        // A synchronous caller picks the fire-and-forget overload over the awaiting one.
+        func enqueueWithoutWaiting(_ queue: SerialTaskQueue, _ job: sending @escaping () async -> Void) {
+            queue.enqueue(job)
+        }
+        let queue = SerialTaskQueue()
+        let (firstGate, openFirst) = AsyncStream<Void>.makeStream()
+        let (thirdGate, openThird) = AsyncStream<Void>.makeStream()
+        let (thirdStarted, thirdStartedContinuation) = AsyncStream<Void>.makeStream()
+        enqueueWithoutWaiting(queue) {
+            for await _ in firstGate { break }
+        }
+        weak var released: Capture?
+        do {
+            let capture = Capture()
+            released = capture
+            enqueueWithoutWaiting(queue) { _ = capture }
+        }
+        enqueueWithoutWaiting(queue) {
+            thirdStartedContinuation.yield()
+            for await _ in thirdGate { break }
+        }
+        enqueueWithoutWaiting(queue) {}
+        openFirst.yield()
+        for await _ in thirdStarted { break }
+
+        #expect(released == nil)
+        openThird.yield()
+    }
 }
+

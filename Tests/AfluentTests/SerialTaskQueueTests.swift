@@ -29,7 +29,9 @@ struct SerialTaskQueueTests {
                         let executing = await test.isExecuting
                         #expect(executing == false)
                         await test.store(true)
-                        await Task.yield()
+                        // The one sleep in this file: a timer wait is what lets a second job overlap this one when
+                        // the queue doesn't serialize. Without it a broken queue passes this test.
+                        try await Task.sleep(nanoseconds: 1)
                         await test.store(false)
                         return i
                     }

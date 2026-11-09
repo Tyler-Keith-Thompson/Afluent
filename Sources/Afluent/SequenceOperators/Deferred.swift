@@ -50,12 +50,11 @@ extension AsyncSequences {
 
             public mutating func next() async throws -> Upstream.AsyncIterator.Element? {
                 try Task.checkCancellation()
-                guard var upstreamIterator = upstreamIterator else {
-                    var upstreamIterator = try await upstream().makeAsyncIterator()
-                    self.upstreamIterator = upstreamIterator
-                    return try await upstreamIterator.next()
+                if upstreamIterator == nil {
+                    upstreamIterator = try await upstream().makeAsyncIterator()
                 }
-                return try await upstreamIterator.next()
+                // Advanced in place: a copy would leave a value-type iterator where it was.
+                return try await upstreamIterator!.next()
             }
         }
 

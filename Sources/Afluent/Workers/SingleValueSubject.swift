@@ -40,10 +40,7 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     private let _lock = NSRecursiveLock()
     public let state = TaskState<Success>()
     var alreadySent: Bool {
-        switch subjectState {
-            case .sentValue, .sentError: return true
-            case .noValue, .hasContinuation: return false
-        }
+        _lock.protect { sentResult != nil }
     }
     private var subjectState = State.noValue
 
@@ -54,39 +51,33 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
         AsynchronousOperation { [weak self] in
             guard let self else { throw CancellationError() }
 
-            func getSentValue() throws -> Success? {
-                try self._lock.protect {
-                    if case .sentValue(let success) = self.subjectState {
-                        return success
-                    } else if case .sentError(let error) = self.subjectState {
-                        throw error
-                    }
-                    return nil
-                }
-            }
-
-            if let success = try getSentValue() { return success }
+            // Fast path: the value is already here, so no continuation is needed.
+            let alreadySent: Result<Success, any Error>? = self._lock.protect { self.sentResult }
+            if let alreadySent { return try alreadySent.get() }
 
             return try await withUnsafeThrowingContinuation { [weak self] continuation in
                 guard let self else {
                     continuation.resume(throwing: CancellationError())
                     return
                 }
-                self.lock()
-                do {
-                    if let success = try getSentValue() {
-                        self.unlock()
-                        continuation.resume(returning: success)
-                        return
-                    }
-                } catch {
-                    self.unlock()
-                    continuation.resume(throwing: error)
-                    return
+                // One critical region either finds the result or stores the continuation, so a `send` between
+                // the fast path and here is never missed. The continuation is resumed after the lock is released.
+                let sent: Result<Success, any Error>? = self._lock.protect {
+                    if let sent = self.sentResult { return sent }
+                    self.subjectState = .hasContinuation(continuation)
+                    return nil
                 }
-                self.subjectState = .hasContinuation(continuation)
-                self.unlock()
+                if let sent { continuation.resume(with: sent) }
             }
+        }
+    }
+
+    /// The value or error the subject completed with, or `nil` if it hasn't completed. Read it inside `_lock`.
+    private var sentResult: Result<Success, any Error>? {
+        switch subjectState {
+            case .sentValue(let success): return .success(success)
+            case .sentError(let error): return .failure(error)
+            case .noValue, .hasContinuation: return nil
         }
     }
 
@@ -95,9 +86,6 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
         state.cancel()
         try? self.send(error: CancellationError())
     }
-
-    private func lock() { _lock.lock() }
-    private func unlock() { _lock.unlock() }
 
     /// Sends a value to the subject.
     ///

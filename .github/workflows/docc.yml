@@ -27,7 +27,7 @@ jobs:
     # toolchain is whatever swiftc is on the PATH, docc comes from beside it, and Bazelisk runs
     # the Bazel in .bazelversion.
     container:
-      image: ghcr.io/tyler-keith-thompson/swift-bazel:6.3-9.3.1
+      image: ghcr.io/tyler-keith-thompson/swift-bazel:6.4-9.3.1
       # The image is a private package that grants this repository access (Actions access in
       # the package's settings); the job's token pulls it.
       credentials:

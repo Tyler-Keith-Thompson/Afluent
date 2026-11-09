@@ -74,27 +74,25 @@ public protocol AsynchronousUnitOfWork<Success>: Sendable where Success: Sendabl
     /// ```
     @discardableResult func execute(priority: TaskPriority?) async throws -> Success
 
-    #if swift(>=6)
-        /// Starts the asynchronous unit of work using a specific task executor and optional priority.
-        ///
-        /// - Parameters:
-        ///   - taskExecutor: The preferred executor for the task, or `nil` for the default.
-        ///   - priority: The priority to use, or `nil` for default.
-        @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-        func run(executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?)
+    /// Starts the asynchronous unit of work using a specific task executor and optional priority.
+    ///
+    /// - Parameters:
+    ///   - taskExecutor: The preferred executor for the task, or `nil` for the default.
+    ///   - priority: The priority to use, or `nil` for default.
+    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+    func run(executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?)
 
-        /// Starts the asynchronous unit of work with a specific task executor and optional priority, and awaits its result.
-        ///
-        /// - Parameters:
-        ///   - taskExecutor: The preferred executor for the task, or `nil` for the default.
-        ///   - priority: The priority to use, or `nil` for default.
-        /// - Returns: The value produced if the work succeeds.
-        /// - Throws: `CancellationError` if cancelled, or another error if the work fails.
-        @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-        @discardableResult func execute(
-            executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?
-        ) async throws -> Success
-    #endif
+    /// Starts the asynchronous unit of work with a specific task executor and optional priority, and awaits its result.
+    ///
+    /// - Parameters:
+    ///   - taskExecutor: The preferred executor for the task, or `nil` for the default.
+    ///   - priority: The priority to use, or `nil` for default.
+    /// - Returns: The value produced if the work succeeds.
+    /// - Throws: `CancellationError` if cancelled, or another error if the work fails.
+    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+    @discardableResult func execute(
+        executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority?
+    ) async throws -> Success
 
     /// Only useful when creating operators, defines the async function that should execute when the operator executes
     @Sendable func _operation() async throws -> AsynchronousOperation<Success>
@@ -135,32 +133,30 @@ extension AsynchronousUnitOfWork {
         }
     }
 
-    #if swift(>=6)
-        @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-        public func run(
-            executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority? = nil
-        ) {
-            state.createTask(
+    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+    public func run(
+        executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority? = nil
+    ) {
+        state.createTask(
+            taskExecutor: taskExecutor,
+            priority: priority,
+            operation: operation)
+    }
+
+    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+    @discardableResult public func execute(
+        executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority? = nil
+    ) async throws -> Success {
+        try await withTaskCancellationHandler {
+            try await state.createTask(
                 taskExecutor: taskExecutor,
                 priority: priority,
-                operation: operation)
+                operation: operation
+            ).value
+        } onCancel: {
+            cancel()
         }
-
-        @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-        @discardableResult public func execute(
-            executorPreference taskExecutor: (any TaskExecutor)?, priority: TaskPriority? = nil
-        ) async throws -> Success {
-            try await withTaskCancellationHandler {
-                try await state.createTask(
-                    taskExecutor: taskExecutor,
-                    priority: priority,
-                    operation: operation
-                ).value
-            } onCancel: {
-                cancel()
-            }
-        }
-    #endif
+    }
 
     public func cancel() {
         state.cancel()
@@ -198,27 +194,25 @@ public final class TaskState<Success: Sendable>: @unchecked Sendable {
 
     public init() {}
 
-    #if swift(>=6)
-        @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-        @discardableResult func createTask(
-            taskExecutor: (any TaskExecutor)?,
-            priority: TaskPriority?,
-            operation: @Sendable @escaping () async throws -> Success
-        ) -> Task<Success, Error> {
-            guard !isCancelled else {
-                let task = Task<Success, Error> { throw CancellationError() }
-                task.cancel()
-                return task
-            }
-            let task = Task(executorPreference: taskExecutor, priority: priority) {
-                try await operation()
-            }
-            lock.protect {
-                tasks.append(task)
-            }
+    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+    @discardableResult func createTask(
+        taskExecutor: (any TaskExecutor)?,
+        priority: TaskPriority?,
+        operation: @Sendable @escaping () async throws -> Success
+    ) -> Task<Success, Error> {
+        guard !isCancelled else {
+            let task = Task<Success, Error> { throw CancellationError() }
+            task.cancel()
             return task
         }
-    #endif
+        let task = Task(executorPreference: taskExecutor, priority: priority) {
+            try await operation()
+        }
+        lock.protect {
+            tasks.append(task)
+        }
+        return task
+    }
 
     @discardableResult func createTask(
         priority: TaskPriority?,

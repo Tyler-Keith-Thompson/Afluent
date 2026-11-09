@@ -50,14 +50,17 @@ extension AsyncSequences {
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            receiveMakeIterator?()
-            return AsyncIterator(
+            // Create the upstream iterator first so that, when the hook runs, the upstream already has its
+            // iterator (and for subjects, the subscription exists). This mirrors Combine's `receiveSubscription`.
+            let iterator = AsyncIterator(
                 upstream: upstream.makeAsyncIterator(),
                 receiveNext: receiveNext,
                 receiveOutput: receiveOutput,
                 receiveError: receiveError,
                 receiveComplete: receiveComplete,
                 receiveCancel: receiveCancel)
+            receiveMakeIterator?()
+            return iterator
         }
     }
 }
@@ -75,7 +78,9 @@ extension AsyncSequence where Self: Sendable {
     /// ```
     ///
     /// - Parameters:
-    ///   - receiveMakeIterator: A closure that is invoked when an iterator is requested from this sequence.
+    ///   - receiveMakeIterator: A closure that is invoked when an iterator is requested from this sequence, after the
+    ///     upstream's iterator has been created. For `PassthroughSubject` and `CurrentValueSubject`, this means the
+    ///     consumer is already subscribed when the closure runs.
     ///   - receiveNext: A closure that is invoked when the next element is requested from this sequence. The closure can throw errors.
     ///   - receiveOutput: A closure that is invoked when the upstream emits a successful output. The closure can throw errors.
     ///   - receiveError: A closure that is invoked when the upstream emits an error. The closure can throw errors.

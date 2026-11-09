@@ -125,4 +125,33 @@ struct DeferredTests {
             #expect(throws: CancellationError.self) { try result.get() }
         }
     }
+
+    @Test(
+        "Deferred emits every element of an upstream whose iterator is a value type, then finishes",
+        .timeLimit(.minutes(1)))
+    func deferredIteratesAValueTypeUpstreamToItsEnd() async throws {
+        // A struct iterator: an operator that advances a copy of it repeats the first element.
+        struct Count: AsyncSequence, Sendable {
+            let end: Int
+            struct AsyncIterator: AsyncIteratorProtocol {
+                var next = 0
+                let end: Int
+                mutating func next() async -> Int? {
+                    guard next < end else { return nil }
+                    defer { next += 1 }
+                    return next
+                }
+            }
+            func makeAsyncIterator() -> AsyncIterator { AsyncIterator(end: end) }
+        }
+        let sequence = Deferred { Count(end: 3) }
+        var received = [Int]()
+        // Bounded, so a repeating upstream fails rather than hangs.
+        for try await element in sequence {
+            received.append(element)
+            if received.count > 10 { break }
+        }
+        let expected = [0, 1, 2]
+        #expect(received == expected)
+    }
 }

@@ -31,8 +31,9 @@ extension AsyncSequences {
             var caughtIterator: Downstream.AsyncIterator?
 
             public mutating func next() async throws -> Element? {
-                if var caughtIterator {
-                    return try await caughtIterator.next()
+                // Advanced in place: a copy would leave a value-type iterator where it was.
+                if caughtIterator != nil {
+                    return try await caughtIterator!.next()
                 }
 
                 do {

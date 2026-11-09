@@ -10,8 +10,9 @@ reaches the measurement, so an unchanged target comes from the disk cache or Bui
 targets whose inputs changed are measured again.
 
 The action runs outside the sandbox, which can't start a VM, but it is still cached. It stages the
-package at a fixed path per target (under the user's cache directory), so SwiftPM's build there
-stays incremental between runs. The generated Benchmarks/BUILD.bazel holds one target per row of
+package at a fixed path per checkout and target (under the user's cache directory), so SwiftPM's
+build there stays incremental between runs and two checkouts never measure each other's sources.
+The generated Benchmarks/BUILD.bazel holds one target per row of
 BENCHMARKS in scripts/modules.py; `just bench-simulated` builds them.
 """
 
@@ -48,7 +49,12 @@ case "$(uname -s)" in
     Darwin) cache="$HOME/Library/Caches" ;;
     *) cache="${XDG_CACHE_HOME:-$HOME/.cache}" ;;
 esac
-stage="$cache/$project-benchmarks/$target"
+# One staging directory per checkout and target: a checkout's runs reuse it, so SwiftPM's build
+# there stays incremental, and two checkouts (worktrees, each with its own Bazel output base and so
+# its own execution root, the working directory here) never share one. cksum is POSIX, so this
+# needs nothing beyond the base system on macOS or Linux.
+checkout="$(printf '%s' "$PWD" | cksum | cut -d ' ' -f 1)"
+stage="$cache/$project-benchmarks/$checkout/$target"
 fresh="$(mktemp -d)"
 trap 'rm -rf "$fresh"' EXIT
 
@@ -91,11 +97,12 @@ cp "$stage/Benchmarks/.benchmarkBaselines/$target/bazel/results.json" "$out"
 def _simulated_benchmark_impl(ctx):
     sources = depset(transitive = [m[_SourcesInfo].files for m in ctx.attr.modules])
     inputs = depset(
-        ctx.files.srcs + ctx.files.manifests + [ctx.file.harness, ctx.file.stamp],
+        ctx.files.srcs + ctx.files.manifests + ctx.files.harness_files + [ctx.file.harness, ctx.file.stamp],
         transitive = [sources],
     )
     listing = ctx.actions.declare_file(ctx.label.name + ".files")
-    ctx.actions.write(listing, "".join([f.path + "\n" for f in inputs.to_list() if f != ctx.file.harness]))
+    harness = [ctx.file.harness] + ctx.files.harness_files
+    ctx.actions.write(listing, "".join([f.path + "\n" for f in inputs.to_list() if f not in harness]))
     out = ctx.actions.declare_file(ctx.label.name + ".json")
     ctx.actions.run_shell(
         command = _STAGE,
@@ -128,6 +135,7 @@ simulated_benchmark = rule(
         "benchmarks": attr.string_list(doc = "Every benchmark target the benchmarks manifest declares."),
         "project": attr.string(mandatory = True, doc = "Names the staging directory."),
         "harness": attr.label(allow_single_file = True, mandatory = True, doc = "The benchmark-harness binary."),
+        "harness_files": attr.label_list(allow_files = True, doc = "The harness's resource bundles, which hold the guest's scripts."),
         "stamp": attr.label(allow_single_file = True, mandatory = True, doc = "The toolchain and host the counts depend on."),
     },
 )

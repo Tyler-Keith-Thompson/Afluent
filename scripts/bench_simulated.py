@@ -16,11 +16,15 @@ uncached, as `benchmark-harness baseline update` would.
 BENCHMARK_HARNESS names the BenchmarkHarness checkout (default ~/workspace/BenchmarkHarness).
 """
 
+import fcntl
 import importlib.util
+import json
 import os
 import platform
+import shutil
 import subprocess
 import sys
+import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BENCHMARKS_DIR = os.path.join(ROOT, "Benchmarks")
@@ -53,20 +57,63 @@ def write_if_changed(path, text):
         f.write(text)
 
 
+def mirror(source, destination):
+    """Make `destination` hold exactly `source`'s files, rewriting only those that differ."""
+    wanted = set()
+    for directory, _, names in os.walk(source):
+        for name in names:
+            relative = os.path.relpath(os.path.join(directory, name), source)
+            wanted.add(relative)
+            with open(os.path.join(source, relative), "rb") as f:
+                content = f.read()
+            target = os.path.join(destination, relative)
+            try:
+                with open(target, "rb") as f:
+                    if f.read() == content:
+                        continue
+            except FileNotFoundError:
+                pass
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with open(target + ".partial", "wb") as f:
+                f.write(content)
+            os.chmod(target + ".partial", os.stat(os.path.join(source, relative)).st_mode & 0o777)
+            os.replace(target + ".partial", target)
+    for directory, _, names in os.walk(destination):
+        for name in names:
+            path = os.path.join(directory, name)
+            if os.path.relpath(path, destination) not in wanted:
+                os.remove(path)
+
+
 def prepare_harness(harness_checkout):
-    """Build the harness, then point Benchmarks/.harness at it with a stamp of the host's toolchain."""
-    subprocess.run(["just", "--justfile", os.path.join(harness_checkout, "justfile"), "harness"], check=True)
-    binary = os.path.join(harness_checkout, "Harness", ".build", "release", "benchmark-harness")
-    os.makedirs(STAMP_DIR, exist_ok=True)
-    link = os.path.join(STAMP_DIR, "benchmark-harness")
-    if not os.path.islink(link) or os.readlink(link) != binary:
-        if os.path.lexists(link):
-            os.remove(link)
-        os.symlink(binary, link)
-    # The binary itself is an input too (Bazel hashes what the link points to). The stamp adds what
-    # the counts depend on beyond it: the kind of host and the Swift that builds the harness's tools.
+    """Build the harness, copy it into Benchmarks/.harness/bin, and stamp the host's toolchain.
+
+    Building re-signs the binary in place, so checkouts building at once take turns (a lock in the
+    harness's build directory), and each checkout runs its own copy: a measurement in one checkout
+    never starts a binary another is rewriting. The copy keeps the signature, which is embedded,
+    and takes the resource bundles beside the binary too, which hold the guest's scripts.
+    """
+    build = os.path.join(harness_checkout, "Harness", ".build")
+    os.makedirs(build, exist_ok=True)
+    bin_dir = os.path.join(STAMP_DIR, "bin")
+    with open(os.path.join(build, "bench-simulated.lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        subprocess.run(["just", "--justfile", os.path.join(harness_checkout, "justfile"), "harness"], check=True)
+        release = os.path.join(build, "release")
+        with tempfile.TemporaryDirectory() as snapshot:
+            shutil.copy2(os.path.join(release, "benchmark-harness"), snapshot)
+            for name in sorted(os.listdir(release)):
+                if name.endswith(".bundle"):
+                    shutil.copytree(os.path.join(release, name), os.path.join(snapshot, name))
+            lock.close()
+            for stale in ("benchmark-harness",):  # the symlink an earlier version wrote
+                if os.path.islink(os.path.join(STAMP_DIR, stale)):
+                    os.remove(os.path.join(STAMP_DIR, stale))
+            mirror(snapshot, bin_dir)
+    # The binary and its bundles are inputs (Bazel hashes them). The stamp adds what the counts
+    # depend on beyond them: the kind of host and the Swift that builds the harness's tools.
     write_if_changed(os.path.join(STAMP_DIR, "stamp"), f"{platform.system()} {platform.machine()}\n{swift_version()}\n")
-    return binary
+    return os.path.join(bin_dir, "benchmark-harness")
 
 
 def main(argv):
@@ -105,13 +152,14 @@ def main(argv):
         with open(os.path.join(bin_dir, "Benchmarks", f"{target}.json")) as f:
             results = f.read()
         # The measurement records the baseline under the name "bazel"; ordo-one reads the name
-        # from the file, so it is changed to the one asked for and nothing else.
+        # from the file, so it is changed to the one asked for and nothing else. Replacing the
+        # text keeps the harness's bytes and key order; the new name is encoded as a JSON string.
         marker = '"baselineName":"bazel"'
         assert results.count(marker) == 1, f"{target}: no baseline name in the harness's output"
         destination = os.path.join(BENCHMARKS_DIR, ".benchmarkBaselines", target, baseline)
         os.makedirs(destination, exist_ok=True)
         with open(os.path.join(destination, "results.json"), "w") as f:
-            f.write(results.replace(marker, f'"baselineName":"{baseline}"'))
+            f.write(results.replace(marker, f'"baselineName":{json.dumps(baseline)}'))
         print(f"Wrote baseline '{baseline}' for {target}")
 
 

@@ -31,7 +31,8 @@ Simulated counts are deterministic, so each target's are a cached Bazel output
 (`//Benchmarks:<Target>`, `tools/benchmarks.bzl`): `just bench-simulated` measures again only the
 targets whose sources, imported modules, manifests or harness changed, and takes the rest from the
 disk cache or BuildBuddy. Each measurement stages the package under
-`~/Library/Caches/<project>-benchmarks/<Target>` (`~/.cache` on Linux) and runs outside Bazel's
-sandbox, which can't start a VM. `Benchmarks/.harness/` (untracked) links the harness binary and
-stamps the host and Swift version, both inputs. `--filter`, `--skip` and the harness's other
-options measure directly, uncached.
+`~/Library/Caches/<project>-benchmarks/<checkout>/<Target>` (`~/.cache` on Linux; one per checkout,
+so worktrees don't share one) and runs outside Bazel's sandbox, which can't start a VM.
+`Benchmarks/.harness/` (untracked) holds this checkout's copy of the harness binary and its resource
+bundles, and a stamp of the host and Swift version, all inputs. `--filter`, `--skip` and the
+harness's other options measure directly, uncached.

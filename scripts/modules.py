@@ -527,7 +527,9 @@ def benchmarks_build_bazel():
         "    library_directories = LIBRARY_DIRECTORIES,\n"
         "    benchmarks = BENCHMARKS,\n"
         f'    project = "{PROJECT.lower()}",\n'
-        '    harness = ".harness/benchmark-harness",\n'
+        '    harness = ".harness/bin/benchmark-harness",\n'
+        "    # Empty until `just bench-simulated` copies the harness in; `bazel test //...` loads this anyway.\n"
+        '    harness_files = glob([".harness/bin/*.bundle/**"], allow_empty = True),\n'
         '    stamp = ".harness/stamp",\n'
         "    # `manual`: measuring starts a VM, so `bazel build //...` leaves these out.\n"
         '    tags = ["manual"],\n'

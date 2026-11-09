@@ -33,6 +33,7 @@ struct RetryBehaviourTests {
             var handled = 0
             func handle(error: Error, beforeRetry: @Sendable (Error) async throws -> Void) async throws -> Bool {
                 handled += 1
+                try await beforeRetry(error)
                 return true
             }
         }

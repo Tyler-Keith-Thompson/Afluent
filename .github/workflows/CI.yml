@@ -14,13 +14,23 @@ on:
       BUILDBUDDY_API_KEY:
         required: false
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   bazel:
     name: Bazel tests
     runs-on: ubuntu-26.04-arm
     # Swift with Bazel already in it (ci-image/ in the project template): rules_swift's Linux
     # toolchain is whatever swiftc is on the PATH, and Bazelisk runs the Bazel in .bazelversion.
-    container: ghcr.io/tyler-keith-thompson/swift-bazel:6.3-9.3.1
+    container:
+      image: ghcr.io/tyler-keith-thompson/swift-bazel:6.3-9.3.1
+      # The image is a private package that grants this repository access (Actions access in
+      # the package's settings); the job's token pulls it.
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v7
       - name: Restore Bazel's downloads

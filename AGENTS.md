@@ -83,6 +83,7 @@ Every shell command gets a timeout. macOS has no `timeout`; use
 - CI's Bazel jobs run in `ghcr.io/tyler-keith-thompson/swift-bazel:<swift>-<bazel>`, Swift with
   the Bazel in `.bazelversion` already in it, built by the project template's `ci-image/build.sh`.
   Changing `.bazelversion` or the workflows' Swift version means a new tag from there.
+  The package is private; a repository pulls it once added under its Manage Actions access.
 - Exit tests (`#expect(processExitsWith:)`) go in files of their own, apart from the other tests:
   builds for platforms that cannot start a child process leave those files out.
 

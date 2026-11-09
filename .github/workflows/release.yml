@@ -15,6 +15,10 @@ jobs:
   ci:
     uses: ./.github/workflows/CI.yml
     secrets: inherit
+    # The CI image is a private package this repository is granted access to; the token reads it.
+    permissions:
+      contents: read
+      packages: read
 
   release:
     needs: ci

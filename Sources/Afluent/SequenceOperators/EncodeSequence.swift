@@ -14,36 +14,22 @@ extension AsyncSequences {
     where Upstream.Element: Encodable {
         public typealias Element = Encoder.Output
 
-        final class State: @unchecked Sendable {
-            let lock = NSRecursiveLock()
-            private let encoder: Encoder
-            init(encoder: Encoder) {
-                self.encoder = encoder
-            }
-
-            func encode<T: Encodable>(_ value: T) throws -> Encoder.Output {
-                try lock.protect {
-                    try encoder.encode(value)
-                }
-            }
-        }
-
         let upstream: Upstream
-        let state: State
+        let encode: SynchronizedFunction<Upstream.Element, Element>
 
         init(upstream: Upstream, encoder: Encoder) {
             self.upstream = upstream
-            state = State(encoder: encoder)
+            encode = SynchronizedFunction { try encoder.encode($0) }
         }
 
         public struct AsyncIterator: AsyncIteratorProtocol {
             var upstreamIterator: Upstream.AsyncIterator
-            let state: State
+            let encode: SynchronizedFunction<Upstream.Element, Element>
 
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
                 return try await upstreamIterator.next().flatMap {
-                    try state.encode($0)
+                    try encode($0)
                 }
             }
         }
@@ -51,7 +37,7 @@ extension AsyncSequences {
         public func makeAsyncIterator() -> AsyncIterator {
             AsyncIterator(
                 upstreamIterator: upstream.makeAsyncIterator(),
-                state: state)
+                encode: encode)
         }
     }
 }

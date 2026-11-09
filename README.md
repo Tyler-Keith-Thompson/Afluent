@@ -166,6 +166,7 @@ are generated from one module table, `scripts/modules.py`. Install Bazelisk and
 | `just verify` | Both |
 | `just docs` | The documentation site into `.build/docs` |
 | `just modules` | Regenerate `Package.swift` and every `BUILD.bazel` after editing `scripts/modules.py` |
+| `just bench` | The benchmarks (`Benchmarks/README.md`) |
 | `just generate` | An Xcode project from the Bazel graph |
 
 Pull requests merge through [Trunk's merge queue](https://docs.trunk.io/merge-queue): comment

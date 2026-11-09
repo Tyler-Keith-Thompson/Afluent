@@ -25,6 +25,9 @@ tools/                           Bazel rule wrappers (warnings as errors, Swift 
 .trunk/trunk.yaml                The checks Trunk's merge queue waits for before it merges to main
 ```
 
+`Benchmarks/` is a separate SwiftPM package (ordo-one/benchmark) that Bazel ignores; see
+`Benchmarks/README.md`.
+
 ### Module graph
 
 `scripts/modules.py` is the source of truth for modules, their dependencies, test targets,
@@ -60,6 +63,8 @@ Every shell command gets a timeout. macOS has no `timeout`; use
 | `just spm-test`, `just verify` | SwiftPM tests; both build systems |
 | `just modules` | Regenerate build files from `scripts/modules.py` |
 | `just resolve` | Re-resolve Bazel's SwiftPM dependencies after editing `PACKAGES` |
+| `just bench [--target X]` | Benchmarks; `just bench-compare` against the `main` baseline |
+| `just bench-simulated-compare [--target X]` | Simulated counts (Callgrind in a Linux VM, from `~/workspace/BenchmarkHarness`) against the committed `simulated` baseline; `just bench-simulated [--target X]` re-records it |
 | `just docs` | Combined DocC site into `.build/docs` |
 | `just generate` | Xcode project from the Bazel graph |
 | `just buildbuddy-key`, `just ci-secrets` | Store the BuildBuddy key in the Keychain (once per Mac; builds then use the remote cache); set it as this repository's Actions secret with `gh` |
@@ -133,6 +138,15 @@ have.
    - a property test against a naive reference (`swift-property-based`).
 3. **A README example**, if the feature changes how the package is introduced, copied verbatim
    into `Tests/AfluentTests`.
+4. **A benchmark** in `Benchmarks/Benchmarks/<Module>Benchmarks` where speed matters, starting
+   with a `BASELINE` entry: the hand-written form the code must keep pace with. Measure in
+   release, and add a ratio test in `Tests/<Module>Tests/Performance/` where siblings have one.
+   Use small inputs in debug builds, because the timing only runs in release.
+   Judge a speed change by `just bench-simulated-compare --target <Module>Benchmarks`: its
+   instruction, cache-miss and branch counts don't move when the machine is busy, as wall clock
+   does. Allocation counts and absolute times still come from `just bench`, on a quiet machine.
+   Re-record the `simulated` baseline for the targets a change touches
+   (`just bench-simulated --target X`) and commit it with the change.
 
 Watch for these:
 
@@ -147,6 +161,8 @@ Watch for these:
 |---|---|
 | Any library code | `bazel test` for every target in `bazel query 'rdeps(//Tests/..., //Sources/X)'`, then `just test-release` |
 | `scripts/modules.py` | `just modules`, `just test` (which runs `//:package_swift_test`), `just spm` |
+| `Benchmarks/`, or an API the benchmarks call | `cd Benchmarks && env -u TOOLCHAINS xcrun --toolchain default swift build -c release` |
+| A change meant to be faster | `just bench-simulated-compare --target <Module>Benchmarks`, not `just bench-compare` |
 
 ### Pushing
 

@@ -26,6 +26,12 @@ xcuserdata/
 # Python
 __pycache__/
 
+# Benchmark baselines: `main` (just bench-baseline) and `simulated` (just bench-simulated) are shared;
+# other names are local before/after comparisons.
+Benchmarks/.benchmarkBaselines/*/*
+!Benchmarks/.benchmarkBaselines/*/main/
+!Benchmarks/.benchmarkBaselines/*/simulated/
+
 *.swp
 
 # SwiftPM, beyond the template's

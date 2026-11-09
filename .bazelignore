@@ -13,5 +13,8 @@ bazel-bin
 bazel-out
 bazel-testlogs
 
+# The benchmark package is SwiftPM-only.
+Benchmarks
+
 # Overlays the bootstrap script copies over the template (server and embedded types); not built in place.
 templates

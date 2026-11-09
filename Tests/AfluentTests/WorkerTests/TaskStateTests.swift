@@ -29,7 +29,14 @@ struct TaskStateTests {
             let canceller = Task.detached { state.cancel() }
             await canceller.value
             let created = await creator.value
-            _ = await created.result
+            // If the state lost track of the task, the time limit cancels this test; cancelling the task here lets
+            // the test report that failure and finish instead of waiting forever.
+            _ = await withTaskCancellationHandler {
+                await created.result
+            } onCancel: {
+                created.cancel()
+            }
+            if Task.isCancelled { break }
         }
     }
 
@@ -103,6 +110,7 @@ struct TaskStateTests {
             }
         }
         handle.setValue(work)
+        defer { handle.setValue(nil) }
         let execution = Task { try await work.execute() }
         for await _ in started { break }
 

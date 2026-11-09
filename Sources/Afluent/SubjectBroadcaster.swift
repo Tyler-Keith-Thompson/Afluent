@@ -9,7 +9,7 @@
 /// still sees every value in order. A value sent with no subscribers is dropped. When the broadcaster tracks a
 /// current value, a new subscriber's buffer starts with that value, set in the same critical region that registers
 /// it, so the subscriber sees exactly the current value followed by later sends.
-final class SubjectBroadcaster<Element: Sendable>: @unchecked Sendable {
+final class SubjectBroadcaster<Element: Sendable>: Sendable {
     fileprivate struct Subscriber: Sendable {
         var buffer = [Element]()
         var terminal: Result<Element?, any Error>?
@@ -46,13 +46,13 @@ final class SubjectBroadcaster<Element: Sendable>: @unchecked Sendable {
         }
     }
 
-    private let state: ManagedCriticalState<State>
+    private let state: CriticalState<State>
 
     /// - Parameter current: The initial current value, or `nil` to not track one.
     init(current: Element? = nil) {
         var initial = State()
         initial.current = current
-        state = ManagedCriticalState(initial)
+        state = CriticalState(initial)
     }
 
     /// The current value. Only meaningful when the broadcaster was created with one.
@@ -91,12 +91,12 @@ final class SubjectBroadcaster<Element: Sendable>: @unchecked Sendable {
         }
     }
 
-    final class Subscription: @unchecked Sendable {
-        private let state: ManagedCriticalState<State>
+    final class Subscription: Sendable {
+        private let state: CriticalState<State>
         private let id: Int?
         private let finished: Result<Element?, any Error>?
 
-        fileprivate init(state: ManagedCriticalState<State>) {
+        fileprivate init(state: CriticalState<State>) {
             self.state = state
             (id, finished) = state.withCriticalRegion { state in
                 if let finished = state.finishedResult {

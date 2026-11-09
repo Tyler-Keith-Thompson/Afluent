@@ -196,7 +196,7 @@ where Base: Sendable, Base.Element: Sendable {
             return id
         }
 
-        static func establish(_ state: ManagedCriticalState<State>) -> Int {
+        static func establish(_ state: CriticalState<State>) -> Int {
             state.withCriticalRegion { $0.establish() }
         }
 
@@ -206,7 +206,7 @@ where Base: Sendable, Base.Element: Sendable {
             }
         }
 
-        static func cancel(_ state: ManagedCriticalState<State>, id: Int) {
+        static func cancel(_ state: CriticalState<State>, id: Int) {
             state.withCriticalRegion { $0.cancel(id) }
         }
 
@@ -222,7 +222,7 @@ where Base: Sendable, Base.Element: Sendable {
             sides[id]?.next(continuation)
         }
 
-        static func next(_ state: ManagedCriticalState<State>, id: Int) async -> Result<
+        static func next(_ state: CriticalState<State>, id: Int) async -> Result<
             Element?, Error
         > {
             await withUnsafeContinuation { continuation in
@@ -241,7 +241,7 @@ where Base: Sendable, Base.Element: Sendable {
             }
         }
 
-        static func emit(_ state: ManagedCriticalState<State>, result: Result<Element?, Error>) {
+        static func emit(_ state: CriticalState<State>, result: Result<Element?, Error>) {
             state.withCriticalRegion { $0.emit(result) }
         }
     }
@@ -259,7 +259,7 @@ where Base: Sendable, Base.Element: Sendable {
             status = .initial(base)
         }
 
-        static func task(_ state: ManagedCriticalState<State>, base: Base) -> Task<Void, Never> {
+        static func task(_ state: CriticalState<State>, base: Base) -> Task<Void, Never> {
             Task {
                 do {
                     for try await element in base {
@@ -272,7 +272,7 @@ where Base: Sendable, Base.Element: Sendable {
             }
         }
 
-        mutating func start(_ state: ManagedCriticalState<State>) -> Bool {
+        mutating func start(_ state: CriticalState<State>) -> Bool {
             switch status {
                 case .terminal:
                     return false
@@ -293,23 +293,23 @@ where Base: Sendable, Base.Element: Sendable {
         }
 
         static func start(
-            _ iteration: ManagedCriticalState<Iteration>, state: ManagedCriticalState<State>
+            _ iteration: CriticalState<Iteration>, state: CriticalState<State>
         ) -> Bool {
             iteration.withCriticalRegion { $0.start(state) }
         }
 
-        static func cancel(_ iteration: ManagedCriticalState<Iteration>) {
+        static func cancel(_ iteration: CriticalState<Iteration>) {
             // Cancelling runs the base's cancellation handlers inline, so it happens outside the region.
             iteration.withCriticalRegion { $0.cancel() }?.cancel()
         }
     }
 
-    let state: ManagedCriticalState<State>
-    let iteration: ManagedCriticalState<Iteration>
+    let state: CriticalState<State>
+    let iteration: CriticalState<Iteration>
 
     init(_ base: Base) {
-        state = ManagedCriticalState(State())
-        iteration = ManagedCriticalState(Iteration(base))
+        state = CriticalState(State())
+        iteration = CriticalState(Iteration(base))
     }
 }
 
@@ -318,11 +318,11 @@ extension AsyncBroadcastSequence: AsyncSequence {
 
     public struct Iterator: AsyncIteratorProtocol {
         final class Context {
-            let state: ManagedCriticalState<State>
-            var iteration: ManagedCriticalState<Iteration>
+            let state: CriticalState<State>
+            var iteration: CriticalState<Iteration>
             let id: Int
 
-            init(_ state: ManagedCriticalState<State>, _ iteration: ManagedCriticalState<Iteration>)
+            init(_ state: CriticalState<State>, _ iteration: CriticalState<Iteration>)
             {
                 self.state = state
                 self.iteration = iteration
@@ -356,7 +356,7 @@ extension AsyncBroadcastSequence: AsyncSequence {
 
         let context: Context
 
-        init(_ state: ManagedCriticalState<State>, _ iteration: ManagedCriticalState<Iteration>) {
+        init(_ state: CriticalState<State>, _ iteration: CriticalState<Iteration>) {
             context = Context(state, iteration)
         }
 

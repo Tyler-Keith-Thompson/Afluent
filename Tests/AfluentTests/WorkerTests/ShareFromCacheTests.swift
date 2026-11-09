@@ -5,6 +5,8 @@
 //  Created by Tyler Thompson on 10/28/23.
 //
 
+import AfluentTesting
+import Atomics
 import Clocks
 import ConcurrencyExtras
 import Foundation
@@ -15,247 +17,263 @@ import Testing
 struct ShareFromCacheTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func sharingFromCacheWithNoKey() async throws {
-        try await withMainSerialExecutor {
-            actor Test {
-                var callCount = 0
+        actor Test {
+            var callCount = 0
 
-                func increment() {
-                    callCount += 1
-                }
+            func increment() {
+                callCount += 1
             }
-            let clock = TestClock()
-            let test = Test()
-            let cache = AUOWCache()
-
-            @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
-                DeferredTask {
-                    await test.increment()
-                    return UUID().uuidString
-                }
-                .delay(for: .milliseconds(10), clock: clock)
-                .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation)
-            }
-
-            let uow = unitOfWork()
-            async let d1 = uow.execute()
-            #expect(!cache.cache.isEmpty)
-            async let d2 = DeferredTask {}
-                .delay(for: .milliseconds(5), clock: clock)
-                .flatMap {
-                    #expect(!cache.cache.isEmpty)
-                    let uow = unitOfWork()
-                    let key = try #require(cache.cache.keys.first)
-                    let o1 = try ObjectIdentifier(#require(cache.cache[key]))
-                    let o2 = try ObjectIdentifier(
-                        #require(uow as? AnyAsynchronousUnitOfWork<String>).upstream as AnyObject)
-                    #expect(o1 == o2)
-                    return uow
-                }
-                .execute()
-
-            await clock.advance(by: .milliseconds(15))
-            _ = try await d1
-            _ = try await d2
-
-            let callCount = await test.callCount
-            #expect(callCount == 1)
         }
+        let clock = TrackedTestClock()
+        let d2Resolved = ManagedAtomic(false)
+        let test = Test()
+        let cache = AUOWCache()
+
+        @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
+            DeferredTask {
+                await test.increment()
+                return UUID().uuidString
+            }
+            .delay(for: .milliseconds(10), clock: clock)
+            .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation)
+        }
+
+        let uow = unitOfWork()
+        async let d1 = uow.execute()
+        #expect(!cache.cache.isEmpty)
+        async let d2 = DeferredTask {}
+            .delay(for: .milliseconds(5), clock: clock)
+            .flatMap {
+                #expect(!cache.cache.isEmpty)
+                let uow = unitOfWork()
+                let key = try #require(cache.cache.keys.first)
+                let o1 = try ObjectIdentifier(#require(cache.cache[key]))
+                let o2 = try ObjectIdentifier(
+                    #require(uow as? AnyAsynchronousUnitOfWork<String>).upstream as AnyObject)
+                #expect(o1 == o2)
+                d2Resolved.store(true, ordering: .sequentiallyConsistent)
+                return uow
+            }
+            .execute()
+
+        // d2 must pick up the cached work while d1 is still in flight.
+        try await clock.advance(by: .milliseconds(5), whenSleeping: 2)
+        try await wait(
+            until: d2Resolved.load(ordering: .sequentiallyConsistent), timeout: .seconds(2))
+        await clock.advance(by: .milliseconds(10))
+        _ = try await d1
+        _ = try await d2
+
+        let callCount = await test.callCount
+        #expect(callCount == 1)
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func sharingFromCacheAfterCompletion() async throws {
-        try await withMainSerialExecutor {
-            actor Test {
-                var callCount = 0
+        actor Test {
+            var callCount = 0
 
-                func increment() {
-                    callCount += 1
-                }
+            func increment() {
+                callCount += 1
             }
-            let test = Test()
-            let cache = AUOWCache()
-            let clock = TestClock()
-
-            @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
-                DeferredTask {
-                    await test.increment()
-                    return UUID().uuidString
-                }
-                .delay(for: .milliseconds(10), clock: clock)
-                .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation)
-            }
-
-            let uow = unitOfWork()
-            async let d1 = uow.execute()
-            #expect(!cache.cache.isEmpty)
-            async let d2 = DeferredTask {}
-                .delay(for: .milliseconds(15), clock: clock)
-                .flatMap {
-                    #expect(cache.cache.isEmpty)
-                    return unitOfWork()
-                }
-                .execute()
-
-            await clock.advance(by: .milliseconds(11))
-            _ = try await d1
-            await clock.advance(by: .milliseconds(16))
-            _ = try await d2
-
-            let callCount = await test.callCount
-            #expect(callCount == 2)
         }
+        let test = Test()
+        let cache = AUOWCache()
+        let clock = TrackedTestClock()
+        let d2Resolved = ManagedAtomic(false)
+
+        @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
+            DeferredTask {
+                await test.increment()
+                return UUID().uuidString
+            }
+            .delay(for: .milliseconds(10), clock: clock)
+            .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation)
+        }
+
+        let uow = unitOfWork()
+        async let d1 = uow.execute()
+        #expect(!cache.cache.isEmpty)
+        async let d2 = DeferredTask {}
+            .delay(for: .milliseconds(15), clock: clock)
+            .flatMap {
+                #expect(cache.cache.isEmpty)
+                d2Resolved.store(true, ordering: .sequentiallyConsistent)
+                return unitOfWork()
+            }
+            .execute()
+
+        try await clock.advance(by: .milliseconds(11), whenSleeping: 2)
+        _ = try await d1
+        // d2 wakes at 15 and starts new work, whose own 10 ms delay must be registered before time moves on.
+        await clock.advance(by: .milliseconds(4))
+        try await wait(
+            until: d2Resolved.load(ordering: .sequentiallyConsistent), timeout: .seconds(2))
+        try await clock.advance(by: .milliseconds(10), whenSleeping: 1)
+        _ = try await d2
+
+        let callCount = await test.callCount
+        #expect(callCount == 2)
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func sharingFromCacheAfterError() async throws {
-        await withMainSerialExecutor {
-            actor Test {
-                var callCount = 0
+        actor Test {
+            var callCount = 0
 
-                func increment() {
-                    callCount += 1
-                }
+            func increment() {
+                callCount += 1
             }
-            enum Err: Error { case e1 }
-            let test = Test()
-            let cache = AUOWCache()
-            let clock = TestClock()
-
-            @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
-                DeferredTask {
-                    await test.increment()
-                    throw Err.e1
-                }
-                .delay(for: .milliseconds(10), clock: clock)
-                .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation)
-            }
-
-            let uow = unitOfWork()
-            async let d1 = uow.execute()
-            #expect(!cache.cache.isEmpty)
-            async let d2 = DeferredTask {}
-                .delay(for: .milliseconds(15), clock: clock)
-                .flatMap {
-                    #expect(cache.cache.isEmpty)
-                    return unitOfWork()
-                }
-                .execute()
-
-            let err1: Error?
-            let err2: Error?
-            do {
-                await clock.advance(by: .milliseconds(11))
-                _ = try await d1
-                err1 = nil
-            } catch {
-                err1 = error
-            }
-            do {
-                await clock.advance(by: .milliseconds(16))
-                _ = try await d2
-                err2 = nil
-            } catch {
-                err2 = error
-            }
-
-            #expect(err1 as? Err == Err.e1)
-            #expect(err2 as? Err == Err.e1)
-
-            let callCount = await test.callCount
-            #expect(callCount == 2)
         }
+        enum Err: Error { case e1 }
+        let test = Test()
+        let cache = AUOWCache()
+        let clock = TrackedTestClock()
+
+        @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
+            DeferredTask {
+                await test.increment()
+                throw Err.e1
+            }
+            .delay(for: .milliseconds(10), clock: clock)
+            .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation)
+        }
+
+        let uow = unitOfWork()
+        async let d1 = uow.execute()
+        #expect(!cache.cache.isEmpty)
+        async let d2 = DeferredTask {}
+            .delay(for: .milliseconds(15), clock: clock)
+            .flatMap {
+                #expect(cache.cache.isEmpty)
+                return unitOfWork()
+            }
+            .execute()
+
+        let err1: Error?
+        let err2: Error?
+        // The work throws before `delay` sleeps, so only d2's delay is ever on the clock.
+        try await wait(until: clock.sleepingCount == 1, timeout: .seconds(2))
+        do {
+            await clock.advance(by: .milliseconds(11))
+            _ = try await d1
+            err1 = nil
+        } catch {
+            err1 = error
+        }
+        do {
+            await clock.advance(by: .milliseconds(4))
+            _ = try await d2
+            err2 = nil
+        } catch {
+            err2 = error
+        }
+
+        #expect(err1 as? Err == Err.e1)
+        #expect(err2 as? Err == Err.e1)
+
+        let callCount = await test.callCount
+        #expect(callCount == 2)
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func sharingFromCacheWithKey() async throws {
-        try await withMainSerialExecutor {
-            actor Test {
-                var callCount = 0
+        actor Test {
+            var callCount = 0
 
-                func increment() {
-                    callCount += 1
-                }
+            func increment() {
+                callCount += 1
             }
-            let test = Test()
-            let cache = AUOWCache()
-            let clock = TestClock()
-
-            @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
-                DeferredTask {
-                    await test.increment()
-                    return UUID().uuidString
-                }
-                .delay(for: .milliseconds(10), clock: clock)
-                .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: 1)
-            }
-
-            let uow = unitOfWork()
-            async let d1 = uow.execute()
-            #expect(!cache.cache.isEmpty)
-            async let d2 = DeferredTask {}
-                .delay(for: .milliseconds(5), clock: clock)
-                .flatMap { unitOfWork() }
-                .execute()
-
-            await clock.advance(by: .milliseconds(11))
-            _ = try await d1
-            _ = try await d2
-
-            let callCount = await test.callCount
-            #expect(callCount == 1)
         }
+        let test = Test()
+        let cache = AUOWCache()
+        let clock = TrackedTestClock()
+        let d2Resolved = ManagedAtomic(false)
+
+        @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
+            DeferredTask {
+                await test.increment()
+                return UUID().uuidString
+            }
+            .delay(for: .milliseconds(10), clock: clock)
+            .shareFromCache(cache, strategy: .cacheUntilCompletionOrCancellation, keys: 1)
+        }
+
+        let uow = unitOfWork()
+        async let d1 = uow.execute()
+        #expect(!cache.cache.isEmpty)
+        async let d2 = DeferredTask {}
+            .delay(for: .milliseconds(5), clock: clock)
+            .flatMap {
+                // Look up the cached work before signalling, so the test cannot let d1 finish and clear the
+                // cache while d2 has yet to find it.
+                let work = unitOfWork()
+                d2Resolved.store(true, ordering: .sequentiallyConsistent)
+                return work
+            }
+            .execute()
+
+        try await clock.advance(by: .milliseconds(5), whenSleeping: 2)
+        try await wait(
+            until: d2Resolved.load(ordering: .sequentiallyConsistent), timeout: .seconds(2))
+        await clock.advance(by: .milliseconds(6))
+        _ = try await d1
+        _ = try await d2
+
+        let callCount = await test.callCount
+        #expect(callCount == 1)
     }
 
     @Test func sharingFromCacheCancelAndRestartCancelsInFlightRequest() async throws {
-        try await withMainSerialExecutor {
-            let cache = AUOWCache()
-            let clock = TestClock()
+        let cache = AUOWCache()
+        let clock = TrackedTestClock()
 
-            @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
-                DeferredTask {
-                    UUID().uuidString
-                }
-                .delay(for: .milliseconds(10), clock: clock)
-                .shareFromCache(cache, strategy: .cancelAndRestart)
+        @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
+            DeferredTask {
+                UUID().uuidString
             }
-
-            async let _r1 = Result { try await unitOfWork().execute() }
-            async let _r2 = Result { try await unitOfWork().execute() }
-
-            await clock.advance(by: .milliseconds(11))
-            let r1 = await _r1
-            let r2 = await _r2
-
-            #expect(throws: CancellationError.self) {
-                try r1.get()
-            }
-            _ = try r2.get()
+            .delay(for: .milliseconds(10), clock: clock)
+            .shareFromCache(cache, strategy: .cancelAndRestart)
         }
+
+        // The first request must be in flight (sleeping) before the second one replaces it.
+        let first = unitOfWork()
+        async let _r1 = Result { try await first.execute() }
+        try await wait(until: clock.sleepingCount == 1, timeout: .seconds(2))
+        let second = unitOfWork()
+        async let _r2 = Result { try await second.execute() }
+
+        let r1 = await _r1
+        #expect(throws: CancellationError.self) {
+            try r1.get()
+        }
+        try await clock.advance(by: .milliseconds(11), whenSleeping: 1)
+        _ = try await _r2.get()
     }
 
     @Test func sharingFromCacheCancelAndRestartAfterCompletion() async throws {
-        try await withMainSerialExecutor {
-            let cache = AUOWCache()
-            let clock = TestClock()
+        let cache = AUOWCache()
+        let clock = TrackedTestClock()
 
-            @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
-                DeferredTask {
-                    UUID().uuidString
-                }
-                .delay(for: .milliseconds(10), clock: clock)
-                .shareFromCache(cache, strategy: .cancelAndRestart)
+        @Sendable func unitOfWork() -> some AsynchronousUnitOfWork<String> {
+            DeferredTask {
+                UUID().uuidString
             }
-
-            async let _r1 = Result { try await unitOfWork().execute() }
-            await clock.advance(by: .milliseconds(11))
-            async let _r2 = Result { try await unitOfWork().execute() }
-            await clock.advance(by: .milliseconds(11))
-
-            let r1 = await _r1
-            let r2 = await _r2
-
-            _ = try r1.get()
-            _ = try r2.get()
+            .delay(for: .milliseconds(10), clock: clock)
+            .shareFromCache(cache, strategy: .cancelAndRestart)
         }
+
+        let first = unitOfWork()
+        async let _r1 = Result { try await first.execute() }
+        try await clock.advance(by: .milliseconds(11), whenSleeping: 1)
+        let r1 = await _r1
+
+        let second = unitOfWork()
+        async let _r2 = Result { try await second.execute() }
+        try await clock.advance(by: .milliseconds(11), whenSleeping: 1)
+        let r2 = await _r2
+
+        _ = try r1.get()
+        _ = try r2.get()
     }
 }

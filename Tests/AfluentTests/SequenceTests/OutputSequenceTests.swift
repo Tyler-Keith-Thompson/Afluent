@@ -50,14 +50,12 @@ struct OutputSequenceTests {
         
         continuation.yield(0)
         task.cancel()
-        
-        // Give task cancellation time to propagate.
-        await Task.megaYield()
-        
-        continuation.finish(throwing: GeneralError.e1)
-        
+
+        // Finishing with an error before the task has seen the cancellation would make the result depend on
+        // timing, so the stream is only finished once the task is done.
         let result = try await task.value
         #expect(result == nil)
+        continuation.finish(throwing: GeneralError.e1)
     }
     
     @Test func testOutputIn() async throws {
@@ -113,14 +111,12 @@ struct OutputSequenceTests {
         
         continuation.yield(0)
         task.cancel()
-        
-        // Give task cancellation time to propagate.
-        await Task.megaYield()
-        
-        continuation.finish(throwing: GeneralError.e1)
-        
+
+        // Finishing with an error before the task has seen the cancellation would make the result depend on
+        // timing, so the stream is only finished once the task is done.
         let result = try await task.value
         #expect(result == nil)
+        continuation.finish(throwing: GeneralError.e1)
     }
     
 }

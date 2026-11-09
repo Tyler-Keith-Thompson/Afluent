@@ -81,46 +81,48 @@ struct MaterializeSequenceTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func materializeDoesNotInterfereWithCancellation() async throws {
-        await withMainSerialExecutor {
-            actor Test {
-                var started = false
-                var ended = false
-                var task: Task<Void, Error>?
+        actor Test {
+            var started = false
+            var ended = false
+            var task: Task<Void, Error>?
 
-                func start() { started = true }
-                func end() { ended = true }
-                func setTask(_ task: Task<Void, Error>?) {
-                    self.task = task
-                }
+            func start() { started = true }
+            func end() { ended = true }
+            func setTask(_ task: Task<Void, Error>?) {
+                self.task = task
             }
-            let test = Test()
-
-            await withCheckedContinuation { continuation in
-                Task {
-                    await test.setTask(
-                        Task {
-                            _ = try await DeferredTask {
-                                await test.start()
-                                await test.task?.cancel()
-                            }
-                            .handleEvents(receiveCancel: {
-                                continuation.resume()
-                            })
-                            .map {
-                                await test.end()
-                            }
-                            .toAsyncSequence()
-                            .materialize()
-                            .first()
-                        })
-                }
-            }
-
-            let started = await test.started
-            let ended = await test.ended
-
-            #expect(started)
-            #expect(!ended)
         }
+        let test = Test()
+        // The body cancels itself through the stored handle, so it must not start before the handle is stored.
+        let taskStored = SingleValueSubject<Void>()
+
+        await withCheckedContinuation { continuation in
+            Task {
+                await test.setTask(
+                    Task {
+                        _ = try await DeferredTask {
+                            try await taskStored.execute()
+                            await test.start()
+                            await test.task?.cancel()
+                        }
+                        .handleEvents(receiveCancel: {
+                            continuation.resume()
+                        })
+                        .map {
+                            await test.end()
+                        }
+                        .toAsyncSequence()
+                        .materialize()
+                        .first()
+                    })
+                try? taskStored.send()
+            }
+        }
+
+        let started = await test.started
+        let ended = await test.ended
+
+        #expect(started)
+        #expect(!ended)
     }
 }

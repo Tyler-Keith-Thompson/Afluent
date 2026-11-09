@@ -102,73 +102,39 @@ struct TimerSequenceTests {
     func timerSequencePublishesOnInterval_whenNotContinuouslySubscribed(expectedCount: Int)
         async throws
     {
-        try await withMainSerialExecutor {
-            let testClock = TestClock()
-            let testOutput = TestOutput()
+        let testClock = TrackedTestClock()
+        let testOutput = TestOutput()
 
-            let skew = 1.5
-            let skewAmount = skew - 1.0
-
-            final class Wrapper<Iterator: AsyncIteratorProtocol>: @unchecked Sendable
-            where Iterator.Element: Sendable {
-                init(_ iterator: Iterator) {
-                    self.iterator = iterator
-                }
-                var iterator: Iterator
-                var nextCalled = PassthroughSubject<Void>()
-
-                func next() async throws -> Iterator.Element? {
-                    let task = Task {
-                        try await iterator.next()
-                    }
-                    await Task.yield()
-                    nextCalled.send()
-                    return try await task.value
-                }
+        // The consumer only asks for the next value when the test says so, and only the test moves time, so
+        // each demand lands exactly 15 ms after the previous one.
+        let (demand, demandContinuation) = AsyncStream<Void>.makeStream()
+        let task = Task {
+            var iterator = TimerSequence.publish(every: .milliseconds(10), clock: testClock)
+                .makeAsyncIterator()
+            for await _ in demand {
+                guard let output = await iterator.next() else { break }
+                await testOutput.append(output)
             }
-
-            let wrappedIterator = Wrapper(
-                TimerSequence.publish(every: .milliseconds(10), clock: testClock)
-                    .makeAsyncIterator())
-
-            // Wait until the `first()` consumer has subscribed: PassthroughSubject drops values sent before that.
-            let nextCalledSubscribed = SingleValueSubject<Void>()
-            async let nextCalled: Void? = try await wrappedIterator.nextCalled
-                .handleEvents(receiveMakeIterator: { try? nextCalledSubscribed.send() })
-                .first()
-            try await nextCalledSubscribed.execute()
-            let task = try await Task.waitUntilExecutionStarted {
-                for _ in 0..<expectedCount {
-                    if let output = try await wrappedIterator.next() {
-                        await testOutput.append(output)
-                        await testClock.advance(by: .milliseconds(10) * skew)
-                    }
-                }
-            }
-
-            try await nextCalled
-
-            await testClock.advance(by: .milliseconds(10) * skew)
-            try await wait(
-                until: await testOutput.output.count == expectedCount, timeout: .seconds(1))
-
-            let expectedOutput: [TestClock<Duration>.Instant] = Array(1...expectedCount)
-                .map {
-                    switch $0 {
-                        case 1:
-                            return .init(offset: .milliseconds(10))
-                        default:
-                            let multiplier = Double($0) * skew
-                            return .init(
-                                offset: .milliseconds(10 * multiplier)
-                                    - .milliseconds(10 * skewAmount))
-                    }
-                }
-            let actualOutput = await testOutput.output
-            #expect(actualOutput == expectedOutput)
-
-            task.cancel()
         }
+
+        demandContinuation.yield()
+        try await testClock.advance(by: .milliseconds(10), whenSleeping: 1)
+        try await wait(until: await testOutput.output.count == 1, timeout: .seconds(2))
+
+        for tick in 2...expectedCount {
+            // The scheduled tick passes with no demand; the late demand then gets the current time.
+            await testClock.advance(by: .milliseconds(15))
+            demandContinuation.yield()
+            try await wait(until: await testOutput.output.count == tick, timeout: .seconds(2))
+        }
+
+        let expectedOutput: [TestClock<Duration>.Instant] = Array(1...expectedCount)
+            .map { .init(offset: .milliseconds(10) + .milliseconds(15) * ($0 - 1)) }
+        let actualOutput = await testOutput.output
+        #expect(actualOutput == expectedOutput)
+
+        demandContinuation.finish()
+        task.cancel()
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)

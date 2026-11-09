@@ -122,53 +122,79 @@ struct ThrottleSequenceTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(arguments: [true, false])
     func throttleWithTimerPublisherReplicatesCombineBehavior(latest: Bool) async throws {
-        try await withMainSerialExecutor {
-            let testClock1 = TestClock()
-            let testClock2 = TestClock()
-            let unthrottledElementContainer = ElementContainer<TestClock<Duration>.Instant>()
-            let throttledElementContainer = ElementContainer<TestClock<Duration>.Instant>()
-            let task = try await Task.waitUntilExecutionStarted {
-                for try await instant in TimerSequence.publish(
-                    every: .seconds(3), clock: testClock1
-                )
-                .handleEvents(receiveOutput: {
-                    await unthrottledElementContainer.append($0)
-                })
-                .throttle(for: .seconds(10), clock: testClock2, latest: latest) {
-                    await throttledElementContainer.append(instant)
-                }
+        let testClock1 = TrackedTestClock()
+        let testClock2 = TrackedTestClock()
+        let unthrottledElementContainer = ElementContainer<TestClock<Duration>.Instant>()
+        let throttledElementContainer = ElementContainer<TestClock<Duration>.Instant>()
+        let upstreamRequests = ManagedAtomic(0)
+        let task = Task {
+            for try await instant in TimerSequence.publish(
+                every: .seconds(3), clock: testClock1
+            )
+            .handleEvents(receiveOutput: {
+                await unthrottledElementContainer.append($0)
+            })
+            .handleEvents(receiveNext: {
+                upstreamRequests.wrappingIncrement(ordering: .sequentiallyConsistent)
+            })
+            .throttle(for: .seconds(10), clock: testClock2, latest: latest) {
+                await throttledElementContainer.append(instant)
             }
-
-            while await throttledElementContainer.elements.count < 6 {
-                async let _ = testClock1.advance(by: .seconds(1))
-                async let _ = testClock2.advance(by: .seconds(1))
-            }
-
-            task.cancel()
-
-            let unthrottledElements = await unthrottledElementContainer.elements
-            let throttledElements = await throttledElementContainer.elements
-
-            let expectedUnthrottledElements: [TestClock<Duration>.Instant] = Array(1...17)
-                .map { $0 * 3 }
-                .map { .init(offset: .seconds($0)) }
-            let expectedThrottled = {
-                // matches Combine values above
-                if latest {
-                    [3, 12, 21, 33, 42, 51]
-                } else {
-                    [3, 6, 15, 24, 36, 45]
-                }
-            }()
-            let expectedThrottledElements: [TestClock<Duration>.Instant] =
-                expectedThrottled
-                .map { .init(offset: .seconds($0)) }
-
-            #expect(unthrottledElements.count == 17)
-            #expect(throttledElements.count == 6)
-            #expect(unthrottledElements == expectedUnthrottledElements, "latest: \(latest)")
-            #expect(throttledElements == expectedThrottledElements, "latest: \(latest)")
         }
+
+        // Combine emits at 3 s and then at the end of each 10 s window, in both modes.
+        let emissionSeconds = [3, 13, 23, 33, 43, 53]
+        // One second at a time, and only the test moves time. Combine runs both on one clock, so within a second:
+        // - before the first emission the throttle is waiting for an element, and that element must be stamped
+        //   with the new time, so the throttle clock moves first;
+        // - after it the throttle is sleeping until its window ends, and an element arriving in the same second
+        //   must be stored before the throttle wakes (at 33 s the latest element is 33, not 30), so the timer
+        //   clock moves first.
+        for second in 1...emissionSeconds.last! {
+            let throttleIsSleeping = await !throttledElementContainer.elements.isEmpty
+            if !throttleIsSleeping {
+                await testClock2.advance(by: .seconds(1))
+            }
+            try await testClock1.advance(by: .seconds(1), whenSleeping: 1)
+            let produced = second / 3
+            // Throttle asks for the next upstream element only after it has stored the previous one.
+            try await wait(
+                until: await unthrottledElementContainer.elements.count == produced
+                    && upstreamRequests.load(ordering: .sequentiallyConsistent) == produced + 1,
+                timeout: .seconds(2))
+            if throttleIsSleeping {
+                try await testClock2.advance(by: .seconds(1), whenSleeping: 1)
+            }
+            let emitted = emissionSeconds.filter { $0 <= second }.count
+            try await wait(
+                until: await throttledElementContainer.elements.count == emitted,
+                timeout: .seconds(2))
+        }
+
+        task.cancel()
+
+        let unthrottledElements = await unthrottledElementContainer.elements
+        let throttledElements = await throttledElementContainer.elements
+
+        let expectedUnthrottledElements: [TestClock<Duration>.Instant] = Array(1...17)
+            .map { $0 * 3 }
+            .map { .init(offset: .seconds($0)) }
+        let expectedThrottled = {
+            // matches Combine values above
+            if latest {
+                [3, 12, 21, 33, 42, 51]
+            } else {
+                [3, 6, 15, 24, 36, 45]
+            }
+        }()
+        let expectedThrottledElements: [TestClock<Duration>.Instant] =
+            expectedThrottled
+            .map { .init(offset: .seconds($0)) }
+
+        #expect(unthrottledElements.count == 17)
+        #expect(throttledElements.count == 6)
+        #expect(unthrottledElements == expectedUnthrottledElements, "latest: \(latest)")
+        #expect(throttledElements == expectedThrottledElements, "latest: \(latest)")
     }
 
     static let latestTrueArguments: [(Int, String, String)] = [

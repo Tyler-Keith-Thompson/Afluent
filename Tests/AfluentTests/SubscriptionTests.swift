@@ -191,48 +191,50 @@ struct SubscriptionTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func asyncSequenceCancelledBeforeItEnds() async throws {
-        try await withMainSerialExecutor {
-            actor Test {
-                var started = false
-                var ended = false
-                var subscription: AnyCancellable?
+        actor Test {
+            var started = false
+            var ended = false
+            var subscription: AnyCancellable?
 
-                func start() { started = true }
-                func end() { ended = true }
+            func start() { started = true }
+            func end() { ended = true }
 
-                func setSubscription(_ subscription: AnyCancellable?) {
-                    self.subscription = subscription
+            func setSubscription(_ subscription: AnyCancellable?) {
+                self.subscription = subscription
+            }
+        }
+        let test = Test()
+        // The body cancels itself through the stored handle, so it must not start before the handle is stored.
+        let taskStored = SingleValueSubject<Void>()
+
+        let sub = SingleValueSubject<Void>()
+        await test.setSubscription(
+            AsyncStream<AnyCancellable?> { continuation in
+                Task {
+                    try? await taskStored.execute()
+                    await test.start()
+                    continuation.yield(await test.subscription)
                 }
             }
-            let test = Test()
-
-            let sub = SingleValueSubject<Void>()
-            await test.setSubscription(
-                AsyncStream<AnyCancellable?> { continuation in
-                    Task {
-                        await test.start()
-                        continuation.yield(await test.subscription)
-                    }
+            .map { $0?.cancel() }
+            .handleEvents(receiveCancel: {
+                try sub.send()
+            })
+            .map {
+                if !Task.isCancelled {
+                    await test.end()
                 }
-                .map { $0?.cancel() }
-                .handleEvents(receiveCancel: {
-                    try sub.send()
-                })
-                .map {
-                    if !Task.isCancelled {
-                        await test.end()
-                    }
-                }
-                .sink())
+            }
+            .sink())
 
-            try await sub.execute()
+        try taskStored.send()
+        try await sub.execute()
 
-            let started = await test.started
-            let ended = await test.ended
+        let started = await test.started
+        let ended = await test.ended
 
-            #expect(started)
-            #expect(!ended)
-        }
+        #expect(started)
+        #expect(!ended)
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
@@ -474,110 +476,103 @@ struct SubscriptionTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func asyncSequenceReceivesOutputThenCompletionWhenCancelled() async throws {
-        try await withMainSerialExecutor {
-            actor Test {
-                var started = false
-                var ended = false
+        actor Test {
+            var started = false
+            var ended = false
 
-                func start() { started = true }
-                func end() { ended = true }
-            }
-            let test = Test()
-
-            let exp = SingleValueSubject<Void>()
-            let sequence = AsyncStream<Void> { continuation in
-                Task {
-                    await test.start()
-                    continuation.yield()
-                }
-            }.map {
-                await test.end()
-                try? exp.send()
-            }
-
-            let completedChannel = SingleValueChannel<Void>()
-            let outputExp = SingleValueSubject<Void>()
-
-            let subscription = sequence.sink { completion in
-                switch completion {
-                    case .finished: break
-                    case .failure(let error): Issue.record("Unexpected error \(error)")
-                }
-                try? await completedChannel.send()
-            } receiveOutput: {
-                try? outputExp.send()
-            }
-
-            try await Task.sleep(for: .milliseconds(2))
-
-            subscription.cancel()
-
-            try await completedChannel.execute()
-
-            try await exp.execute()
-            try await outputExp.execute()
-
-            let started = await test.started
-            let ended = await test.ended
-
-            #expect(started)
-            #expect(ended)
+            func start() { started = true }
+            func end() { ended = true }
         }
+        let test = Test()
+
+        let exp = SingleValueSubject<Void>()
+        let sequence = AsyncStream<Void> { continuation in
+            Task {
+                await test.start()
+                continuation.yield()
+            }
+        }.map {
+            await test.end()
+            try? exp.send()
+        }
+
+        let completedChannel = SingleValueChannel<Void>()
+        let outputExp = SingleValueSubject<Void>()
+
+        let subscription = sequence.sink { completion in
+            switch completion {
+                case .finished: break
+                case .failure(let error): Issue.record("Unexpected error \(error)")
+            }
+            try? await completedChannel.send()
+        } receiveOutput: {
+            try? outputExp.send()
+        }
+
+        // Cancel only once the output has arrived, instead of hoping 2 ms was enough.
+        try await outputExp.execute()
+        subscription.cancel()
+
+        try await completedChannel.execute()
+
+        try await exp.execute()
+
+        let started = await test.started
+        let ended = await test.ended
+
+        #expect(started)
+        #expect(ended)
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func asyncSequenceReceivesErrorInCompletion() async throws {
-        try await withMainSerialExecutor {
-            actor Test {
-                var started = false
-                var ended = false
-                var output = false
+        actor Test {
+            var started = false
+            var ended = false
+            var output = false
 
-                func start() { started = true }
-                func end() { ended = true }
-                func receivedOutput() { output = true }
-            }
-            let test = Test()
-
-            enum Err: Error, Equatable { case e1 }
-
-            let sequence = AsyncThrowingStream<Void, Error> { continuation in
-                Task {
-                    await test.start()
-                    continuation.yield(with: .failure(Err.e1))
-                }
-            }.map {
-                await test.end()
-            }
-
-            let completedChannel = SingleValueChannel<Void>()
-
-            let subscription = sequence.sink { completion in
-                switch completion {
-                    case .finished: Issue.record("Unexpected normal finish")
-                    case .failure(let error): #expect(error as? Err == .e1)
-                }
-                try? await completedChannel.send()
-            } receiveOutput: {
-                await test.receivedOutput()
-            }
-
-            try await Task.sleep(for: .milliseconds(2))
-
-            subscription.cancel()
-
-            try await completedChannel.execute()
-
-            try await Task.sleep(for: .milliseconds(9))
-
-            let started = await test.started
-            let ended = await test.ended
-            let output = await test.output
-
-            #expect(started)
-            #expect(!ended)
-            #expect(!output)
+            func start() { started = true }
+            func end() { ended = true }
+            func receivedOutput() { output = true }
         }
+        let test = Test()
+
+        enum Err: Error, Equatable { case e1 }
+
+        let sequence = AsyncThrowingStream<Void, Error> { continuation in
+            Task {
+                await test.start()
+                continuation.yield(with: .failure(Err.e1))
+            }
+        }.map {
+            await test.end()
+        }
+
+        let completedChannel = SingleValueChannel<Void>()
+
+        let subscription = sequence.sink { completion in
+            switch completion {
+                case .finished: Issue.record("Unexpected normal finish")
+                case .failure(let error): #expect(error as? Err == .e1)
+            }
+            try? await completedChannel.send()
+        } receiveOutput: {
+            await test.receivedOutput()
+        }
+
+        // The failure completes the subscription by itself; cancelling afterwards must not change that.
+        try await completedChannel.execute()
+        subscription.cancel()
+
+        try await Task.sleep(for: .milliseconds(9))
+
+        let started = await test.started
+        let ended = await test.ended
+        let output = await test.output
+
+        #expect(started)
+        #expect(!ended)
+        #expect(!output)
     }
 }
 

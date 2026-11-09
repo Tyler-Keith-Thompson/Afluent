@@ -63,24 +63,20 @@ extension AsyncSequences {
         }
 
         private func advance() async throws -> Upstream.Element? {
-            #if swift(>=6)
-                if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
-                    var current = iterator ?? state.upstream.makeAsyncIterator()
-                    let element = try await current.next(isolation: self)
-                    iterator = current
-                    return element
-                }
-            #endif
+            if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                var current = iterator ?? state.upstream.makeAsyncIterator()
+                let element = try await current.next(isolation: self)
+                iterator = current
+                return element
+            }
             return try await advanceAndSet(iterator: state.iterator)
         }
 
         private func restart() {
-            #if swift(>=6)
-                if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
-                    iterator = state.upstream.makeAsyncIterator()
-                    return
-                }
-            #endif
+            if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                iterator = state.upstream.makeAsyncIterator()
+                return
+            }
             state.iterator = state.upstream.makeAsyncIterator()
         }
 
@@ -161,24 +157,20 @@ extension AsyncSequences {
         }
 
         private func advance() async throws -> Upstream.Element? {
-            #if swift(>=6)
-                if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
-                    var current = iterator ?? state.upstream.makeAsyncIterator()
-                    let element = try await current.next(isolation: self)
-                    iterator = current
-                    return element
-                }
-            #endif
+            if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                var current = iterator ?? state.upstream.makeAsyncIterator()
+                let element = try await current.next(isolation: self)
+                iterator = current
+                return element
+            }
             return try await advanceAndSet(iterator: state.iterator)
         }
 
         private func restart() {
-            #if swift(>=6)
-                if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
-                    iterator = state.upstream.makeAsyncIterator()
-                    return
-                }
-            #endif
+            if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                iterator = state.upstream.makeAsyncIterator()
+                return
+            }
             state.iterator = state.upstream.makeAsyncIterator()
         }
 
@@ -260,24 +252,20 @@ extension AsyncSequences {
         }
 
         private func advance() async throws -> Upstream.Element? {
-            #if swift(>=6)
-                if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
-                    var current = iterator ?? state.upstream.makeAsyncIterator()
-                    let element = try await current.next(isolation: self)
-                    iterator = current
-                    return element
-                }
-            #endif
+            if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                var current = iterator ?? state.upstream.makeAsyncIterator()
+                let element = try await current.next(isolation: self)
+                iterator = current
+                return element
+            }
             return try await advanceAndSet(iterator: state.iterator)
         }
 
         private func restart() {
-            #if swift(>=6)
-                if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
-                    iterator = state.upstream.makeAsyncIterator()
-                    return
-                }
-            #endif
+            if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                iterator = state.upstream.makeAsyncIterator()
+                return
+            }
             state.iterator = state.upstream.makeAsyncIterator()
         }
 

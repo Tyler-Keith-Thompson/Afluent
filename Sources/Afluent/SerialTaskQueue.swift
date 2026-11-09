@@ -33,16 +33,18 @@ import Foundation
 /// queue.cancelAll()
 /// ```
 public final class SerialTaskQueue: Sendable {
-    private let deferredTaskContinuation: AsyncStream<AnyAsynchronousUnitOfWork<Void>>.Continuation
-    /// The task that runs the queued work one at a time. Cancelling it is how ``cancelAll()`` stops the queue.
+    /// The queued jobs, in order. Each runs to completion before the next starts.
+    private let jobs: AsyncStream<@Sendable () async -> Void>.Continuation
+    /// The task that runs the queued jobs one at a time, inline. Cancelling it is how ``cancelAll()`` stops the
+    /// queue: the running job sees the cancellation, and the jobs after it don't start.
     private let consumer: AnyCancellable
 
     public init() {
-        let (stream, continuation) = AsyncStream<AnyAsynchronousUnitOfWork<Void>>.makeStream()
-        deferredTaskContinuation = continuation
+        let (stream, continuation) = AsyncStream<@Sendable () async -> Void>.makeStream()
+        jobs = continuation
         consumer = DeferredTask {
-            for await task in stream {
-                try? await task.execute()
+            for await job in stream {
+                await job()
             }
         }
         .subscribe()
@@ -57,12 +59,10 @@ public final class SerialTaskQueue: Sendable {
     ///
     /// - Parameter task: The asynchronous throwing task to be queued and executed.
     public func enqueue(_ task: @Sendable @escaping () async throws -> Void) {
-        deferredTaskContinuation.yield(
-            DeferredTask {
-                try await task()
-            }
-            .eraseToAnyUnitOfWork()
-        )
+        jobs.yield {
+            guard !Task.isCancelled else { return }
+            try? await task()
+        }
     }
 
     /// Queues a task to be executed serially.
@@ -72,7 +72,8 @@ public final class SerialTaskQueue: Sendable {
     ///
     /// - Parameter task: The asynchronous task to be queued and executed.
     /// - Returns: The result of the task.
-    /// - Throws: An error if the task throws an error.
+    /// - Throws: An error if the task throws an error, or `CancellationError` if the queue was cancelled before the
+    ///   task started.
     public func enqueue<T: Sendable>(_ task: @Sendable @escaping () async throws -> T) async throws
         -> T
     {
@@ -81,29 +82,18 @@ public final class SerialTaskQueue: Sendable {
                 continuation.resume(throwing: CancellationError())
                 return
             }
-            // The job can finish and then be cancelled before its unit of work returns, which would reach
-            // `receiveCancel` after the result was delivered. Only the first resume goes through.
-            let resumed = ManagedCriticalState(false)
-            @Sendable func resume(with result: Result<T, any Error>) {
-                let isFirst = resumed.withCriticalRegion { resumed in
-                    defer { resumed = true }
-                    return !resumed
+            // The job runs inline in the queue's consumer task, and every path resumes the continuation once.
+            self.jobs.yield {
+                guard !Task.isCancelled else {
+                    continuation.resume(throwing: CancellationError())
+                    return
                 }
-                if isFirst { continuation.resume(with: result) }
+                do {
+                    continuation.resume(returning: try await task())
+                } catch {
+                    continuation.resume(throwing: error)
+                }
             }
-            self.deferredTaskContinuation.yield(
-                DeferredTask {
-                    resume(with: .success(try await task()))
-                }.handleEvents(
-                    receiveError: { error in
-                        resume(with: .failure(error))
-                    },
-                    receiveCancel: {
-                        resume(with: .failure(CancellationError()))
-                    }
-                )
-                .eraseToAnyUnitOfWork()
-            )
         }
     }
 

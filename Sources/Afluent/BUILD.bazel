@@ -8,9 +8,6 @@ swift_library(
     name = "Afluent",
     srcs = glob(["**/*.swift"]),
     module_name = "Afluent",
-    deps = [
-        "@swiftpkg_swift_atomics//:Atomics",
-    ],
     visibility = ["//visibility:public"],
 )
 

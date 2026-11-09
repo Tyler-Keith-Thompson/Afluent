@@ -28,14 +28,14 @@ let dependencies: [Package.Dependency] = [
 
 let targets: [Target] = [
     // Library
-    .target(name: "Afluent", dependencies: [.product(name: "Atomics", package: "swift-atomics")], exclude: bazelFiles),
+    .target(name: "Afluent", exclude: bazelFiles),
     // Testing
     .target(name: "AfluentTesting", dependencies: ["Afluent"], exclude: bazelFiles),
 
     // Shared fixtures (data only) for every test target.
     .target(name: "AfluentTestSupport", path: "Tests/AfluentTestSupport", exclude: bazelFiles),
 
-    .testTarget(name: "AfluentTests", dependencies: ["Afluent", "AfluentTesting", .product(name: "OHHTTPStubs", package: "ohhttpstubs", condition: .when(platforms: applePlatforms)), .product(name: "OHHTTPStubsSwift", package: "ohhttpstubs", condition: .when(platforms: applePlatforms)), .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"), .product(name: "Clocks", package: "swift-clocks")], exclude: bazelFiles),
+    .testTarget(name: "AfluentTests", dependencies: ["Afluent", "AfluentTesting", .product(name: "OHHTTPStubs", package: "ohhttpstubs", condition: .when(platforms: applePlatforms)), .product(name: "OHHTTPStubsSwift", package: "ohhttpstubs", condition: .when(platforms: applePlatforms)), .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"), .product(name: "Clocks", package: "swift-clocks"), .product(name: "Atomics", package: "swift-atomics")], exclude: bazelFiles),
 ]
 
 let package = Package(

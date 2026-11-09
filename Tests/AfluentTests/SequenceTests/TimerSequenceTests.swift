@@ -17,7 +17,7 @@ struct TimerSequenceTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(arguments: 1...10)
     func timerSequencePublishesOnInterval(expectedCount: Int) async throws {
-        let testClock = TestClock()
+        let testClock = TrackedTestClock()
         let testOutput = TestOutput()
 
         let task = try await Task.waitUntilExecutionStarted {
@@ -28,10 +28,12 @@ struct TimerSequenceTests {
             }
         }
 
-        await testClock.advance(by: .milliseconds(10) * expectedCount)
-
-        try await wait(
-            until: await testOutput.output.count == expectedCount, timeout: .milliseconds(1))
+        // One interval at a time, each once the timer's sleep is registered: a single large advance only gives
+        // the iterator a fixed number of yields to re-register between ticks.
+        for tick in 1...expectedCount {
+            try await testClock.advance(by: .milliseconds(10), whenSleeping: 1)
+            try await wait(until: await testOutput.output.count == tick, timeout: .seconds(2))
+        }
 
         let expectedOutput: [TestClock<Duration>.Instant] = Array(1...expectedCount).map {
             .init(offset: .milliseconds(10) * $0)
@@ -45,7 +47,7 @@ struct TimerSequenceTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(arguments: 2...10)
     func timerSequencePublishesOnInterval_withMultipleIterators(expectedCount: Int) async throws {
-        let testClock = TestClock()
+        let testClock = TrackedTestClock()
         let testOutput1 = TestOutput()
         let testOutput2 = TestOutput()
 
@@ -57,8 +59,8 @@ struct TimerSequenceTests {
             }
         }
 
-        await testClock.advance(by: .milliseconds(10))
-        try await wait(until: await testOutput1.output.count == 1, timeout: .milliseconds(1))
+        try await testClock.advance(by: .milliseconds(10), whenSleeping: 1)
+        try await wait(until: await testOutput1.output.count == 1, timeout: .seconds(2))
 
         let task2 = try await Task.waitUntilExecutionStarted {
             for try await output in sequence {
@@ -66,10 +68,13 @@ struct TimerSequenceTests {
             }
         }
 
-        await testClock.advance(by: .milliseconds(10) * (expectedCount - 1))
-
-        try await wait(
-            until: await testOutput1.output.count == expectedCount, timeout: .milliseconds(1))
+        for tick in 2...expectedCount {
+            try await testClock.advance(by: .milliseconds(10), whenSleeping: 2)
+            try await wait(
+                until: await (testOutput1.output.count, testOutput2.output.count)
+                    == (tick, tick - 1),
+                timeout: .seconds(2))
+        }
 
         let expectedOutput1: [TestClock<Duration>.Instant] = Array(1...expectedCount).map {
             .init(offset: .milliseconds(10) * $0)
@@ -171,7 +176,7 @@ struct TimerSequenceTests {
     func timerSequencePublishesOnInterval_whenTimePassesBetweeIteratorCreationAndActualDemand(
         expectedCount: Int
     ) async throws {
-        let testClock = TestClock()
+        let testClock = TrackedTestClock()
         let testOutput = TestOutput()
 
         let sequence = TimerSequence.publish(every: .milliseconds(10), clock: testClock)
@@ -196,9 +201,10 @@ struct TimerSequenceTests {
                 timeout: .milliseconds(1))
         }
         // now we advance the clock to our expected count interval amount
-        await testClock.advance(by: .milliseconds(10) * expectedCount)
-        try await wait(
-            until: await testOutput.output.count == expectedCount, timeout: .milliseconds(1))
+        for tick in 1...expectedCount {
+            try await testClock.advance(by: .milliseconds(10), whenSleeping: 1)
+            try await wait(until: await testOutput.output.count == tick, timeout: .seconds(2))
+        }
 
         // since time advanced before demand, there will be some initial offset in the output
         let expectedOutput: [TestClock<Duration>.Instant] = Array(1...expectedCount)
@@ -212,7 +218,7 @@ struct TimerSequenceTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func timerSequenceProperlyCancels() async throws {
-        let testClock = TestClock()
+        let testClock = TrackedTestClock()
         let testOutput = TestOutput()
 
         let taskCancelledSubject = SingleValueSubject<Void>()
@@ -231,7 +237,7 @@ struct TimerSequenceTests {
             #expect(instant2 == nil)
         }
 
-        await testClock.advance(by: .milliseconds(10))
+        try await testClock.advance(by: .milliseconds(10), whenSleeping: 1)
         try await wait(until: await testOutput.output.count == 1, timeout: .seconds(1))
         task.cancel()
         try taskCancelledSubject.send()

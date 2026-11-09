@@ -6,6 +6,8 @@
 //
 
 import Afluent
+import AfluentTesting
+import Atomics
 import Clocks
 import ConcurrencyExtras
 import Foundation
@@ -15,8 +17,12 @@ struct DelaySequenceTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func delay_DelaysAllOutputByExpectedTime() async throws {
         // Create a simple AsyncSequence of integers
-        let clock = TestClock()
-        let numbers = [1, 2, 3].async
+        let clock = TrackedTestClock()
+        let upstreamFinished = ManagedAtomic(false)
+        // Delay stamps each element with `clock.now` as the upstream produces it.
+        let numbers = [1, 2, 3].async.handleEvents(receiveComplete: {
+            upstreamFinished.store(true, ordering: .sequentiallyConsistent)
+        })
         let delayDuration: Duration = .milliseconds(10)
 
         // Measure the time before starting the delayed sequence
@@ -39,7 +45,12 @@ struct DelaySequenceTests {
             return count
         }
 
-        await clock.advance(by: delayDuration)
+        // Every element must be stamped at time zero and a sleep registered before time moves, otherwise
+        // the deadlines land past the advance and the test hangs.
+        try await wait(
+            until: upstreamFinished.load(ordering: .sequentiallyConsistent),
+            timeout: .seconds(2))
+        try await clock.advance(by: delayDuration, whenSleeping: 1)
 
         let count = try await task.value
         // Ensure all elements were received
@@ -49,8 +60,12 @@ struct DelaySequenceTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func delay_DoesNotDelayEveryElement() async throws {
         // Create a simple AsyncSequence of integers
-        let clock = TestClock()
-        let numbers = [1, 2, 3].async
+        let clock = TrackedTestClock()
+        let upstreamFinished = ManagedAtomic(false)
+        // Delay stamps each element with `clock.now` as the upstream produces it.
+        let numbers = [1, 2, 3].async.handleEvents(receiveComplete: {
+            upstreamFinished.store(true, ordering: .sequentiallyConsistent)
+        })
         let delayDuration: Duration = .milliseconds(10)
 
         // Measure the time before starting the delayed sequence
@@ -79,7 +94,12 @@ struct DelaySequenceTests {
             return count
         }
 
-        await clock.advance(by: delayDuration)
+        // Every element must be stamped at time zero and a sleep registered before time moves, otherwise
+        // the deadlines land past the advance and the test hangs.
+        try await wait(
+            until: upstreamFinished.load(ordering: .sequentiallyConsistent),
+            timeout: .seconds(2))
+        try await clock.advance(by: delayDuration, whenSleeping: 1)
 
         let count = try await task.value
         // Ensure all elements were received

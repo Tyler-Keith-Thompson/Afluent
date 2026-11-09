@@ -1,0 +1,15 @@
+{
+  "commit": "cc1454eec44b278d047b07da9c66a27d865006d7",
+  "name": "Afluent",
+  "type": "library",
+  "benchmarks": false,
+  "mutation": false,
+  "fuzz": false,
+  "differential": false,
+  "wasm": false,
+  "explore": false,
+  "fly": false,
+  "database": false,
+  "ci": true,
+  "trunk": true
+}

@@ -18,7 +18,7 @@ extension AsyncSequences {
         case complete
     }
 
-    /// Used as the implementation detail for the ``AsyncSequence/materialize()`` operator.
+    /// Used as the implementation detail for the ``_Concurrency/AsyncSequence/materialize()`` operator.
     public struct Materialize<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable
     where Upstream.Element: Sendable {
         public typealias Element = Event<Upstream.Element>

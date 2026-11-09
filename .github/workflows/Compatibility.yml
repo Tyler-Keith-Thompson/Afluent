@@ -1,0 +1,52 @@
+name: Compatibility
+
+# Afluent's checks beyond CI's: SwiftPM builds on the older toolchains the hand-kept manifests
+# serve (Package@swift-<version>.swift), which Bazel can't stand in for, and a Bazel build for
+# every Apple platform the package supports (//Platforms), cached through BuildBuddy like CI.
+# Trunk's merge queue waits for all of them (.trunk/trunk.yaml), so they run on its trunk-merge/
+# branches; a pull request gets the Linux ones.
+on:
+  push:
+    branches:
+      - trunk-merge/**
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  swift-regression-tests:
+    runs-on: ubuntu-26.04-arm
+    strategy:
+      matrix:
+        swift-version: ["5.9", "5.10", "6.0"]
+    container: swift:${{ matrix.swift-version }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build
+        run: swift build
+
+  apple-platforms:
+    name: Apple platforms
+    # macOS minutes cost the most: the merge queue's, not every pull request's.
+    if: github.event_name != 'pull_request'
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure the remote cache
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+        run: |
+          # .bazelrc imports user.bazelrc when present. Without the key the build is uncached.
+          echo "build --disk_cache=" > user.bazelrc
+          if [ -n "$BUILDBUDDY_API_KEY" ]; then
+            {
+              echo "build --bes_results_url=https://app.buildbuddy.io/invocation/"
+              echo "build --bes_backend=grpcs://remote.buildbuddy.io"
+              echo "build --remote_cache=grpcs://remote.buildbuddy.io"
+              echo "common --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
+              echo "build --remote_cache_compression"
+              echo "common --experimental_remote_cache_chunking"
+            } >> user.bazelrc
+          fi
+      - name: Build for every Apple platform
+        # The runner's Bazelisk runs the Bazel in .bazelversion.
+        run: bazel test //Platforms

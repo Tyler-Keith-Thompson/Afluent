@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    /// Used as the implementation detail for the ``AsyncSequence/handleEvents(receiveMakeIterator:receiveNext:receiveOutput:receiveError:receiveComplete:receiveCancel:)`` operator.
+    /// Used as the implementation detail for the ``_Concurrency/AsyncSequence/handleEvents(receiveMakeIterator:receiveNext:receiveOutput:receiveError:receiveComplete:receiveCancel:)`` operator.
     public struct HandleEvents<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream

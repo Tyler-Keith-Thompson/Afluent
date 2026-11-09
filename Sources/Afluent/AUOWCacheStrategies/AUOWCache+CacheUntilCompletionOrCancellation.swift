@@ -68,7 +68,7 @@ extension AUOWCacheStrategy where Self == AUOWCache.CacheUntilCompletionOrCancel
     ///
     /// Use this to cache a unit of work until it completes or is cancelled.
     ///
-    /// See ``AUOWCache.CacheUntilCompletionOrCancellation`` for usage examples.
+    /// See ``AsynchronousUnitOfWorkCache/CacheUntilCompletionOrCancellation`` for usage examples.
     public static var cacheUntilCompletionOrCancellation: Self {
         AUOWCache.CacheUntilCompletionOrCancellation()
     }

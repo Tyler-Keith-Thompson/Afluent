@@ -10,7 +10,7 @@ import Foundation
 extension AsyncSequences {
     /// An async sequence that raises a fatal error if its upstream sequence throws.
     ///
-    /// Used as the implementation detail for ``AsyncSequence/assertNoFailure()``.
+    /// Used as the implementation detail for ``_Concurrency/AsyncSequence/assertNoFailure()``.
     public struct AssertNoFailure<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream

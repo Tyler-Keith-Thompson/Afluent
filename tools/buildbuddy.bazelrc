@@ -1,0 +1,18 @@
+# BuildBuddy's remote cache and build results. tools/bazel reads this file when the login Keychain
+# holds a BuildBuddy API key (`just buildbuddy-key`); the credential helper hands Bazel that key
+# for each request to BuildBuddy.
+build --bes_results_url=https://app.buildbuddy.io/invocation/
+build --bes_backend=grpcs://remote.buildbuddy.io
+build --remote_cache=grpcs://remote.buildbuddy.io
+# Compressed (zstd) transfers to and from the cache.
+build --remote_cache_compression
+# Large outputs (linked binaries, a big module's object files) go to and from the cache in
+# content-defined chunks, so a change re-sends only the chunks it touched. Bazel 9.1+.
+common --experimental_remote_cache_chunking
+# Chunks fetched into the local disk cache are reused from there; it must not outlive the remote
+# cache's copies, which BuildBuddy keeps for hours, not .bazelrc's 14 days.
+build --experimental_disk_cache_gc_max_age=3h
+# Download only the outputs of the targets asked for (and what tests need to run), never the
+# intermediate ones, which stay in the remote cache.
+build --remote_download_toplevel
+common --credential_helper=remote.buildbuddy.io=%workspace%/tools/buildbuddy-credentials

@@ -1,0 +1,44 @@
+module(
+    name = "afluent",
+    version = "0.1.0",
+)
+
+bazel_dep(name = "platforms", version = "1.0.0")
+
+# apple_support must come BEFORE rules_cc for toolchain resolution.
+bazel_dep(name = "apple_support", version = "2.10.1", repo_name = "build_bazel_apple_support")
+bazel_dep(name = "rules_cc", version = "0.2.17")
+bazel_dep(name = "rules_swift", version = "3.5.0")
+bazel_dep(name = "rules_apple", version = "4.5.1")
+
+# ── Xcode project generation ─────────────────────────────────────────
+# Bazel is the build system, but the package still has to be workable in Xcode (debugger,
+# test navigator, Instruments). `just generate` builds a project from the Bazel graph, so the
+# two cannot drift.
+bazel_dep(name = "rules_xcodeproj", version = "4.0.0")
+
+# ── Swift Package Manager dependencies ───────────────────────────────
+# Declared in //swift:Package.swift, a manifest that exists only to feed Bazel. The root
+# Package.swift stays the published package definition; scripts/modules.py writes both from one
+# table (PACKAGES), so they name the same packages. Run `just resolve` after changing them.
+bazel_dep(name = "rules_swift_package_manager", version = "1.25.0")
+
+swift_deps = use_extension(
+    "@rules_swift_package_manager//:extensions.bzl",
+    "swift_deps",
+)
+swift_deps.from_package(
+    declare_swift_deps_info = True,
+    resolved = "//swift:Package.resolved",
+    swift = "//swift:Package.swift",
+)
+# One `swiftpkg_<identity>` entry per package in PACKAGES, hyphens as underscores.
+use_repo(
+    swift_deps,
+    "swift_deps_info",
+    "swift_package",
+    "swiftpkg_ohhttpstubs",
+    "swiftpkg_swift_atomics",
+    "swiftpkg_swift_clocks",
+    "swiftpkg_swift_concurrency_extras",
+)

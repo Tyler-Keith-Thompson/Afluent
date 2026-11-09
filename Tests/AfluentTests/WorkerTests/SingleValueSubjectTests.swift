@@ -72,7 +72,7 @@ struct SingleValueSubjectTests {
                             return $0
                         }
 
-                    Task {
+                    _ = Task {
                         try subject.send(error: Err.e1)
                     }
 
@@ -115,7 +115,7 @@ struct SingleValueSubjectTests {
                 }
 
             let exp2 = SingleValueSubject<Void>()
-            Task {
+            _ = Task {
                 try subject.send(error: Err.e1)
                 #expect(throws: (any Error).self) { try subject.send(error: Err.e1) }
                 try! exp2.send()

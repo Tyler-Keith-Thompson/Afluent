@@ -62,6 +62,13 @@ public actor RetryByBackoffStrategy<Strategy: BackoffStrategy>: RetryStrategy {
         self.durationUnit = durationUnit
     }
 
+    /// Waits out the backoff strategy's next delay and reports whether to retry.
+    ///
+    /// - Parameters:
+    ///   - err: The error that occurred during the operation.
+    ///   - beforeRetry: A closure for work before a retry; this strategy doesn't call it.
+    /// - Returns: The backoff strategy's answer: `true` to retry, `false` to stop.
+    /// - Throws: Any error the backoff strategy throws.
     public func handle(error err: Error, beforeRetry: @Sendable (Error) async throws -> Void)
         async throws -> Bool
     {

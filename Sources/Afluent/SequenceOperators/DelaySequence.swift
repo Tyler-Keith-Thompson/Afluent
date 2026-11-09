@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    /// Used as the implementation detail for the ``AsyncSequence/delay(for:tolerance:)`` operator.
+    /// Used as the implementation detail for the ``_Concurrency/AsyncSequence/delay(for:tolerance:)`` operator.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public struct Delay<Upstream: AsyncSequence & Sendable, C: Clock>: AsyncSequence, Sendable
     where Upstream.Element: Sendable {

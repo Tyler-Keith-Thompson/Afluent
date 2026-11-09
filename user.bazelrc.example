@@ -1,0 +1,10 @@
+# BuildBuddy by hand, for a machine without a Keychain: copy to user.bazelrc (gitignored). On a Mac,
+# `just buildbuddy-key` stores the key in the Keychain instead and tools/bazel uses it, with no file
+# holding the key. CI writes these lines from the BUILDBUDDY_API_KEY repository secret
+# (`just ci-secrets` sets it; .github/workflows/CI.yml).
+build --bes_results_url=https://app.buildbuddy.io/invocation/
+build --bes_backend=grpcs://remote.buildbuddy.io
+build --remote_cache=grpcs://remote.buildbuddy.io
+common --remote_header=x-buildbuddy-api-key=YOUR_KEY_HERE
+# Compressed (zstd) transfers to and from the cache.
+build --remote_cache_compression

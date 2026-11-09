@@ -74,7 +74,7 @@ extension AsynchronousUnitOfWork {
     /// - Parameters:
     ///   - cache: The cache to share results from.
     ///   - strategy: The caching strategy.
-    ///   - keys: Hashable key(s) to identify the cache entry.
+    ///   - k0: The hashable key that identifies the cache entry.
     /// - Returns: An `AsynchronousUnitOfWork` that shares its results from cache.
     /// - Important: This operator should generally be placed at the end of an operator chain. Any operators applied after `shareFromCache` will not be shared and may result in duplicated work or side effects.
     public func shareFromCache<H0: Hashable>(
@@ -103,7 +103,8 @@ extension AsynchronousUnitOfWork {
     /// - Parameters:
     ///   - cache: The cache to share results from.
     ///   - strategy: The caching strategy.
-    ///   - keys: Hashable key(s) to identify the cache entry.
+    ///   - k0: The first hashable key; together the keys identify the cache entry.
+    ///   - k1: The second hashable key; together the keys identify the cache entry.
     /// - Returns: An `AsynchronousUnitOfWork` that shares its results from cache.
     /// - Important: This operator should generally be placed at the end of an operator chain. Any operators applied after `shareFromCache` will not be shared and may result in duplicated work or side effects.
     public func shareFromCache<H0: Hashable, H1: Hashable>(
@@ -133,7 +134,9 @@ extension AsynchronousUnitOfWork {
     /// - Parameters:
     ///   - cache: The cache to share results from.
     ///   - strategy: The caching strategy.
-    ///   - keys: Hashable key(s) to identify the cache entry.
+    ///   - k0: The first hashable key; together the keys identify the cache entry.
+    ///   - k1: The second hashable key; together the keys identify the cache entry.
+    ///   - k2: The third hashable key; together the keys identify the cache entry.
     /// - Returns: An `AsynchronousUnitOfWork` that shares its results from cache.
     /// - Important: This operator should generally be placed at the end of an operator chain. Any operators applied after `shareFromCache` will not be shared and may result in duplicated work or side effects.
     public func shareFromCache<H0: Hashable, H1: Hashable, H2: Hashable>(
@@ -164,7 +167,10 @@ extension AsynchronousUnitOfWork {
     /// - Parameters:
     ///   - cache: The cache to share results from.
     ///   - strategy: The caching strategy.
-    ///   - keys: Hashable key(s) to identify the cache entry.
+    ///   - k0: The first hashable key; together the keys identify the cache entry.
+    ///   - k1: The second hashable key; together the keys identify the cache entry.
+    ///   - k2: The third hashable key; together the keys identify the cache entry.
+    ///   - k3: The fourth hashable key; together the keys identify the cache entry.
     /// - Returns: An `AsynchronousUnitOfWork` that shares its results from cache.
     /// - Important: This operator should generally be placed at the end of an operator chain. Any operators applied after `shareFromCache` will not be shared and may result in duplicated work or side effects.
     public func shareFromCache<H0: Hashable, H1: Hashable, H2: Hashable, H3: Hashable>(
@@ -196,7 +202,11 @@ extension AsynchronousUnitOfWork {
     /// - Parameters:
     ///   - cache: The cache to share results from.
     ///   - strategy: The caching strategy.
-    ///   - keys: Hashable key(s) to identify the cache entry.
+    ///   - k0: The first hashable key; together the keys identify the cache entry.
+    ///   - k1: The second hashable key; together the keys identify the cache entry.
+    ///   - k2: The third hashable key; together the keys identify the cache entry.
+    ///   - k3: The fourth hashable key; together the keys identify the cache entry.
+    ///   - k4: The fifth hashable key; together the keys identify the cache entry.
     /// - Returns: An `AsynchronousUnitOfWork` that shares its results from cache.
     /// - Important: This operator should generally be placed at the end of an operator chain. Any operators applied after `shareFromCache` will not be shared and may result in duplicated work or side effects.
     public func shareFromCache<
@@ -232,7 +242,12 @@ extension AsynchronousUnitOfWork {
     /// - Parameters:
     ///   - cache: The cache to share results from.
     ///   - strategy: The caching strategy.
-    ///   - keys: Hashable key(s) to identify the cache entry.
+    ///   - k0: The first hashable key; together the keys identify the cache entry.
+    ///   - k1: The second hashable key; together the keys identify the cache entry.
+    ///   - k2: The third hashable key; together the keys identify the cache entry.
+    ///   - k3: The fourth hashable key; together the keys identify the cache entry.
+    ///   - k4: The fifth hashable key; together the keys identify the cache entry.
+    ///   - k5: The sixth hashable key; together the keys identify the cache entry.
     /// - Returns: An `AsynchronousUnitOfWork` that shares its results from cache.
     /// - Important: This operator should generally be placed at the end of an operator chain. Any operators applied after `shareFromCache` will not be shared and may result in duplicated work or side effects.
     public func shareFromCache<
@@ -269,7 +284,13 @@ extension AsynchronousUnitOfWork {
     /// - Parameters:
     ///   - cache: The cache to share results from.
     ///   - strategy: The caching strategy.
-    ///   - keys: Hashable key(s) to identify the cache entry.
+    ///   - k0: The first hashable key; together the keys identify the cache entry.
+    ///   - k1: The second hashable key; together the keys identify the cache entry.
+    ///   - k2: The third hashable key; together the keys identify the cache entry.
+    ///   - k3: The fourth hashable key; together the keys identify the cache entry.
+    ///   - k4: The fifth hashable key; together the keys identify the cache entry.
+    ///   - k5: The sixth hashable key; together the keys identify the cache entry.
+    ///   - k6: The seventh hashable key; together the keys identify the cache entry.
     /// - Returns: An `AsynchronousUnitOfWork` that shares its results from cache.
     /// - Important: This operator should generally be placed at the end of an operator chain. Any operators applied after `shareFromCache` will not be shared and may result in duplicated work or side effects.
     public func shareFromCache<
@@ -308,7 +329,14 @@ extension AsynchronousUnitOfWork {
     /// - Parameters:
     ///   - cache: The cache to share results from.
     ///   - strategy: The caching strategy.
-    ///   - keys: Hashable key(s) to identify the cache entry.
+    ///   - k0: The first hashable key; together the keys identify the cache entry.
+    ///   - k1: The second hashable key; together the keys identify the cache entry.
+    ///   - k2: The third hashable key; together the keys identify the cache entry.
+    ///   - k3: The fourth hashable key; together the keys identify the cache entry.
+    ///   - k4: The fifth hashable key; together the keys identify the cache entry.
+    ///   - k5: The sixth hashable key; together the keys identify the cache entry.
+    ///   - k6: The seventh hashable key; together the keys identify the cache entry.
+    ///   - k7: The eighth hashable key; together the keys identify the cache entry.
     /// - Returns: An `AsynchronousUnitOfWork` that shares its results from cache.
     /// - Important: This operator should generally be placed at the end of an operator chain. Any operators applied after `shareFromCache` will not be shared and may result in duplicated work or side effects.
     public func shareFromCache<
@@ -348,7 +376,15 @@ extension AsynchronousUnitOfWork {
     /// - Parameters:
     ///   - cache: The cache to share results from.
     ///   - strategy: The caching strategy.
-    ///   - keys: Hashable key(s) to identify the cache entry.
+    ///   - k0: The first hashable key; together the keys identify the cache entry.
+    ///   - k1: The second hashable key; together the keys identify the cache entry.
+    ///   - k2: The third hashable key; together the keys identify the cache entry.
+    ///   - k3: The fourth hashable key; together the keys identify the cache entry.
+    ///   - k4: The fifth hashable key; together the keys identify the cache entry.
+    ///   - k5: The sixth hashable key; together the keys identify the cache entry.
+    ///   - k6: The seventh hashable key; together the keys identify the cache entry.
+    ///   - k7: The eighth hashable key; together the keys identify the cache entry.
+    ///   - k8: The ninth hashable key; together the keys identify the cache entry.
     /// - Returns: An `AsynchronousUnitOfWork` that shares its results from cache.
     /// - Important: This operator should generally be placed at the end of an operator chain. Any operators applied after `shareFromCache` will not be shared and may result in duplicated work or side effects.
     public func shareFromCache<
@@ -389,7 +425,16 @@ extension AsynchronousUnitOfWork {
     /// - Parameters:
     ///   - cache: The cache to share results from.
     ///   - strategy: The caching strategy.
-    ///   - keys: Hashable key(s) to identify the cache entry.
+    ///   - k0: The first hashable key; together the keys identify the cache entry.
+    ///   - k1: The second hashable key; together the keys identify the cache entry.
+    ///   - k2: The third hashable key; together the keys identify the cache entry.
+    ///   - k3: The fourth hashable key; together the keys identify the cache entry.
+    ///   - k4: The fifth hashable key; together the keys identify the cache entry.
+    ///   - k5: The sixth hashable key; together the keys identify the cache entry.
+    ///   - k6: The seventh hashable key; together the keys identify the cache entry.
+    ///   - k7: The eighth hashable key; together the keys identify the cache entry.
+    ///   - k8: The ninth hashable key; together the keys identify the cache entry.
+    ///   - k9: The tenth hashable key; together the keys identify the cache entry.
     /// - Returns: An `AsynchronousUnitOfWork` that shares its results from cache.
     /// - Important: This operator should generally be placed at the end of an operator chain. Any operators applied after `shareFromCache` will not be shared and may result in duplicated work or side effects.
     public func shareFromCache<

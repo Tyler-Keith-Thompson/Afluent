@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Conforming types determine how units of work are stored, reused, or cancelled within the cache.
 ///
-/// > Tip: Use or extend built-in strategies like ``AUOWCache.CancelAndRetry`` or ``AUOWCache.CacheUntilCompletionOrCancellation`` for common needs, or create a custom strategy for specialized scenarios.
+/// > Tip: Use or extend built-in strategies like ``AsynchronousUnitOfWorkCache/CancelAndRetry`` or ``AsynchronousUnitOfWorkCache/CacheUntilCompletionOrCancellation`` for common needs, or create a custom strategy for specialized scenarios.
 ///
 /// ## Example
 ///

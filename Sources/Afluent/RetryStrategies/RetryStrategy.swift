@@ -45,7 +45,7 @@ extension RetryStrategy {
     /// Determines whether an operation should be retried after encountering an error.
     ///
     /// - Parameters:
-    ///   - error: The error that occurred during the operation.
+    ///   - err: The error that occurred during the operation.
     ///
     /// - Returns: A Boolean value indicating whether a retry should be attempted (`true`) or not (`false`).
     ///

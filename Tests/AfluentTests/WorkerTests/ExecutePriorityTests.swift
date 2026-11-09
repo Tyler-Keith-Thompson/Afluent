@@ -27,8 +27,6 @@ struct ExecutePriorityTests {
         // This behavior is difficult to test, so we're avoiding checking Task.currentPriority for this test
         // since we more care about the priority we asked for, not necessarily the one the work actually has
 
-        let expectedCurrentPriority = max(Task.currentPriority, priority)
-
         try await DeferredTask {}
             .handleEvents(receiveOutput: {
                 #expect(Task.basePriority == priority)

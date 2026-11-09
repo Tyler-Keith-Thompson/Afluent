@@ -1,0 +1,65 @@
+# Afluent built for every Apple platform the package supports, at its minimum deployment target
+# (PLATFORMS in scripts/modules.py; keep the two in step). Each is a build test: it passes when
+# the libraries compile and link for that platform. Mac Catalyst has no build test in rules_apple;
+# the iOS and macOS builds cover the code it compiles.
+#
+# `manual` keeps them out of `bazel test //...`, which Linux runs too and these need Xcode for:
+# `bazel test //Platforms` (`just platforms`) runs them, as the Compatibility workflow does.
+
+load("@rules_apple//apple:ios.bzl", "ios_build_test")
+load("@rules_apple//apple:macos.bzl", "macos_build_test")
+load("@rules_apple//apple:tvos.bzl", "tvos_build_test")
+load("@rules_apple//apple:visionos.bzl", "visionos_build_test")
+load("@rules_apple//apple:watchos.bzl", "watchos_build_test")
+
+LIBRARIES = [
+    "//Sources/Afluent",
+    "//Sources/AfluentTesting",
+]
+
+macos_build_test(
+    name = "macOS",
+    minimum_os_version = "13.0",
+    tags = ["manual"],
+    targets = LIBRARIES,
+)
+
+ios_build_test(
+    name = "iOS",
+    minimum_os_version = "15.0",
+    tags = ["manual"],
+    targets = LIBRARIES,
+)
+
+tvos_build_test(
+    name = "tvOS",
+    minimum_os_version = "16.0",
+    tags = ["manual"],
+    targets = LIBRARIES,
+)
+
+watchos_build_test(
+    name = "watchOS",
+    minimum_os_version = "9.0",
+    tags = ["manual"],
+    targets = LIBRARIES,
+)
+
+visionos_build_test(
+    name = "visionOS",
+    minimum_os_version = "1.0",
+    tags = ["manual"],
+    targets = LIBRARIES,
+)
+
+test_suite(
+    name = "Platforms",
+    tags = ["manual"],
+    tests = [
+        ":iOS",
+        ":macOS",
+        ":tvOS",
+        ":visionOS",
+        ":watchOS",
+    ],
+)

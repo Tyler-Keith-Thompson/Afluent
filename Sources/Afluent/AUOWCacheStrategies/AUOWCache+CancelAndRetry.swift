@@ -80,6 +80,6 @@ extension AUOWCache {
 extension AUOWCacheStrategy where Self == AUOWCache.CancelAndRetry {
     /// Returns the `.cancelAndRestart` strategy.
     ///
-    /// Use this to cancel any in-flight unit of work for a given key before starting the new one. See ``AUOWCache.CancelAndRetry`` for a usage example.
+    /// Use this to cancel any in-flight unit of work for a given key before starting the new one. See ``AsynchronousUnitOfWorkCache/CancelAndRetry`` for a usage example.
     public static var cancelAndRestart: Self { AUOWCache.CancelAndRetry() }
 }

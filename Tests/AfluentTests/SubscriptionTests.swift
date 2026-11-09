@@ -252,7 +252,7 @@ struct SubscriptionTests {
             let clock = TestClock()
 
             let sequence = AsyncStream<Void> { continuation in
-                Task {
+                _ = Task {
                     await test.start()
                     try testStartSubject.send()
                     try await clock.sleep(for: .milliseconds(10))
@@ -295,7 +295,7 @@ struct SubscriptionTests {
             let sub = SingleValueSubject<Void>()
 
             let sequence = AsyncStream<Void> { continuation in
-                Task {
+                _ = Task {
                     try sub.send()
                     await test.start()
                     try await clock.sleep(for: .milliseconds(10))
@@ -338,7 +338,7 @@ struct SubscriptionTests {
             let sub = SingleValueSubject<Void>()
 
             let sequence = AsyncStream<Void> { continuation in
-                Task {
+                _ = Task {
                     try sub.send()
                     await test.start()
                     try await clock.sleep(for: .milliseconds(10))
@@ -382,7 +382,7 @@ struct SubscriptionTests {
             let clock = TestClock()
 
             let sequence = AsyncThrowingStream<Void, Error> { continuation in
-                Task {
+                _ = Task {
                     await test.start()
                     try testStartSubject.send()
                     try await clock.sleep(for: .milliseconds(10))

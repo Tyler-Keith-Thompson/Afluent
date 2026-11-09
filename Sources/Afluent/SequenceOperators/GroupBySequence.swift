@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    /// Used as the implementation detail for the ``AsyncSequence/groupBy(keySelector:)`` operator.
+    /// Used as the implementation detail for the ``_Concurrency/AsyncSequence/groupBy(keySelector:)`` operator.
     public struct GroupBy<Upstream: AsyncSequence & Sendable, Key: Hashable>: AsyncSequence,
         Sendable
     where Upstream.Element: Sendable {

@@ -12,7 +12,7 @@ public typealias AnySendableReference = AnyObject & Sendable
 
 /// A thread-safe cache for storing and sharing asynchronous units of work.
 ///
-/// Store and retrieve reference-type, sendable units of work keyed by an integer. This cache is typically used by the ``shareFromCache(_:strategy:keys:)`` operator to deduplicate and share underlying work across consumers.
+/// Store and retrieve reference-type, sendable units of work keyed by an integer. This cache is typically used by the ``AsynchronousUnitOfWork/shareFromCache(_:strategy:keys:)`` operator to deduplicate and share underlying work across consumers.
 ///
 /// Use this cache to avoid redundant execution of identical units of work, especially those that are expensive or should only be performed once for a given key.
 /// ## Example

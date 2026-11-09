@@ -18,7 +18,7 @@ struct WithUnretainedTests {
             .withUnretained(
                 myTypeInstance,
                 resultSelector: { myType, _ in
-                    #expect(myType != nil)
+                    #expect(myType === myTypeInstance)
                 }
             )
             .execute()

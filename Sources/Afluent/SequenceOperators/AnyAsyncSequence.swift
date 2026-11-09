@@ -9,12 +9,12 @@ import Foundation
 
 /// A type-erased async sequence.
 ///
-/// Used as the backing implementation for ``AsyncSequence/eraseToAnyAsyncSequence()``
+/// Used as the backing implementation for ``_Concurrency/AsyncSequence/eraseToAnyAsyncSequence()``
 public typealias AnyAsyncSequence = AsyncSequences.AnyAsyncSequence
 extension AsyncSequences {
     /// A type-erased async sequence.
     ///
-    /// Used as the backing implementation for ``AsyncSequence/eraseToAnyAsyncSequence()``
+    /// Used as the backing implementation for ``_Concurrency/AsyncSequence/eraseToAnyAsyncSequence()``
     public struct AnyAsyncSequence<Element: Sendable>: AsyncSequence, Sendable {
         let makeIterator: @Sendable () -> AnyAsyncIterator<Element>
 

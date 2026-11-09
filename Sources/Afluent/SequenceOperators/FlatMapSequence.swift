@@ -9,7 +9,7 @@ import Atomics
 import Foundation
 
 extension AsyncSequences {
-    /// Used as the implementation detail for the ``AsyncSequence/flatMap(maxSubscriptions:_:)`` operator.
+    /// Used as the implementation detail for the ``_Concurrency/AsyncSequence/flatMap(maxSubscriptions:_:)`` operator.
     public struct FlatMap<
         Upstream: AsyncSequence & Sendable, SegmentOfResult: AsyncSequence & Sendable
     >: AsyncSequence, Sendable where Upstream.Element: Sendable, SegmentOfResult.Element: Sendable {
@@ -93,7 +93,7 @@ extension AsyncSequence {
     }
 }
 
-/// Specifies the number of concurrent inner subscriptions for operators like ``AsyncSequence/flatMap(maxSubscriptions:_:)``.
+/// Specifies the number of concurrent inner subscriptions for operators like ``_Concurrency/AsyncSequence/flatMap(maxSubscriptions:_:)``.
 ///
 /// Use `.unlimited` to allow unlimited concurrency.
 public enum SubscriptionDemand: Sendable {

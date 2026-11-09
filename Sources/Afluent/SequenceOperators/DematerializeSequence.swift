@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    /// Used as the implementation detail for the ``AsyncSequence/dematerialize()`` operator.
+    /// Used as the implementation detail for the ``_Concurrency/AsyncSequence/dematerialize()`` operator.
     public struct Dematerialize<Upstream: AsyncSequence & Sendable, Element: Sendable>:
         AsyncSequence, Sendable
     where Upstream.Element == AsyncSequences.Event<Element> {

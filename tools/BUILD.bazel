@@ -1,0 +1,9 @@
+# First-party Swift rule wrappers; see swift_rules.bzl.
+
+# Debug builds (the default; `--config=release` builds opt). Modules that generate mocks define
+# MOCKING only under this setting (MOCKING in scripts/modules.py).
+config_setting(
+    name = "debug",
+    values = {"compilation_mode": "dbg"},
+    visibility = ["//visibility:public"],
+)

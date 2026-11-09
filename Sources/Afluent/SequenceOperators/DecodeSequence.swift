@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    /// Used as the implementation detail for the ``AsyncSequence/decode(type:decoder:)`` operator.
+    /// Used as the implementation detail for the ``_Concurrency/AsyncSequence/decode(type:decoder:)`` operator.
     public struct Decode<
         Upstream: AsyncSequence & Sendable, Decoder: TopLevelDecoder,
         DecodedType: Decodable & Sendable

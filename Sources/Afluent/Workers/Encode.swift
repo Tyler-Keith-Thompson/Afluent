@@ -18,32 +18,18 @@ extension Workers {
     struct Encode<Upstream: AsynchronousUnitOfWork, Encoder: TopLevelEncoder, Success: Sendable>:
         AsynchronousUnitOfWork
     where Success == Encoder.Output, Upstream.Success: Encodable {
-        final class State: @unchecked Sendable {
-            let lock = NSRecursiveLock()
-            private let encoder: Encoder
-            init(encoder: Encoder) {
-                self.encoder = encoder
-            }
-
-            func encode<T: Encodable>(_ value: T) throws -> Encoder.Output {
-                try lock.protect {
-                    try encoder.encode(value)
-                }
-            }
-        }
-
         let state = TaskState<Success>()
         let upstream: Upstream
-        let encoderState: State
+        let encode: SynchronizedFunction<Upstream.Success, Success>
 
         init(upstream: Upstream, encoder: Encoder) {
             self.upstream = upstream
-            encoderState = State(encoder: encoder)
+            encode = SynchronizedFunction { try encoder.encode($0) }
         }
 
         func _operation() async throws -> AsynchronousOperation<Success> {
-            AsynchronousOperation {
-                try encoderState.encode(await upstream.operation())
+            AsynchronousOperation { [encode, upstream] in
+                try encode(await upstream.operation())
             }
         }
     }

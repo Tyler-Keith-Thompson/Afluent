@@ -19,31 +19,17 @@ extension Workers {
         Upstream: AsynchronousUnitOfWork, Decoder: TopLevelDecoder, Success: Sendable & Decodable
     >: AsynchronousUnitOfWork where Upstream.Success == Decoder.Input {
         let state = TaskState<Success>()
-        final class State: @unchecked Sendable {
-            let lock = NSRecursiveLock()
-            private let decoder: Decoder
-            init(decoder: Decoder) {
-                self.decoder = decoder
-            }
-
-            func decode<T: Decodable>(_: T.Type, from input: Decoder.Input) throws -> T {
-                try lock.protect {
-                    try decoder.decode(T.self, from: input)
-                }
-            }
-        }
-
         let upstream: Upstream
-        let decoderState: State
+        let decode: SynchronizedFunction<Upstream.Success, Success>
 
         init(upstream: Upstream, decoder: Decoder) {
             self.upstream = upstream
-            decoderState = State(decoder: decoder)
+            decode = SynchronizedFunction { try decoder.decode(Success.self, from: $0) }
         }
 
         func _operation() async throws -> AsynchronousOperation<Success> {
-            AsynchronousOperation {
-                try decoderState.decode(Success.self, from: await upstream.operation())
+            AsynchronousOperation { [decode, upstream] in
+                try decode(await upstream.operation())
             }
         }
     }

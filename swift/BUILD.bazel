@@ -1,0 +1,4 @@
+exports_files([
+    "Package.swift",
+    "Package.resolved",
+])

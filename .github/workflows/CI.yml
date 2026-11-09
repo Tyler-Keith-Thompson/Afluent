@@ -1,24 +1,69 @@
 name: CI
 
-on: 
+# The Bazel test suite, on every branch but main. PR_CI and Release call it too. Package.swift
+# is checked against the Bazel graph by //:package_swift_test. Bazel does nearly all the work,
+# since BuildBuddy caches it; one SwiftPM job runs the tests as the published package builds them.
+on:
   push:
-    branches:    
-      - '**'    # matches every branch
-      - '!main' # excludes main
+    branches:
+      - '**'
+      - '!main'
   workflow_dispatch:
   workflow_call:
+    secrets:
+      BUILDBUDDY_API_KEY:
+        required: false
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    container: swift:6.0
+  bazel:
+    name: Bazel tests
+    runs-on: ubuntu-26.04-arm
+    # rules_swift's Linux toolchain is whatever swiftc is on the PATH.
+    container: swift:6.3
+    env:
+      # The image has clang but no gcc, which is where rules_cc looks first.
+      CC: clang
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/checkout@v7
+      - name: Install Bazel
+        run: |
+          apt-get update && apt-get install -y --no-install-recommends ca-certificates curl python3
+          # Bazelisk runs the Bazel in .bazelversion.
+          curl -fsSL -o /usr/local/bin/bazel https://github.com/bazelbuild/bazelisk/releases/download/v1.29.0/bazelisk-linux-arm64
+          chmod +x /usr/local/bin/bazel
+      - name: Configure the remote cache
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+        run: |
+          # .bazelrc imports user.bazelrc when present. Without the key the build is uncached.
+          echo "build --disk_cache=" > user.bazelrc
+          if [ -n "$BUILDBUDDY_API_KEY" ]; then
+            {
+              echo "build --bes_results_url=https://app.buildbuddy.io/invocation/"
+              echo "build --bes_backend=grpcs://remote.buildbuddy.io"
+              echo "build --remote_cache=grpcs://remote.buildbuddy.io"
+              echo "common --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
+              echo "build --remote_cache_compression"
+              echo "common --experimental_remote_cache_chunking"
+            } >> user.bazelrc
+          fi
+      # Debug only: the release configuration's performance tests run locally before a push.
+      - name: Test (debug)
+        run: bazel test --keep_going //...
+
+  # The one SwiftPM job: the published package, which Bazel doesn't build. Kept to the tests, since
+  # nothing caches it beyond .build.
+  swiftpm:
+    name: SwiftPM tests
+    runs-on: ubuntu-26.04-arm
+    container: swift:6.3
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
         with:
           path: .build
-          key: ${{ runner.os }}-spm-${{ hashFiles('Package.resolved', '*/Package.resolved') }}
+          key: swiftpm-${{ runner.arch }}-${{ hashFiles('Package.swift', 'swift/Package.resolved') }}
           restore-keys: |
-            ${{ runner.os }}-spm-
-      - name: Run TESTS
-        run: swift test --use-integrated-swift-driver
+            swiftpm-${{ runner.arch }}-
+      - name: Test
+        run: swift test

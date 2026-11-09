@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(just *)",
+      "Bash(bazel build *)",
+      "Bash(bazel test *)",
+      "Bash(bazel query *)",
+      "Bash(bazel cquery *)",
+      "Bash(python3 scripts/modules.py)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)"
+    ]
+  }
+}

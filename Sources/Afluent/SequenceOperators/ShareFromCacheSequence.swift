@@ -102,7 +102,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Parameters:
     ///   - cache: The cache from which to share data.
     ///   - strategy: The caching strategy to use.
-    ///   - keys k0: A hashable key used to uniquely identify the shared sequence in the cache.
+    ///   - k0: A hashable key used to uniquely identify the shared sequence in the cache.
     /// - Returns: An asynchronous broadcast sequence that shares the underlying sequence's values according to the cache and strategy.
     /// - Important: This operator should generally be placed at the end of an operator chain. Any operators applied after `shareFromCache` will not be shared and may result in duplicated work or side effects.
     public func shareFromCache<H0: Hashable>(
@@ -136,7 +136,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Parameters:
     ///   - cache: The cache from which to share data.
     ///   - strategy: The caching strategy to use.
-    ///   - keys k0: The first hashable key.
+    ///   - k0: The first hashable key.
     ///   - k1: The second hashable key.
     /// - Returns: An asynchronous broadcast sequence that shares the underlying sequence's values according to the cache and strategy.
     /// - Important: This operator should generally be placed at the end of an operator chain. Any operators applied after `shareFromCache` will not be shared and may result in duplicated work or side effects.
@@ -171,7 +171,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Parameters:
     ///   - cache: The cache from which to share data.
     ///   - strategy: The caching strategy to use.
-    ///   - keys k0: The first hashable key.
+    ///   - k0: The first hashable key.
     ///   - k1: The second hashable key.
     ///   - k2: The third hashable key.
     /// - Returns: An asynchronous broadcast sequence that shares the underlying sequence's values according to the cache and strategy.
@@ -209,7 +209,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Parameters:
     ///   - cache: The cache from which to share data.
     ///   - strategy: The caching strategy to use.
-    ///   - keys k0: The first hashable key.
+    ///   - k0: The first hashable key.
     ///   - k1: The second hashable key.
     ///   - k2: The third hashable key.
     ///   - k3: The fourth hashable key.
@@ -249,7 +249,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Parameters:
     ///   - cache: The cache from which to share data.
     ///   - strategy: The caching strategy to use.
-    ///   - keys k0: The first hashable key.
+    ///   - k0: The first hashable key.
     ///   - k1: The second hashable key.
     ///   - k2: The third hashable key.
     ///   - k3: The fourth hashable key.
@@ -294,7 +294,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Parameters:
     ///   - cache: The cache from which to share data.
     ///   - strategy: The caching strategy to use.
-    ///   - keys k0: The first hashable key.
+    ///   - k0: The first hashable key.
     ///   - k1: The second hashable key.
     ///   - k2: The third hashable key.
     ///   - k3: The fourth hashable key.
@@ -341,7 +341,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Parameters:
     ///   - cache: The cache from which to share data.
     ///   - strategy: The caching strategy to use.
-    ///   - keys k0: The first hashable key.
+    ///   - k0: The first hashable key.
     ///   - k1: The second hashable key.
     ///   - k2: The third hashable key.
     ///   - k3: The fourth hashable key.
@@ -391,7 +391,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Parameters:
     ///   - cache: The cache from which to share data.
     ///   - strategy: The caching strategy to use.
-    ///   - keys k0: The first hashable key.
+    ///   - k0: The first hashable key.
     ///   - k1: The second hashable key.
     ///   - k2: The third hashable key.
     ///   - k3: The fourth hashable key.
@@ -443,7 +443,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Parameters:
     ///   - cache: The cache from which to share data.
     ///   - strategy: The caching strategy to use.
-    ///   - keys k0: The first hashable key.
+    ///   - k0: The first hashable key.
     ///   - k1: The second hashable key.
     ///   - k2: The third hashable key.
     ///   - k3: The fourth hashable key.
@@ -497,7 +497,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Parameters:
     ///   - cache: The cache from which to share data.
     ///   - strategy: The caching strategy to use.
-    ///   - keys k0: The first hashable key.
+    ///   - k0: The first hashable key.
     ///   - k1: The second hashable key.
     ///   - k2: The third hashable key.
     ///   - k3: The fourth hashable key.

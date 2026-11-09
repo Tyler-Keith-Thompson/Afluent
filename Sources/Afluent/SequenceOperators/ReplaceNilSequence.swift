@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    /// Used as the implementation detail for the ``AsyncSequence/replaceNil(with:)`` operator.
+    /// Used as the implementation detail for the ``_Concurrency/AsyncSequence/replaceNil(with:)`` operator.
     public struct ReplaceNil<Upstream: AsyncSequence & Sendable, Output: Sendable>: AsyncSequence,
         Sendable
     where Upstream.Element == Output? {

@@ -1,5 +1,7 @@
 // swift-tools-version: 5.10
-// The swift-tools-version declares the minimum version of Swift required to build this package.
+// The package for toolchains older than Swift 6.3, which can't read Package.swift (generated
+// by scripts/modules.py). SwiftPM picks the newest Package@swift-X.swift no newer than the
+// toolchain. Kept by hand: a module, dependency or platform added to the table goes here too.
 
 import PackageDescription
 
@@ -30,6 +32,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Atomics", package: "swift-atomics")
             ],
+            exclude: ["BUILD.bazel"],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency=complete")
             ]),
@@ -38,12 +41,14 @@ let package = Package(
             dependencies: [
                 "Afluent"
             ],
+            exclude: ["BUILD.bazel"],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency=complete")
             ]),
         .testTarget(
             name: "AfluentTests",
-            dependencies: testDependencies()),
+            dependencies: testDependencies(),
+            exclude: ["BUILD.bazel"]),
     ])
 
 func testDependencies() -> [PackageDescription.Target.Dependency] {

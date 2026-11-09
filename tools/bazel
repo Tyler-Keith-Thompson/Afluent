@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Bazelisk runs this in place of Bazel ($BAZEL_REAL is the Bazel it picked).
+#
+# With a BuildBuddy API key in the login Keychain (`just buildbuddy-key`), every command reads
+# tools/buildbuddy.bazelrc: BuildBuddy's remote cache and build results, authorized by a credential
+# helper that reads the key from the Keychain, so it is never written to a file. Without a key,
+# and on Linux (CI writes its own user.bazelrc from the repository secret), Bazel runs unchanged.
+set -euo pipefail
+
+startup=()
+if command -v security >/dev/null 2>&1 \
+    && security find-generic-password -s buildbuddy -a api-key >/dev/null 2>&1; then
+    workspace="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    # A --bazelrc replaces the user rc, so the user's own is named too.
+    if [ -f "$HOME/.bazelrc" ]; then
+        startup+=("--bazelrc=$HOME/.bazelrc")
+    fi
+    startup+=("--bazelrc=$workspace/tools/buildbuddy.bazelrc")
+fi
+exec "$BAZEL_REAL" ${startup[@]+"${startup[@]}"} "$@"

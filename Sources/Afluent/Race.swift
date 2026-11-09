@@ -10,7 +10,7 @@
 /// - Parameters:
 ///   - cancelAllOnWin: A boolean indicating whether the remaining tasks in the group should be cancelled if the race is won, defaults to true
 ///   - firstTask: A closure representing the first asynchronous task to be executed.
-///   - secondTask: A closure representing the second asynchronous task to be executed.
+///   - tasks: Closures representing the other asynchronous tasks to be executed, passed after the `against:` label.
 /// - Returns: The result of the first task that completes.
 /// - Throws: An error if any of the tasks throw an error.
 ///

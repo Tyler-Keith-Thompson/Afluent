@@ -1,12 +1,14 @@
+# Trunk's merge queue (https://docs.trunk.io/merge-queue): a pull request queued with a
+# `/trunk merge` comment is tested on a trunk-merge/ branch together with the ones ahead of it,
+# and merged to main when every status below passes there. CI.yml runs on those branches, as on
+# every branch but main. A job added to CI that must pass before a merge goes here by its name.
 version: 0.1
-merge: 
+merge:
   required_statuses:
-    - apple-platform-regression-tests (platform=iOS Simulator,name=iPad mini (A17 Pro),OS=18.5)
-    - apple-platform-regression-tests (platform=iOS Simulator,name=iPhone 16 Pro,OS=18.5)
-    - apple-platform-regression-tests (platform=macOS,arch=arm64,variant=Mac Catalyst)
-    - apple-platform-regression-tests (platform=macOS,arch=arm64)
-    - apple-platform-regression-tests (platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=18.5)
-    - apple-platform-regression-tests (platform=visionOS Simulator,name=Apple Vision Pro,OS=2.5)
-    - apple-platform-regression-tests (platform=watchOS Simulator,name=Apple Watch Ultra 2 (49mm),OS=11.5)
-    - swift-regression-tests (5.10)
+    - Bazel tests
+    - SwiftPM tests
+    # Afluent's own (Compatibility.yml): older toolchains, and every Apple platform.
     - swift-regression-tests (5.9)
+    - swift-regression-tests (5.10)
+    - swift-regression-tests (6.0)
+    - Apple platforms

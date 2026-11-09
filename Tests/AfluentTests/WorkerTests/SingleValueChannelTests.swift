@@ -74,7 +74,7 @@ struct SingleValueChannelTests {
                             return $0
                         }
 
-                    Task {
+                    _ = Task {
                         try await subject.send(error: Err.e1)
                     }
 

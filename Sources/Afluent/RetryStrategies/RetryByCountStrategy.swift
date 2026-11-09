@@ -42,6 +42,13 @@ public actor RetryByCountStrategy: RetryStrategy {
         self.retryCount = retryCount
     }
 
+    /// Retries while retries remain, calling `beforeRetry` and using up one retry each time.
+    ///
+    /// - Parameters:
+    ///   - err: The error that occurred during the operation.
+    ///   - beforeRetry: A closure called with `err` before a retry is attempted.
+    /// - Returns: `true` when a retry remains, otherwise `false`.
+    /// - Throws: Any error `beforeRetry` throws.
     public func handle(error err: Error, beforeRetry: @Sendable (Error) async throws -> Void)
         async throws -> Bool
     {

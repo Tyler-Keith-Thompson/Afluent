@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    /// Used as the implementation detail for the ``AsyncSequence/encode(encoder:)`` operator.
+    /// Used as the implementation detail for the ``_Concurrency/AsyncSequence/encode(encoder:)`` operator.
     public struct Encode<Upstream: AsyncSequence & Sendable, Encoder: TopLevelEncoder>:
         AsyncSequence, Sendable
     where Upstream.Element: Encodable {

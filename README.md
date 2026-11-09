@@ -1,12 +1,12 @@
-![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/Tyler-keith-thompson/Afluent/trunk-branch.yml) ![GitHub](https://img.shields.io/github/license/Tyler-keith-thompson/Afluent) [![swift-version](https://img.shields.io/badge/swift-5.9-brightgreen.svg)](https://github.com/apple/swift) [![xcode-version](https://img.shields.io/badge/xcode-15+-brightgreen)](https://developer.apple.com/xcode/)
+![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/Tyler-keith-thompson/Afluent/release.yml) ![GitHub](https://img.shields.io/github/license/Tyler-keith-thompson/Afluent) [![swift-version](https://img.shields.io/badge/swift-5.9-brightgreen.svg)](https://github.com/apple/swift) [![xcode-version](https://img.shields.io/badge/xcode-15+-brightgreen)](https://developer.apple.com/xcode/)
 
 # Afluent
 ![AfluentLogo](https://github.com/Tyler-Keith-Thompson/Afluent/assets/33705774/ba1b24b2-cd70-4c9c-824a-e89ee89348a8)
 
 
 Documentation:
-- [Afluent](https://tyler-keith-thompson.github.io/Afluent/Afluent/documentation/afluent/)
-- [AfluentTesting](https://tyler-keith-thompson.github.io/Afluent/AfluentTesting/documentation/afluenttesting/)
+- [Afluent](https://tyler-keith-thompson.github.io/Afluent/documentation/afluent/)
+- [AfluentTesting](https://tyler-keith-thompson.github.io/Afluent/documentation/afluenttesting/)
 
 Afluent is a Swift library that lives between [swift-async-algorithms](https://github.com/apple/swift-async-algorithms) and foundation, adding reactive operators to async/await and AsyncSequence. The goal of Afluent is to provide a reactive friendly operator style API to enhance Apple's offerings. As a consequence, Afluent will add features that Apple has either already built or is actively building.
 While async/await has simplified asynchronous code, it doesn't offer the full suite of operations for transforming, combining, and error-handling that Combine does. Afluent deliberately keeps as much of the Combine API as makes sense to make moving from Combine to Afluent much easier. As a consequence, you may have some minor symbol collisions when you import both Combine and Afluent in the same file.
@@ -144,7 +144,7 @@ If you're familiar with Combine and are looking to transition to Afluent, this g
 
 2. **Embrace the Differences**: Afluent does not have a customizable `Failure` type like publishers in Combine. Every `AsynchronousUnitOfWork` can throw a `CancellationError`, making the failure type always `Error`.
 
-3. **Use Documentation**: Afluent's [documentation](https://tyler-keith-thompson.github.io/Afluent/Afluent/documentation/afluent/) is a valuable resource. Refer to it often as you transition.
+3. **Use Documentation**: Afluent's [documentation](https://tyler-keith-thompson.github.io/Afluent/documentation/afluent/) is a valuable resource. Refer to it often as you transition.
 
 4. **Join the Community**: Engage with other Afluent users on GitHub. Sharing experiences and solutions can be beneficial.
 
@@ -152,6 +152,24 @@ Remember, while Afluent and Combine have similarities, they are distinct librari
 
 </details>
 
+
+## Development
+
+Afluent builds with [Bazel](https://bazel.build) for development and publishes with SwiftPM; both
+are generated from one module table, `scripts/modules.py`. Install Bazelisk and
+[just](https://github.com/casey/just) (`brew install bazelisk just`).
+
+| Command | Does |
+|---|---|
+| `just test` | Build and run every test under Bazel |
+| `just spm-test` | The same tests under SwiftPM |
+| `just verify` | Both |
+| `just docs` | The documentation site into `.build/docs` |
+| `just modules` | Regenerate `Package.swift` and every `BUILD.bazel` after editing `scripts/modules.py` |
+| `just generate` | An Xcode project from the Bazel graph |
+
+Pull requests merge through [Trunk's merge queue](https://docs.trunk.io/merge-queue): comment
+`/trunk merge` on one once it is approved. `AGENTS.md` has the layout and the rules in full.
 
 <details>
   <summary><strong>Frequently Asked Questions (FAQs)</strong></summary>

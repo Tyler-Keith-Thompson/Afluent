@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    /// Used as the implementation detail for the ``AsyncSequence/collect()`` operator.
+    /// Used as the implementation detail for the ``_Concurrency/AsyncSequence/collect()`` operator.
     public struct Collect<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable {
         public typealias Element = [Upstream.Element]
         let upstream: Upstream

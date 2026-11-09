@@ -25,7 +25,7 @@ struct SerialTaskQueueTests {
             group in
             for i in 1...100 {
                 group.addTask {
-                    try await queue.queue {
+                    try await queue.enqueue {
                         let executing = await test.isExecuting
                         #expect(executing == false)
                         await test.store(true)
@@ -52,7 +52,7 @@ struct SerialTaskQueueTests {
         }
         let queue = SerialTaskQueue()
         let result = await Task {
-            try await queue.queue {
+            try await queue.enqueue {
                 throw Err.e1
             }
         }.result
@@ -69,7 +69,7 @@ struct SerialTaskQueueTests {
         }
         let queue = SerialTaskQueue()
         let result = await Task {
-            try await queue.queue {
+            try await queue.enqueue {
                 throw Err.e1
             }
         }.result
@@ -78,7 +78,7 @@ struct SerialTaskQueueTests {
             performing: {
                 try result.get()
             })
-        let result2 = try await queue.queue {
+        let result2 = try await queue.enqueue {
             2
         }
         #expect(result2 == 2)
@@ -94,7 +94,7 @@ struct SerialTaskQueueTests {
             let sub = SingleValueSubject<Void>()
             let queue = SerialTaskQueue()
             let executed = ManagedAtomic(false)
-            async let _: Void = try await queue.queue {
+            async let _: Void = try await queue.enqueue {
                 try sub.send()
                 try Task.checkCancellation()
                 try await Task.sleep(for: .milliseconds(20))
@@ -125,7 +125,7 @@ struct SerialTaskQueueTests {
                 }
                 let stateHolder = StateHolder()
                 let executed = ManagedAtomic(false)
-                async let _: Void = try await stateHolder.getQueue().queue {
+                async let _: Void = try await stateHolder.getQueue().enqueue {
                     try sub.send()
                     try await cancelationSubject.execute()
                     try Task.checkCancellation()

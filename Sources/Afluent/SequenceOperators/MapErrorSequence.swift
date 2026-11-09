@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    /// Used as the implementation detail for the ``AsyncSequence/mapError(_:)`` operator.
+    /// Used as the implementation detail for the ``_Concurrency/AsyncSequence/mapError(_:)`` operator.
     public struct MapError<Upstream: AsyncSequence & Sendable>: AsyncSequence, Sendable {
         public typealias Element = Upstream.Element
         let upstream: Upstream

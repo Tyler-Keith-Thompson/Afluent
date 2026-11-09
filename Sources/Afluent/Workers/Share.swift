@@ -36,7 +36,8 @@ extension Workers {
         }
 
         public nonisolated func run() {
-            Task { try await task.value }
+            // Only starts the shared work; callers read its result, and its error, through execute().
+            _ = Task { try await task.value }
         }
 
         public nonisolated func cancel() {

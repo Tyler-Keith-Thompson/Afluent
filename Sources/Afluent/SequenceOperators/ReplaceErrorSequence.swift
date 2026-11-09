@@ -8,7 +8,7 @@
 import Foundation
 
 extension AsyncSequences {
-    /// Used as the implementation detail for the ``AsyncSequence/replaceError(with:)`` operator.
+    /// Used as the implementation detail for the ``_Concurrency/AsyncSequence/replaceError(with:)`` operator.
     public struct ReplaceError<Upstream: AsyncSequence & Sendable, Output: Sendable>: AsyncSequence,
         Sendable
     where Upstream.Element == Output {

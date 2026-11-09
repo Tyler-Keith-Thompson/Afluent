@@ -13,8 +13,10 @@ bazel-bin
 bazel-out
 bazel-testlogs
 
-# The benchmark package is SwiftPM-only.
-Benchmarks
+# The benchmark package's SwiftPM build. Bazel loads only Benchmarks/BUILD.bazel, which caches
+# the simulated counts (tools/benchmarks.bzl).
+Benchmarks/.build
+Benchmarks/.swiftpm
 
 # Overlays the bootstrap script copies over the template (server and embedded types); not built in place.
 templates

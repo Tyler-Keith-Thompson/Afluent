@@ -25,8 +25,9 @@ tools/                           Bazel rule wrappers (warnings as errors, Swift 
 .trunk/trunk.yaml                The checks Trunk's merge queue waits for before it merges to main
 ```
 
-`Benchmarks/` is a separate SwiftPM package (ordo-one/benchmark) that Bazel ignores; see
-`Benchmarks/README.md`.
+`Benchmarks/` is a separate SwiftPM package (ordo-one/benchmark), generated from `BENCHMARKS` in
+`scripts/modules.py`. Bazel builds none of it; `Benchmarks/BUILD.bazel` only caches each target's
+simulated counts (`tools/benchmarks.bzl`). See `Benchmarks/README.md`.
 
 ### Module graph
 
@@ -64,7 +65,7 @@ Every shell command gets a timeout. macOS has no `timeout`; use
 | `just modules` | Regenerate build files from `scripts/modules.py` |
 | `just resolve` | Re-resolve Bazel's SwiftPM dependencies after editing `PACKAGES` |
 | `just bench [--target X]` | Benchmarks; `just bench-compare` against the `main` baseline |
-| `just bench-simulated-compare [--target X]` | Simulated counts (Callgrind in a Linux VM, from `~/workspace/BenchmarkHarness`) against the committed `simulated` baseline; `just bench-simulated [--target X]` re-records it |
+| `just bench-simulated-compare [--target X]` | Simulated counts (Callgrind in a Linux VM, from `~/workspace/BenchmarkHarness`) against the committed `simulated` baseline; `just bench-simulated [--target X]` re-records it. Both measure only targets whose code changed |
 | `just docs` | Combined DocC site into `.build/docs` |
 | `just generate` | Xcode project from the Bazel graph |
 | `just buildbuddy-key`, `just ci-secrets` | Store the BuildBuddy key in the Keychain (once per Mac; builds then use the remote cache); set it as this repository's Actions secret with `gh` |
@@ -142,8 +143,8 @@ have.
    - a property test against a naive reference (`swift-property-based`).
 3. **A README example**, if the feature changes how the package is introduced, copied verbatim
    into `Tests/AfluentTests`.
-4. **A benchmark** in `Benchmarks/Benchmarks/<Module>Benchmarks` where speed matters, starting
-   with a `BASELINE` entry: the hand-written form the code must keep pace with. Measure in
+4. **A benchmark** in `Benchmarks/Benchmarks/<Module>Benchmarks` (a row in `BENCHMARKS`, then
+   `just modules`) where speed matters, starting with a `BASELINE` entry: the hand-written form the code must keep pace with. Measure in
    release, and add a ratio test in `Tests/<Module>Tests/Performance/` where siblings have one.
    Use small inputs in debug builds, because the timing only runs in release.
    Judge a speed change by `just bench-simulated-compare --target <Module>Benchmarks`: its

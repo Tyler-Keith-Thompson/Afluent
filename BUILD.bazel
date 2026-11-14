@@ -6,6 +6,14 @@ load("//tools:executables.bzl", "EXECUTABLE_PACKAGES")
 load("//tools:performance_tests.bzl", "PERFORMANCE_TEST_PACKAGES")
 load("//tools:swiftpm.bzl", "swiftpm_manifest_test")
 
+# Nothing here builds for iOS only (IOS_MODULES in scripts/modules.py, which writes tools/ios.bzl
+# for an app), and no tests run in the simulator.
+IOS_PACKAGES = []
+
+SIMULATOR_TEST_PACKAGES = []
+
+APP_TARGETS = []
+
 # Test bundles are derived from the directory layout rather than listed: a directory under
 # `Tests/` with a BUILD.bazel holding a swift_test is a test bundle. Listing them by hand means a
 # new suite is invisible in Xcode until somebody remembers to come back here.
@@ -27,8 +35,12 @@ TEST_MODULES = {
     for package in TEST_PACKAGES
 }
 
+# A simulator test package's ios_unit_test is already a bundle Xcode runs.
 TEST_BUNDLES = {
-    package: ["//" + package + ":" + module + "Bundle" for module in TEST_MODULES[package]]
+    package: (["//" + package] if package in SIMULATOR_TEST_PACKAGES else [
+        "//" + package + ":" + module + "Bundle"
+        for module in TEST_MODULES[package]
+    ])
     for package in TEST_PACKAGES
 }
 
@@ -43,7 +55,7 @@ xcodeproj(
     name = "xcodeproj",
     project_name = "Afluent",
     scheme_autogeneration_mode = "none",
-    top_level_targets = TEST_TARGETS + EXECUTABLE_TARGETS,
+    top_level_targets = TEST_TARGETS + EXECUTABLE_TARGETS + APP_TARGETS,
     xcschemes = [
         xcschemes.scheme(
             name = "All tests",
@@ -67,6 +79,12 @@ xcodeproj(
             run = xcschemes.run(launch_target = xcschemes.launch_target(target), args = ["serve"]),
         )
         for target in EXECUTABLE_TARGETS
+    ] + [
+        xcschemes.scheme(
+            name = target.split("/")[-1],
+            run = xcschemes.run(launch_target = xcschemes.launch_target(target)),
+        )
+        for target in APP_TARGETS
     ],
 )
 
@@ -78,7 +96,7 @@ docc_site(
     archives = [
         "//" + package + ":" + package.removeprefix("Sources/") + "Documentation"
         for package in sorted(subpackages(include = ["Sources/*"]))
-        if package not in EXECUTABLE_PACKAGES
+        if package not in EXECUTABLE_PACKAGES and package not in IOS_PACKAGES
     ],
     landing_page_name = "Afluent",
     tags = ["manual"],
@@ -97,9 +115,11 @@ swiftpm_manifest_test(
     modules = [
         "//" + package
         for package in sorted(subpackages(include = ["Sources/*"]))
+        if package not in IOS_PACKAGES
     ] + ["//Tests/AfluentTestSupport"] + [
         "//" + package + ":" + module + "Library"
         for package in TEST_PACKAGES
+        if package not in SIMULATOR_TEST_PACKAGES
         for module in TEST_MODULES[package]
     ],
 )

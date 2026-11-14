@@ -14,7 +14,8 @@ already recorded there, so the file changes only where a benchmark did; --fresh 
 as measured.
 
 Any other option (--filter, --skip, --iterations, ...) runs the harness directly on the package,
-uncached, as `benchmark-harness baseline update` would.
+uncached, as `benchmark-harness baseline update` would; what it writes is then rewritten the same
+way, keeping the format and every entry that didn't move (all of them as measured with --fresh).
 
 BENCHMARK_HARNESS names the BenchmarkHarness checkout (default ~/workspace/BenchmarkHarness).
 """

@@ -241,8 +241,9 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
         guard count < maxCount else { return false }
         // Past what `T` holds, the delay is already beyond any cap.
         let delay = T(exactly: pow(Double(base), Double(count))).map(durationUnit) ?? maxDelay
-        try await clock.sleep(for: jitter(min(delay, maxDelay)))
+        // Spent before the sleep, so a reset() during it isn't undone when the sleep ends.
         count += 1
+        try await clock.sleep(for: jitter(min(delay, maxDelay)))
         return true
     }
 }

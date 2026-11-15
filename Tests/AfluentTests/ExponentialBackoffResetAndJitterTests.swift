@@ -4,6 +4,7 @@
 //
 
 import Afluent
+import AfluentTesting
 import Clocks
 import Foundation
 import Testing
@@ -40,6 +41,31 @@ struct ExponentialBackoffResetAndJitterTests {
         #expect(first)
         #expect(!exhausted)
         #expect(afterReset)
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @Test(.timeLimit(.minutes(1))) func aResetDuringABackoffSleepIsNotUndoneWhenTheSleepEnds()
+        async throws
+    {
+        let clock = TrackedTestClock()
+        let strategy = ExponentialBackoffStrategy<TrackedTestClock>(base: 2, maxCount: 2)
+
+        let sleeping = Task {
+            try await strategy.backoff(clock: clock, durationUnit: { (n: Int) in .seconds(n) })
+        }
+        try await wait(until: clock.sleepingCount == 1, timeout: .seconds(2))
+        await strategy.reset()
+        await clock.advance(by: .seconds(2))
+        let first = try await sleeping.value
+
+        let afterReset = Task {
+            try await strategy.backoff(clock: clock, durationUnit: { (n: Int) in .seconds(n) })
+        }
+        try await clock.advance(by: .seconds(2), whenSleeping: 1)
+        let retried = try await afterReset.value
+
+        #expect(first)
+        #expect(retried)
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)

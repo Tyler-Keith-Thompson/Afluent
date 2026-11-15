@@ -205,6 +205,27 @@ let benchmarks: @Sendable () -> Void = {
         }
     }
 
+    // MARK: retry on a sequence: a run of consecutive failures before one element.
+
+    // The hand-written form: a loop that makes a fresh iterator after each failure.
+    Benchmark("AsyncSequence.retry failures: BASELINE loop") { benchmark in
+        for _ in benchmark.scaledIterations {
+            let upstream = FailsThenYields(failures: count)
+            var element: Int?
+            while element == nil {
+                var iterator = upstream.makeAsyncIterator()
+                element = try? await iterator.next()
+            }
+            blackHole(element)
+        }
+    }
+
+    Benchmark("AsyncSequence.retry failures: for-await") { benchmark in
+        for _ in benchmark.scaledIterations {
+            blackHole(try await sum(of: FailsThenYields(failures: count).retry(UInt(count))))
+        }
+    }
+
     // MARK: eraseToAnyAsyncSequence: a stream iterated through the type-erased wrapper.
 
     Benchmark("eraseToAnyAsyncSequence: BASELINE for-await") { benchmark in
@@ -275,4 +296,36 @@ func sum<S: AsyncSequence>(of values: S) async rethrows -> Int where S.Element =
 struct MissingValues: Error {
     let total: Int
     let expected: Int
+}
+
+/// Throws on each of its first `failures` iterations, then yields one element.
+final class FailsThenYields: AsyncSequence, Sendable {
+    struct Refused: Error {}
+
+    let failures: Int
+    let attempts = Mutex(0)
+
+    init(failures: Int) {
+        self.failures = failures
+    }
+
+    struct AsyncIterator: AsyncIteratorProtocol {
+        let sequence: FailsThenYields
+        var finished = false
+
+        mutating func next() async throws -> Int? {
+            guard !finished else { return nil }
+            let attempt = sequence.attempts.withLock { attempts in
+                defer { attempts += 1 }
+                return attempts
+            }
+            if attempt < sequence.failures { throw Refused() }
+            finished = true
+            return attempt
+        }
+    }
+
+    func makeAsyncIterator() -> AsyncIterator {
+        AsyncIterator(sequence: self)
+    }
 }

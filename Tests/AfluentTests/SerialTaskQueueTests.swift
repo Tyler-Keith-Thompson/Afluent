@@ -418,7 +418,7 @@ struct SerialTaskQueueTests {
             func append(_ value: Int) { order.append(value) }
 
             /// An async context: here a plain `enqueue` would pick the awaiting overload.
-            func queueWithoutWaiting(_ value: Int) {
+            func queueWithoutWaiting(_ value: Int) async {
                 queue.enqueueWithoutWaiting { await self.append(value) }
             }
         }

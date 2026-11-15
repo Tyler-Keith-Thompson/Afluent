@@ -17,11 +17,13 @@ extension Workers {
         let clock: C
         let duration: C.Duration
         let tolerance: C.Duration?
+        let jitter: BackoffJitter
 
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
                 let val = try await upstream.operation()
-                try await clock.sleep(until: clock.now.advanced(by: duration), tolerance: tolerance)
+                let wait = jitter.jittered(duration, upTo: nil)
+                try await clock.sleep(until: clock.now.advanced(by: wait), tolerance: tolerance)
                 return val
             }
         }
@@ -49,13 +51,20 @@ extension AsynchronousUnitOfWork {
     /// print("Result: \(result) after \(elapsed) seconds")
     /// ```
     ///
-    /// - Parameter duration: The duration to delay the output.
+    /// - Parameters:
+    ///   - duration: The duration to delay the output.
+    ///   - jitter: How the delay is randomized. Defaults to ``BackoffJitter/none``. Decorrelated
+    ///     jitter waits at most three times `duration`.
     /// - Returns: An `AsynchronousUnitOfWork` that emits the upstream output after the specified delay.
     ///
     /// - Availability: macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0 and above.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-    public func delay(for duration: Duration) -> some AsynchronousUnitOfWork<Success> {
-        Workers.Delay(upstream: self, clock: SuspendingClock(), duration: duration, tolerance: nil)
+    public func delay(for duration: Duration, jitter: BackoffJitter = .none)
+        -> some AsynchronousUnitOfWork<Success>
+    {
+        Workers.Delay(
+            upstream: self, clock: SuspendingClock(), duration: duration, tolerance: nil,
+            jitter: jitter)
     }
 
     /// Delays the emission of output from the upstream `AsynchronousUnitOfWork` by a specified duration using a given clock.
@@ -81,16 +90,20 @@ extension AsynchronousUnitOfWork {
     ///
     /// - Parameters:
     ///   - duration: The duration to delay the output, conforming to the clock's associated `Duration` type.
-    ///   - clock: The clock used for timekeeping. Defaults to `SuspendingClock()`.
+    ///   - clock: The clock used for timekeeping.
     ///   - tolerance: An optional tolerance for the delay. Defaults to `nil`.
+    ///   - jitter: How the delay is randomized. Defaults to ``BackoffJitter/none``. Decorrelated
+    ///     jitter waits at most three times `duration`.
     /// - Returns: An `AsynchronousUnitOfWork` that emits the upstream output after the specified delay.
     ///
     /// - Availability: macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0 and above.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-    public func delay<C: Clock>(for duration: C.Duration, clock: C, tolerance: C.Duration? = nil)
-        -> some AsynchronousUnitOfWork<Success>
-    {
-        Workers.Delay(upstream: self, clock: clock, duration: duration, tolerance: tolerance)
+    public func delay<C: Clock>(
+        for duration: C.Duration, clock: C, tolerance: C.Duration? = nil,
+        jitter: BackoffJitter = .none
+    ) -> some AsynchronousUnitOfWork<Success> {
+        Workers.Delay(
+            upstream: self, clock: clock, duration: duration, tolerance: tolerance, jitter: jitter)
     }
 }
 

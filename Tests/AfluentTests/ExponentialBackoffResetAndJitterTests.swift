@@ -7,6 +7,7 @@ import Afluent
 import AfluentTesting
 import Clocks
 import Foundation
+import Generators
 import Testing
 
 struct ExponentialBackoffResetAndJitterTests {
@@ -149,17 +150,6 @@ struct ExponentialBackoffResetAndJitterTests {
     @Test(.timeLimit(.minutes(1))) func seededJitterStaysInItsRangeAndReproducesFromTheSeed()
         async throws
     {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         func delays(_ jitter: BackoffJitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
             let strategy = ExponentialBackoffStrategy<ImmediateClock<Duration>>(
@@ -176,9 +166,9 @@ struct ExponentialBackoffResetAndJitterTests {
         let exact = (1 ... 100).map { n -> Duration in n < 6 ? .seconds(1 << n) : .seconds(60) }
         let seed: UInt64 = 0x5EED
 
-        let full = try await delays(.full(using: SplitMix64(state: seed)))
-        let fullAgain = try await delays(.full(using: SplitMix64(state: seed)))
-        let equal = try await delays(.equal(using: SplitMix64(state: seed)))
+        let full = try await delays(.full(using: SplitMix64(seed: seed)))
+        let fullAgain = try await delays(.full(using: SplitMix64(seed: seed)))
+        let equal = try await delays(.equal(using: SplitMix64(seed: seed)))
 
         #expect(full == fullAgain)
         for (delay, ceiling) in zip(full, exact) {

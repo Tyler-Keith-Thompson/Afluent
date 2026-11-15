@@ -23,6 +23,7 @@ swift_library(
         "@swiftpkg_swift_concurrency_extras//:ConcurrencyExtras",
         "@swiftpkg_swift_clocks//:Clocks",
         "@swiftpkg_swift_atomics//:Atomics",
+        "@swiftpkg_swiftprng//:Generators",
     ] + select({
         # Apple-only packages (APPLE_ONLY_PACKAGES in scripts/modules.py).
         "@platforms//os:macos": [

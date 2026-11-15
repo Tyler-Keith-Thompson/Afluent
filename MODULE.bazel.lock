@@ -553,7 +553,7 @@
           "REPO_MAPPING:rules_swift_package_manager+,bazel_skylib bazel_skylib+",
           "REPO_MAPPING:rules_swift_package_manager+,bazel_tools bazel_tools",
           "REPO_MAPPING:rules_swift_package_manager+,cgrindel_bazel_starlib cgrindel_bazel_starlib+",
-          "FILE:@@//swift/Package.resolved 8e11b2ec79657f9401bbaf20e61c64b31289ec12f963d5871249af28346aabe1"
+          "FILE:@@//swift/Package.resolved 4e75fee4e77b359518efcf9af947381a5a8d5e5403a2936c6c6460af69625575"
         ],
         "generatedRepoSpecs": {
           "swift_deps_info": {
@@ -563,6 +563,7 @@
                 "@swiftpkg_swift_atomics//:pkg_info.json": "swift-atomics",
                 "@swiftpkg_swift_clocks//:pkg_info.json": "swift-clocks",
                 "@swiftpkg_swift_concurrency_extras//:pkg_info.json": "swift-concurrency-extras",
+                "@swiftpkg_swiftprng//:pkg_info.json": "swiftprng",
                 "@swiftpkg_ohhttpstubs//:pkg_info.json": "ohhttpstubs"
               }
             }
@@ -583,6 +584,7 @@
                 "swiftpkg_swift_clocks",
                 "swiftpkg_swift_concurrency_extras",
                 "swiftpkg_swift_issue_reporting",
+                "swiftpkg_swiftprng",
                 "swiftpkg_xctest_dynamic_overlay"
               ]
             }
@@ -632,6 +634,25 @@
               "commit": "8a4260f7373493435bd21194585c95b72bfdd401",
               "remote": "https://github.com/pointfreeco/swift-concurrency-extras.git",
               "version": "1.4.3",
+              "env": {},
+              "env_inherit": [],
+              "cached_json_directory": "",
+              "make_files_read_only": false,
+              "replace_scm_with_registry": false,
+              "target_deps": {},
+              "module_aliases": {},
+              "dep_module_aliases": "",
+              "bazel_target_mods": "",
+              "package_repos": "@@rules_swift_package_manager++swift_deps+swift_deps_package_repos//:package_repos.json"
+            }
+          },
+          "swiftpkg_swiftprng": {
+            "repoRuleId": "@@rules_swift_package_manager+//swiftpkg/internal:swift_package.bzl%swift_package",
+            "attributes": {
+              "bazel_package_name": "swiftpkg_swiftprng",
+              "commit": "e4f108953819bea7454ee85cd1a37eec56d9227a",
+              "remote": "https://github.com/Tyler-Keith-Thompson/SwiftPRNG.git",
+              "version": "0.0.6",
               "env": {},
               "env_inherit": [],
               "cached_json_directory": "",
@@ -707,6 +728,7 @@
             "swiftpkg_swift_atomics",
             "swiftpkg_swift_clocks",
             "swiftpkg_swift_concurrency_extras",
+            "swiftpkg_swiftprng",
             "swiftpkg_ohhttpstubs",
             "swift_deps_info",
             "swift_package"

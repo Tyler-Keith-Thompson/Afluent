@@ -138,52 +138,6 @@ extension BackoffStrategy where Self == ExponentialBackoffStrategy<ContinuousClo
     }
 }
 
-/// How a backoff randomizes each delay, so many clients that failed together don't retry together.
-///
-/// The strategies are the "full" and "equal" jitter of exponential backoff: full waits anywhere
-/// from zero to the delay, equal waits at least half of it.
-///
-/// ## Example
-/// ```swift
-/// let backoff = ExponentialBackoffStrategy(base: 2, maxDelay: .seconds(60), jitter: .equal())
-/// ```
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-public struct BackoffJitter: Sendable {
-    let apply: @Sendable (Duration) -> Duration
-
-    /// Waits exactly the delay.
-    public static var none: BackoffJitter { BackoffJitter { $0 } }
-
-    /// Waits a random duration from zero to the delay.
-    ///
-    /// - Parameter generator: The source of randomness. Defaults to the system's generator; pass a
-    ///   seeded one to make the delays reproducible.
-    /// - Returns: Jitter that spreads each wait over the whole delay.
-    public static func full(
-        using generator: some RandomNumberGenerator & Sendable = SystemRandomNumberGenerator()
-    ) -> BackoffJitter {
-        let generator = CriticalState(generator)
-        return BackoffJitter { delay in
-            delay * generator.withCriticalRegion { Double.random(in: 0..<1, using: &$0) }
-        }
-    }
-
-    /// Waits half the delay plus a random duration up to the other half.
-    ///
-    /// - Parameter generator: The source of randomness. Defaults to the system's generator; pass a
-    ///   seeded one to make the delays reproducible.
-    /// - Returns: Jitter that spreads each wait over the upper half of the delay.
-    public static func equal(
-        using generator: some RandomNumberGenerator & Sendable = SystemRandomNumberGenerator()
-    ) -> BackoffJitter {
-        let generator = CriticalState(generator)
-        return BackoffJitter { delay in
-            delay / 2 + delay / 2
-                * generator.withCriticalRegion { Double.random(in: 0..<1, using: &$0) }
-        }
-    }
-}
-
 /// An exponential backoff strategy for retrying operations.
 ///
 /// This actor calculates exponential delays between retries based on a specified base value. With each retry,
@@ -196,7 +150,7 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
     var count = 1
     let maxCount: UInt
     let maxDelay: Clock.Duration
-    let jitter: @Sendable (Clock.Duration) -> Clock.Duration
+    let jitter: BackoffJitter
 
     /// Creates a new exponential backoff strategy with the given base and maximum retry count.
     ///
@@ -204,11 +158,15 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
     ///   - base: The base duration for the backoff, which will increase exponentially with each retry.
     ///   - maxCount: The maximum number of attempts. Defaults to `UInt.max`, which never stops.
     ///   - maxDelay: The maximum duration to wait.
-    public init(base: UInt, maxCount: UInt = .max, maxDelay: Clock.Duration) {
+    ///   - jitter: How each delay is randomized, after it is capped at `maxDelay`; the jittered
+    ///     delay is capped at `maxDelay` too. Defaults to ``BackoffJitter/none``.
+    public init(
+        base: UInt, maxCount: UInt = .max, maxDelay: Clock.Duration, jitter: BackoffJitter = .none
+    ) {
         self.base = base
         self.maxCount = maxCount
         self.maxDelay = maxDelay
-        self.jitter = { $0 }
+        self.jitter = jitter
     }
 
     /// Creates a new exponential backoff strategy with the given base and maximum retry count.
@@ -216,9 +174,9 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
     /// - Parameters:
     ///   - base: The base duration for the backoff, which will increase exponentially with each retry.
     ///   - maxCount: The maximum number of attempts. Defaults to `UInt.max`, which never stops.
-    ///   - maxDelay: The maximum duration to wait.
-    ///   - jitter: How each delay is randomized, after it is capped at `maxDelay`. Defaults to
-    ///     ``BackoffJitter/none``.
+    ///   - maxDelay: The maximum duration to wait. Defaults to `Int.max` seconds.
+    ///   - jitter: How each delay is randomized, after it is capped at `maxDelay`; the jittered
+    ///     delay is capped at `maxDelay` too. Defaults to ``BackoffJitter/none``.
     public init(
         base: UInt, maxCount: UInt = .max, maxDelay: Clock.Duration = .seconds(Int.max),
         jitter: BackoffJitter = .none
@@ -227,12 +185,16 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
         self.base = base
         self.maxCount = maxCount
         self.maxDelay = maxDelay
-        self.jitter = jitter.apply
+        self.jitter = jitter
     }
 
     /// Starts the delays over, as if no retry had happened yet.
+    ///
+    /// It also makes decorrelated jitter (``BackoffJitter/decorrelated(using:)``) forget its previous
+    /// wait.
     public func reset() {
         count = 1
+        jitter.reset()
     }
 
     public func backoff<T: BinaryInteger>(clock: Clock, durationUnit: ClockDurationUnit<Clock, T>)
@@ -243,7 +205,7 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
         let delay = T(exactly: pow(Double(base), Double(count))).map(durationUnit) ?? maxDelay
         // Spent before the sleep, so a reset() during it isn't undone when the sleep ends.
         count += 1
-        try await clock.sleep(for: jitter(min(delay, maxDelay)))
+        try await clock.sleep(for: jitter.jittered(min(delay, maxDelay), upTo: maxDelay))
         return true
     }
 }

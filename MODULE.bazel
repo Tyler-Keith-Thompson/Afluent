@@ -41,4 +41,5 @@ use_repo(
     "swiftpkg_swift_atomics",
     "swiftpkg_swift_clocks",
     "swiftpkg_swift_concurrency_extras",
+    "swiftpkg_swiftprng",
 )

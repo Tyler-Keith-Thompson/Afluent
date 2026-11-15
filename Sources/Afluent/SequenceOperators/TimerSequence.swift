@@ -16,31 +16,39 @@ extension AsyncSequences {
     /// representing the current instant according to the clock.
     ///
     /// This can be used to perform periodic asynchronous tasks or to observe regular time ticks.
+    ///
+    /// With jitter, the ticks keep the same schedule, one per interval with no drift, and each tick
+    /// fires at a random point inside its period instead of at its end: the period's start plus the
+    /// jittered interval (see ``BackoffJitter``).
     public struct TimerSequence<C: Clock>: AsyncSequence, Sendable {
         public typealias Element = C.Instant
 
-        init(interval: C.Duration, tolerance: C.Duration?, clock: C) {
+        init(interval: C.Duration, tolerance: C.Duration?, clock: C, jitter: BackoffJitter) {
             self.interval = interval
             self.tolerance = tolerance
             self.clock = clock
+            self.jitter = jitter
         }
 
         private let interval: C.Duration
         private let tolerance: C.Duration?
         private let clock: C
+        private let jitter: BackoffJitter
 
         public struct AsyncIterator: AsyncIteratorProtocol {
             private var cancellables: Set<AnyCancellable> = []
 
-            init(interval: C.Duration, tolerance: C.Duration?, clock: C) {
+            init(interval: C.Duration, tolerance: C.Duration?, clock: C, jitter: BackoffJitter) {
                 self.interval = interval
                 self.tolerance = tolerance
                 self.clock = clock
+                self.jitter = jitter
             }
 
             private let interval: C.Duration
             private let tolerance: C.Duration?
             private let clock: C
+            private let jitter: BackoffJitter
             private var last: C.Instant?
             private var finished = false
 
@@ -48,9 +56,12 @@ extension AsyncSequences {
                 guard !finished else {
                     return nil
                 }
-                let next = (self.last ?? clock.now).advanced(by: self.interval)
+                let start = self.last ?? clock.now
+                let next = start.advanced(by: self.interval)
+                // Inside the period: at most the interval, which also bounds decorrelated jitter.
+                let tick = start.advanced(by: jitter.jittered(interval, upTo: interval))
                 do {
-                    try await clock.sleep(until: next, tolerance: self.tolerance)
+                    try await clock.sleep(until: tick, tolerance: self.tolerance)
                 } catch {
                     self.finished = true
                     return nil
@@ -62,7 +73,7 @@ extension AsyncSequences {
         }
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(interval: interval, tolerance: tolerance, clock: clock)
+            AsyncIterator(interval: interval, tolerance: tolerance, clock: clock, jitter: jitter)
         }
     }
 }
@@ -77,6 +88,11 @@ extension TimerSequence where C == ContinuousClock {
     /// - Parameters:
     ///   - interval: The time interval between emitted instants.
     ///   - tolerance: An optional tolerance for scheduling, allowing slight variance in timing.
+    ///   - jitter: Where each tick falls inside its period. Defaults to ``BackoffJitter/none``, which
+    ///     ticks at the end of each period. ``BackoffJitter/full(using:)`` ticks anywhere in it,
+    ///     ``BackoffJitter/equal(using:)`` in its second half, and
+    ///     ``BackoffJitter/decorrelated(using:)``, whose waits start at the full interval, at its end.
+    /// - Returns: A timer sequence on a `ContinuousClock`.
     ///
     /// ## Example
     /// ```swift
@@ -86,10 +102,11 @@ extension TimerSequence where C == ContinuousClock {
     /// }
     /// // Prints a line every second with the current instant.
     /// ```
-    public static func publish(every interval: C.Duration, tolerance: C.Duration? = nil)
-        -> AsyncSequences.TimerSequence<C>
-    {
-        AsyncSequences.TimerSequence(interval: interval, tolerance: tolerance, clock: .init())
+    public static func publish(
+        every interval: C.Duration, tolerance: C.Duration? = nil, jitter: BackoffJitter = .none
+    ) -> AsyncSequences.TimerSequence<C> {
+        AsyncSequences.TimerSequence(
+            interval: interval, tolerance: tolerance, clock: .init(), jitter: jitter)
     }
 }
 
@@ -101,6 +118,11 @@ extension TimerSequence {
     ///   - interval: The time interval between emitted instants.
     ///   - tolerance: An optional tolerance for scheduling, allowing slight variance in timing.
     ///   - clock: The clock instance to use for timing.
+    ///   - jitter: Where each tick falls inside its period. Defaults to ``BackoffJitter/none``, which
+    ///     ticks at the end of each period. ``BackoffJitter/full(using:)`` ticks anywhere in it,
+    ///     ``BackoffJitter/equal(using:)`` in its second half, and
+    ///     ``BackoffJitter/decorrelated(using:)``, whose waits start at the full interval, at its end.
+    /// - Returns: A timer sequence on `clock`.
     ///
     /// ## Example
     /// ```swift
@@ -111,9 +133,11 @@ extension TimerSequence {
     /// }
     /// // Prints a line every second with the current instant.
     /// ```
-    public static func publish(every interval: C.Duration, tolerance: C.Duration? = nil, clock: C)
-        -> AsyncSequences.TimerSequence<C>
-    {
-        AsyncSequences.TimerSequence(interval: interval, tolerance: tolerance, clock: clock)
+    public static func publish(
+        every interval: C.Duration, tolerance: C.Duration? = nil, clock: C,
+        jitter: BackoffJitter = .none
+    ) -> AsyncSequences.TimerSequence<C> {
+        AsyncSequences.TimerSequence(
+            interval: interval, tolerance: tolerance, clock: clock, jitter: jitter)
     }
 }

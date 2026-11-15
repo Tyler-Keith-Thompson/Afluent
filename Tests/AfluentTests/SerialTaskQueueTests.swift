@@ -122,9 +122,9 @@ struct SerialTaskQueueTests {
         // The stream never yields, so only cancelling the job ends its wait.
         let (neverYields, neverYieldsContinuation) = AsyncStream<Void>.makeStream()
         var queue: SerialTaskQueue? = SerialTaskQueue()
-        // A synchronous closure picks the fire-and-forget overload, which doesn't keep the queue alive.
+        // The fire-and-forget spelling doesn't keep the queue alive.
         let enqueueWithoutWaiting = { (queue: SerialTaskQueue) in
-            queue.enqueue {
+            queue.enqueueWithoutWaiting {
                 startedContinuation.yield()
                 for await _ in neverYields {}
                 endedContinuation.yield(Task.isCancelled)
@@ -162,12 +162,12 @@ struct SerialTaskQueueTests {
 
         // Fire and forget multiple tasks - use non-throwing version
         for i in 1...3 {
-            {queue.enqueue {
+            queue.enqueueWithoutWaiting {
                 await test.addExecution(i)
                 if i == 3 {
                     try sub.send()
                 }
-            }}() // this is some stupid-ass cermony because Swift insists on preferring the async method since we're async. Despite the fact that doesn't compile.
+            }
         }
 
         // Wait a bit for all tasks to complete
@@ -225,11 +225,10 @@ struct SerialTaskQueueTests {
         final class Capture: Sendable {}
         let ranAfterCancel = LockIsolated(false)
         weak var released: Capture?
-        // A synchronous closure picks the fire-and-forget overload over the awaiting one.
         func enqueueWithoutWaiting() {
             let capture = Capture()
             released = capture
-            queue.enqueue {
+            queue.enqueueWithoutWaiting {
                 _ = capture
                 ranAfterCancel.setValue(true)
             }
@@ -354,11 +353,11 @@ struct SerialTaskQueueTests {
         final class EnqueuesOnDeinit: Sendable {
             let queue: SerialTaskQueue
             init(_ queue: SerialTaskQueue) { self.queue = queue }
-            deinit { queue.enqueue {} }
+            deinit { queue.enqueueWithoutWaiting {} }
         }
         // A synchronous caller picks the fire-and-forget overload over the awaiting one.
         func enqueueWithoutWaiting(_ queue: SerialTaskQueue, _ job: sending @escaping () async -> Void) {
-            queue.enqueue(job)
+            queue.enqueueWithoutWaiting(job)
         }
         let queue = SerialTaskQueue()
         let (gate, open) = AsyncStream<Void>.makeStream()
@@ -383,7 +382,7 @@ struct SerialTaskQueueTests {
         final class Capture: Sendable {}
         // A synchronous caller picks the fire-and-forget overload over the awaiting one.
         func enqueueWithoutWaiting(_ queue: SerialTaskQueue, _ job: sending @escaping () async -> Void) {
-            queue.enqueue(job)
+            queue.enqueueWithoutWaiting(job)
         }
         let queue = SerialTaskQueue()
         let (firstGate, openFirst) = AsyncStream<Void>.makeStream()
@@ -408,6 +407,32 @@ struct SerialTaskQueueTests {
 
         #expect(released == nil)
         openThird.yield()
+    }
+
+    @Test("enqueueWithoutWaiting called from an actor method runs in order with awaited enqueues")
+    func enqueueWithoutWaitingRunsInOrderFromAnAsyncContext() async throws {
+        actor Recorder {
+            let queue = SerialTaskQueue()
+            var order = [Int]()
+
+            func append(_ value: Int) { order.append(value) }
+
+            /// An async context: here a plain `enqueue` would pick the awaiting overload.
+            func queueWithoutWaiting(_ value: Int) {
+                queue.enqueueWithoutWaiting { await self.append(value) }
+            }
+        }
+        let recorder = Recorder()
+        let expected: [Int] = [1, 2, 3, 4]
+
+        try await recorder.queue.enqueue { await recorder.append(1) }
+        await recorder.queueWithoutWaiting(2)
+        await recorder.queueWithoutWaiting(3)
+        // Runs after 2 and 3, so when it returns they have run too.
+        try await recorder.queue.enqueue { await recorder.append(4) }
+
+        let order = await recorder.order
+        #expect(order == expected)
     }
 }
 

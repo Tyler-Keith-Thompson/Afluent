@@ -183,9 +183,33 @@ public final class SerialTaskQueue: Sendable {
     /// This method returns immediately without waiting for the task to complete.
     /// Any errors thrown by the task are silently ignored, and a task queued after ``cancelAll()`` doesn't run.
     ///
+    /// Use this spelling from synchronous and asynchronous code alike; to wait for the result, use
+    /// ``enqueue(_:)-(()->T)``.
+    ///
+    /// ## Example
+    /// ```swift
+    /// actor Log {
+    ///     let queue = SerialTaskQueue()
+    ///     func record(_ line: String) {
+    ///         queue.enqueueWithoutWaiting { await writeToDisk(line) }
+    ///     }
+    /// }
+    /// ```
+    ///
     /// - Parameter task: The asynchronous throwing task to be queued and executed.
-    public func enqueue(_ task: sending @escaping () async throws -> Void) {
+    public func enqueueWithoutWaiting(_ task: sending @escaping () async throws -> Void) {
         add(Job(run: { try? await task() }, cancel: {}))
+    }
+
+    /// Queues a task to be executed serially without waiting for completion (fire-and-forget).
+    ///
+    /// Only synchronous code can call this spelling: in an asynchronous context Swift picks the
+    /// awaiting ``enqueue(_:)-(()->T)`` instead. Use ``enqueueWithoutWaiting(_:)``, which works in both.
+    ///
+    /// - Parameter task: The asynchronous throwing task to be queued and executed.
+    @available(*, deprecated, renamed: "enqueueWithoutWaiting(_:)")
+    public func enqueue(_ task: sending @escaping () async throws -> Void) {
+        enqueueWithoutWaiting(task)
     }
 
     /// Queues a task to be executed serially.

@@ -409,5 +409,31 @@ struct SerialTaskQueueTests {
         #expect(released == nil)
         openThird.yield()
     }
+
+    @Test("enqueueWithoutWaiting called from an actor method runs in order with awaited enqueues")
+    func enqueueWithoutWaitingRunsInOrderFromAnAsyncContext() async throws {
+        actor Recorder {
+            let queue = SerialTaskQueue()
+            var order = [Int]()
+
+            func append(_ value: Int) { order.append(value) }
+
+            /// An async context: here a plain `enqueue` would pick the awaiting overload.
+            func queueWithoutWaiting(_ value: Int) async {
+                queue.enqueueWithoutWaiting { await self.append(value) }
+            }
+        }
+        let recorder = Recorder()
+        let expected: [Int] = [1, 2, 3, 4]
+
+        try await recorder.queue.enqueue { await recorder.append(1) }
+        await recorder.queueWithoutWaiting(2)
+        await recorder.queueWithoutWaiting(3)
+        // Runs after 2 and 3, so when it returns they have run too.
+        try await recorder.queue.enqueue { await recorder.append(4) }
+
+        let order = await recorder.order
+        #expect(order == expected)
+    }
 }
 

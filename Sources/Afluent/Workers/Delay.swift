@@ -22,7 +22,7 @@ extension Workers {
         func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation {
                 let val = try await upstream.operation()
-                let wait = jitter.jittered(duration, upTo: duration * 3)
+                let wait = jitter.jittered(duration, upTo: nil)
                 try await clock.sleep(until: clock.now.advanced(by: wait), tolerance: tolerance)
                 return val
             }

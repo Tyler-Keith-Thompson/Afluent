@@ -765,4 +765,114 @@ struct JitterTests {
         await #expect(throws: CancellationError.self) { try await delaying.value }
         #expect(clock.sleepingCount == expectedSleepers)
     }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(.timeLimit(.minutes(1))) func fullJitterOnAnOddIntegerDurationReachesEveryValue() async throws {
+        struct Ticks: DurationProtocol, Hashable {
+            var count: Int
+            static var zero: Ticks { Ticks(count: 0) }
+            static func + (lhs: Ticks, rhs: Ticks) -> Ticks { Ticks(count: lhs.count + rhs.count) }
+            static func - (lhs: Ticks, rhs: Ticks) -> Ticks { Ticks(count: lhs.count - rhs.count) }
+            static func < (lhs: Ticks, rhs: Ticks) -> Bool { lhs.count < rhs.count }
+            static func / (lhs: Ticks, rhs: Int) -> Ticks { Ticks(count: lhs.count / rhs) }
+            static func * (lhs: Ticks, rhs: Int) -> Ticks { Ticks(count: lhs.count * rhs) }
+            static func / (lhs: Ticks, rhs: Ticks) -> Double { Double(lhs.count) / Double(rhs.count) }
+        }
+        struct TickInstant: InstantProtocol {
+            var ticks: Int
+            func advanced(by duration: Ticks) -> TickInstant { TickInstant(ticks: ticks + duration.count) }
+            func duration(to other: TickInstant) -> Ticks { Ticks(count: other.ticks - ticks) }
+            static func < (lhs: TickInstant, rhs: TickInstant) -> Bool { lhs.ticks < rhs.ticks }
+        }
+        /// Never suspends; records each wait it was asked for.
+        final class TickClock: Clock, @unchecked Sendable {
+            private let lock = NSLock()
+            private var _waits = [Ticks]()
+            var waits: [Ticks] { lock.withLock { _waits } }
+            var now: TickInstant { TickInstant(ticks: 0) }
+            var minimumResolution: Ticks { Ticks(count: 1) }
+            func sleep(until deadline: TickInstant, tolerance: Ticks?) async throws {
+                try Task.checkCancellation()
+                lock.withLock { _waits.append(now.duration(to: deadline)) }
+            }
+        }
+        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
+        struct SplitMix64: RandomNumberGenerator, Sendable {
+            var state: UInt64
+            mutating func next() -> UInt64 {
+                state &+= 0x9E37_79B9_7F4A_7C15
+                var z = state
+                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+                return z ^ (z >> 31)
+            }
+        }
+        let clock = TickClock()
+        let seed: UInt64 = 0x0DD
+        let jitter = BackoffJitter.full(using: SplitMix64(state: seed))
+        let expected = Set((0 ..< 7).map { Ticks(count: $0) })
+
+        for _ in 0 ..< 500 {
+            try await DeferredTask { }
+                .delay(for: Ticks(count: 7), clock: clock, jitter: jitter)
+                .execute()
+        }
+
+        #expect(Set(clock.waits) == expected, "seed \(seed)")
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(.timeLimit(.minutes(1))) func decorrelatedJitterOnAHugeIntegerDelayDoesNotOverflow() async throws {
+        struct Ticks: DurationProtocol, Hashable {
+            var count: Int
+            static var zero: Ticks { Ticks(count: 0) }
+            static func + (lhs: Ticks, rhs: Ticks) -> Ticks { Ticks(count: lhs.count + rhs.count) }
+            static func - (lhs: Ticks, rhs: Ticks) -> Ticks { Ticks(count: lhs.count - rhs.count) }
+            static func < (lhs: Ticks, rhs: Ticks) -> Bool { lhs.count < rhs.count }
+            static func / (lhs: Ticks, rhs: Int) -> Ticks { Ticks(count: lhs.count / rhs) }
+            static func * (lhs: Ticks, rhs: Int) -> Ticks { Ticks(count: lhs.count * rhs) }
+            static func / (lhs: Ticks, rhs: Ticks) -> Double { Double(lhs.count) / Double(rhs.count) }
+        }
+        struct TickInstant: InstantProtocol {
+            var ticks: Int
+            func advanced(by duration: Ticks) -> TickInstant { TickInstant(ticks: ticks + duration.count) }
+            func duration(to other: TickInstant) -> Ticks { Ticks(count: other.ticks - ticks) }
+            static func < (lhs: TickInstant, rhs: TickInstant) -> Bool { lhs.ticks < rhs.ticks }
+        }
+        /// Never suspends; records each wait it was asked for.
+        final class TickClock: Clock, @unchecked Sendable {
+            private let lock = NSLock()
+            private var _waits = [Ticks]()
+            var waits: [Ticks] { lock.withLock { _waits } }
+            var now: TickInstant { TickInstant(ticks: 0) }
+            var minimumResolution: Ticks { Ticks(count: 1) }
+            func sleep(until deadline: TickInstant, tolerance: Ticks?) async throws {
+                try Task.checkCancellation()
+                lock.withLock { _waits.append(now.duration(to: deadline)) }
+            }
+        }
+        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
+        struct SplitMix64: RandomNumberGenerator, Sendable {
+            var state: UInt64
+            mutating func next() -> UInt64 {
+                state &+= 0x9E37_79B9_7F4A_7C15
+                var z = state
+                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+                return z ^ (z >> 31)
+            }
+        }
+        let clock = TickClock()
+        let seed: UInt64 = 0xB16
+        // Three times this is past Int.max; only the waits themselves need to fit.
+        let duration = Ticks(count: Int.max / 2)
+        let jitter = BackoffJitter.decorrelated(using: SplitMix64(state: seed))
+        let expected: [Ticks] = [duration]
+
+        try await DeferredTask { }
+            .delay(for: duration, clock: clock, jitter: jitter)
+            .execute()
+
+        #expect(clock.waits == expected, "seed \(seed)")
+    }
 }

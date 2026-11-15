@@ -103,36 +103,45 @@ public struct BackoffJitter: Sendable {
 
     /// The wait to use in place of `delay`.
     ///
-    /// Full and equal jitter never exceed `delay`; decorrelated jitter never exceeds `limit`. A
-    /// `delay` of zero or less is returned unchanged.
+    /// Full and equal jitter never exceed `delay`. Decorrelated jitter waits `delay` the first time,
+    /// then from `delay` up to three times its last wait, never more than `limit`, or than three
+    /// times `delay` when `limit` is `nil`. A `delay` of zero or less is returned unchanged.
     ///
     /// - Parameters:
     ///   - delay: The nominal wait.
-    ///   - limit: The longest wait decorrelated jitter may produce; at least `delay`. Evaluated
-    ///     only for decorrelated jitter.
+    ///   - limit: The longest wait decorrelated jitter may produce, at least `delay`; `nil` for
+    ///     three times `delay`, which is never formed unless the wait is that long.
     /// - Returns: The jittered wait.
     /// - Complexity: O(1): one draw from the generator and at most 32 halvings of `delay`.
-    func jittered<D: DurationProtocol>(_ delay: D, upTo limit: @autoclosure () -> D) -> D {
+    func jittered<D: DurationProtocol>(_ delay: D, upTo limit: D?) -> D {
         guard let kind, let state, delay > .zero else { return delay }
         return state.withCriticalRegion { state -> D in
             let draw = state.generator.next()
             switch kind {
-            case .full:
-                return Self.fraction(draw, of: delay)
-            case .equal:
-                let half = delay / 2
-                return half + Self.fraction(draw, of: delay - half)
-            case .decorrelated:
-                let limit = max(limit(), delay)
-                let ceiling: D
-                if let previous = state.previous as? D {
-                    ceiling = previous > limit / 3 ? limit : max(delay, previous * 3)
-                } else {
-                    ceiling = delay
-                }
-                let wait = delay + Self.fraction(draw, of: ceiling - delay)
-                state.previous = wait
-                return wait
+                case .full:
+                    return Self.fraction(draw, of: delay)
+                case .equal:
+                    let half = delay / 2
+                    return half + Self.fraction(draw, of: delay - half)
+                case .decorrelated:
+                    let wait: D
+                    if let previous = state.previous as? D {
+                        if let limit = limit.map({ max($0, delay) }) {
+                            let ceiling = previous > limit / 3 ? limit : max(delay, previous * 3)
+                            wait = delay + Self.fraction(draw, of: ceiling - delay)
+                        } else if previous >= delay {
+                            // Uniform over [delay, 3 × delay): the top bit picks the half, the
+                            // rest a point in it, so 3 × delay is never formed.
+                            let upper = draw & (1 << 63) != 0 ? delay : .zero
+                            wait = delay + upper + Self.fraction(draw << 1, of: delay)
+                        } else {
+                            wait = delay + Self.fraction(draw, of: max(delay, previous * 3) - delay)
+                        }
+                    } else {
+                        wait = delay
+                    }
+                    state.previous = wait
+                    return wait
             }
         }
     }
@@ -142,20 +151,23 @@ public struct BackoffJitter: Sendable {
         state?.withCriticalRegion { $0.previous = nil }
     }
 
-    /// A duration in `0 ..< duration` (zero when `duration` is zero), uniform on a grid of 2^32
-    /// steps: each of `draw`'s top 32 bits, most significant first, adds the next halving of
-    /// `duration`.
-    ///
-    /// Only halves and sums values no larger than `duration`, so it can't overflow.
+    /// A point in `[0, duration)` chosen by the top 32 bits of `draw`: each bit picks the lower or
+    /// upper part of what remains, keeping remainders, so an integer duration reaches every value.
     private static func fraction<D: DurationProtocol>(_ draw: UInt64, of duration: D) -> D {
-        var result = D.zero
-        var half = duration / 2
+        var lower = D.zero
+        var size = duration
         var bit: UInt64 = 1 << 63
-        while half > .zero, bit > 1 << 31 {
-            if draw & bit != 0 { result += half }
-            half = half / 2
+        while bit > 1 << 31 {
+            let half = size / 2
+            guard half > .zero else { break }
+            if draw & bit != 0 {
+                lower += half
+                size -= half
+            } else {
+                size = half
+            }
             bit >>= 1
         }
-        return result
+        return lower
     }
 }

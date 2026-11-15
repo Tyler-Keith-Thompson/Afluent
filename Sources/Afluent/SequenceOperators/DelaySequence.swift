@@ -55,7 +55,7 @@ extension AsyncSequences {
             public mutating func next() async throws -> Element? {
                 try Task.checkCancellation()
                 if let (instant, element) = try await iterator.next() {
-                    let wait = jitter.jittered(interval, upTo: interval * 3)
+                    let wait = jitter.jittered(interval, upTo: nil)
                     let suspensionPoint = instant.advanced(by: wait)
                     try await clock.sleep(until: suspensionPoint, tolerance: tolerance)
                     return element

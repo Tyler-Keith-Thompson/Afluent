@@ -23,6 +23,7 @@ let dependencies: [Package.Dependency] = [
     .package(url: "https://github.com/apple/swift-atomics.git", from: "1.2.0"),
     .package(url: "https://github.com/pointfreeco/swift-clocks.git", exact: "1.1.0"),
     .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.1.0"),
+    .package(url: "https://github.com/Tyler-Keith-Thompson/SwiftPRNG.git", from: "0.0.6"),
     .package(url: "https://github.com/AliSoftware/OHHTTPStubs.git", from: "9.1.0"),
 ]
 
@@ -35,7 +36,7 @@ let targets: [Target] = [
     // Shared fixtures (data only) for every test target.
     .target(name: "AfluentTestSupport", path: "Tests/AfluentTestSupport", exclude: bazelFiles),
 
-    .testTarget(name: "AfluentTests", dependencies: ["Afluent", "AfluentTesting", .product(name: "OHHTTPStubs", package: "ohhttpstubs", condition: .when(platforms: applePlatforms)), .product(name: "OHHTTPStubsSwift", package: "ohhttpstubs", condition: .when(platforms: applePlatforms)), .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"), .product(name: "Clocks", package: "swift-clocks"), .product(name: "Atomics", package: "swift-atomics")], exclude: bazelFiles),
+    .testTarget(name: "AfluentTests", dependencies: ["Afluent", "AfluentTesting", .product(name: "OHHTTPStubs", package: "ohhttpstubs", condition: .when(platforms: applePlatforms)), .product(name: "OHHTTPStubsSwift", package: "ohhttpstubs", condition: .when(platforms: applePlatforms)), .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"), .product(name: "Clocks", package: "swift-clocks"), .product(name: "Atomics", package: "swift-atomics"), .product(name: "Generators", package: "swiftprng")], exclude: bazelFiles),
 ]
 
 let package = Package(

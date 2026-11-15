@@ -33,6 +33,8 @@ PACKAGES = [
     ("swift-clocks", "https://github.com/pointfreeco/swift-clocks.git", "exact:1.1.0"),
     # Tests only: LockIsolated and withMainSerialExecutor.
     ("swift-concurrency-extras", "https://github.com/pointfreeco/swift-concurrency-extras.git", "1.1.0"),
+    # Tests only: seeded generators that reproduce on every platform and Swift release.
+    ("swiftprng", "https://github.com/Tyler-Keith-Thompson/SwiftPRNG.git", "0.0.6"),
     # Tests only: stubbed URLSession responses, on Apple platforms (APPLE_ONLY_PACKAGES).
     ("ohhttpstubs", "https://github.com/AliSoftware/OHHTTPStubs.git", "9.1.0"),
     # Mocks generated from protocols (`@Mockable`). Uncomment when a module first needs one; see
@@ -75,7 +77,7 @@ EXECUTABLES = [
 # holds tests. (name, dependencies)
 TEST_TARGETS = [
     ("AfluentTests", ["Afluent", "AfluentTesting", "ohhttpstubs/OHHTTPStubs", "ohhttpstubs/OHHTTPStubsSwift",
-                      "swift-concurrency-extras/ConcurrencyExtras", "swift-clocks/Clocks", "swift-atomics/Atomics"]),
+                      "swift-concurrency-extras/ConcurrencyExtras", "swift-clocks/Clocks", "swift-atomics/Atomics", "swiftprng/Generators"]),
 ]
 
 # The modules the test-support target depends on (fixtures are usually written against the

@@ -7,6 +7,7 @@ import Afluent
 import AfluentTesting
 import Clocks
 import Foundation
+import Generators
 import Testing
 
 struct JitterTests {
@@ -16,17 +17,6 @@ struct JitterTests {
     @Test(.timeLimit(.minutes(1))) func jitterWorksOnAClockWhoseDurationIsNotSwiftDuration()
         async throws
     {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         /// A whole number of ticks.
         struct Ticks: DurationProtocol, Hashable {
             var count: Int
@@ -71,12 +61,12 @@ struct JitterTests {
         let exact = (1 ... 40).map { n in min(Ticks(count: (1 << n) * 1024), cap) }
         let seed: UInt64 = 0x71C5
 
-        let full = try await waits(.full(using: SplitMix64(state: seed)))
-        let fullAgain = try await waits(.full(using: SplitMix64(state: seed)))
-        let equal = try await waits(.equal(using: SplitMix64(state: seed)))
-        let equalAgain = try await waits(.equal(using: SplitMix64(state: seed)))
-        let decorrelated = try await waits(.decorrelated(using: SplitMix64(state: seed)))
-        let decorrelatedAgain = try await waits(.decorrelated(using: SplitMix64(state: seed)))
+        let full = try await waits(.full(using: SplitMix64(seed: seed)))
+        let fullAgain = try await waits(.full(using: SplitMix64(seed: seed)))
+        let equal = try await waits(.equal(using: SplitMix64(seed: seed)))
+        let equalAgain = try await waits(.equal(using: SplitMix64(seed: seed)))
+        let decorrelated = try await waits(.decorrelated(using: SplitMix64(seed: seed)))
+        let decorrelatedAgain = try await waits(.decorrelated(using: SplitMix64(seed: seed)))
         let none = try await waits(.none)
         let count = 40
 
@@ -108,17 +98,6 @@ struct JitterTests {
     @Test(.timeLimit(.minutes(1))) func fullJitterOnABackoffWaitsUnderEachDelayAndReproducesFromTheSeed()
         async throws
     {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
             let strategy = ExponentialBackoffStrategy<ImmediateClock<Duration>>(
@@ -134,8 +113,8 @@ struct JitterTests {
         let exact = (1 ... 20).map { n -> Duration in n < 6 ? .seconds(1 << n) : .seconds(60) }
         let seed: UInt64 = 0xF011
 
-        let first = try await waits(.full(using: SplitMix64(state: seed)))
-        let second = try await waits(.full(using: SplitMix64(state: seed)))
+        let first = try await waits(.full(using: SplitMix64(seed: seed)))
+        let second = try await waits(.full(using: SplitMix64(seed: seed)))
 
         #expect(first == second, "seed \(seed)")
         for (wait, delay) in zip(first, exact) {
@@ -147,17 +126,6 @@ struct JitterTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     @Test(.timeLimit(.minutes(1)))
     func equalJitterOnABackoffWaitsInTheUpperHalfOfEachDelayAndReproducesFromTheSeed() async throws {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
             let strategy = ExponentialBackoffStrategy<ImmediateClock<Duration>>(
@@ -173,8 +141,8 @@ struct JitterTests {
         let exact = (1 ... 20).map { n -> Duration in n < 6 ? .seconds(1 << n) : .seconds(60) }
         let seed: UInt64 = 0xE0A1
 
-        let first = try await waits(.equal(using: SplitMix64(state: seed)))
-        let second = try await waits(.equal(using: SplitMix64(state: seed)))
+        let first = try await waits(.equal(using: SplitMix64(seed: seed)))
+        let second = try await waits(.equal(using: SplitMix64(seed: seed)))
 
         #expect(first == second, "seed \(seed)")
         for (wait, delay) in zip(first, exact) {
@@ -188,17 +156,6 @@ struct JitterTests {
     func decorrelatedJitterOnABackoffWaitsFromTheDelayToThreeTimesTheLastWaitCappedAtMaxDelay()
         async throws
     {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
             let strategy = ExponentialBackoffStrategy<ImmediateClock<Duration>>(
@@ -215,8 +172,8 @@ struct JitterTests {
         let cap: Duration = .seconds(60)
         let seed: UInt64 = 0xDEC0
 
-        let first = try await waits(.decorrelated(using: SplitMix64(state: seed)))
-        let second = try await waits(.decorrelated(using: SplitMix64(state: seed)))
+        let first = try await waits(.decorrelated(using: SplitMix64(seed: seed)))
+        let second = try await waits(.decorrelated(using: SplitMix64(seed: seed)))
 
         #expect(first == second, "seed \(seed)")
         #expect(first.first == exact.first, "seed \(seed)")
@@ -260,20 +217,9 @@ struct JitterTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     @Test(.timeLimit(.minutes(1))) func cancellingDuringAJitteredBackoffEndsItAtOnce() async throws {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         let clock = TrackedTestClock()
         let strategy = ExponentialBackoffStrategy<TrackedTestClock>(
-            base: 2, jitter: .equal(using: SplitMix64(state: 0xCA9C)))
+            base: 2, jitter: .equal(using: SplitMix64(seed: 0xCA9C)))
         let expectedSleepers = 0
 
         let backingOff = Task {
@@ -292,17 +238,6 @@ struct JitterTests {
     @Test(.timeLimit(.minutes(1))) func fullJitterOnATimerTicksAnywhereInEachPeriodAndReproducesFromTheSeed()
         async throws
     {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         let interval: Duration = .seconds(10)
         /// How far into its period each tick fell.
         func offsets(_ jitter: BackoffJitter) async -> [Duration] {
@@ -320,8 +255,8 @@ struct JitterTests {
         let seed: UInt64 = 0x7F11
         let count = 50
 
-        let first = await offsets(.full(using: SplitMix64(state: seed)))
-        let second = await offsets(.full(using: SplitMix64(state: seed)))
+        let first = await offsets(.full(using: SplitMix64(seed: seed)))
+        let second = await offsets(.full(using: SplitMix64(seed: seed)))
 
         #expect(first.count == count)
         #expect(first == second, "seed \(seed)")
@@ -334,17 +269,6 @@ struct JitterTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(.timeLimit(.minutes(1)))
     func equalJitterOnATimerTicksInTheSecondHalfOfEachPeriodAndReproducesFromTheSeed() async throws {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         let interval: Duration = .seconds(10)
         /// How far into its period each tick fell.
         func offsets(_ jitter: BackoffJitter) async -> [Duration] {
@@ -362,8 +286,8 @@ struct JitterTests {
         let seed: UInt64 = 0x7E0A
         let count = 50
 
-        let first = await offsets(.equal(using: SplitMix64(state: seed)))
-        let second = await offsets(.equal(using: SplitMix64(state: seed)))
+        let first = await offsets(.equal(using: SplitMix64(seed: seed)))
+        let second = await offsets(.equal(using: SplitMix64(seed: seed)))
 
         #expect(first.count == count)
         #expect(first == second, "seed \(seed)")
@@ -375,23 +299,12 @@ struct JitterTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(.timeLimit(.minutes(1))) func decorrelatedJitterOnATimerTicksExactlyOnSchedule() async throws {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         let interval: Duration = .seconds(10)
         let clock = ImmediateClock<Duration>()
         let start = clock.now
         let seed: UInt64 = 0x7DEC
         var iterator = TimerSequence.publish(
-            every: interval, clock: clock, jitter: .decorrelated(using: SplitMix64(state: seed))
+            every: interval, clock: clock, jitter: .decorrelated(using: SplitMix64(seed: seed))
         ).makeAsyncIterator()
         let expected = (1 ... 50).map { interval * $0 }
 
@@ -406,20 +319,9 @@ struct JitterTests {
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(.timeLimit(.minutes(1))) func cancellingDuringAJitteredTimerWaitEndsItAtOnce() async throws {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         let clock = TrackedTestClock()
         let timer = TimerSequence.publish(
-            every: .seconds(10), clock: clock, jitter: .equal(using: SplitMix64(state: 0x7CA9)))
+            every: .seconds(10), clock: clock, jitter: .equal(using: SplitMix64(seed: 0x7CA9)))
         let expectedSleepers = 0
 
         let ticking = Task {
@@ -440,17 +342,6 @@ struct JitterTests {
     @Test(.timeLimit(.minutes(1))) func fullJitterOnADelayedUnitOfWorkWaitsUnderTheDelayAndReproducesFromTheSeed()
         async throws
     {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         let duration: Duration = .seconds(10)
         func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
@@ -464,8 +355,8 @@ struct JitterTests {
         }
         let seed: UInt64 = 0xDF11
 
-        let first = try await waits(.full(using: SplitMix64(state: seed)))
-        let second = try await waits(.full(using: SplitMix64(state: seed)))
+        let first = try await waits(.full(using: SplitMix64(seed: seed)))
+        let second = try await waits(.full(using: SplitMix64(seed: seed)))
 
         #expect(first == second, "seed \(seed)")
         for wait in first {
@@ -479,17 +370,6 @@ struct JitterTests {
     func equalJitterOnADelayedUnitOfWorkWaitsInTheUpperHalfOfTheDelayAndReproducesFromTheSeed()
         async throws
     {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         let duration: Duration = .seconds(10)
         func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
@@ -503,8 +383,8 @@ struct JitterTests {
         }
         let seed: UInt64 = 0xDE0A
 
-        let first = try await waits(.equal(using: SplitMix64(state: seed)))
-        let second = try await waits(.equal(using: SplitMix64(state: seed)))
+        let first = try await waits(.equal(using: SplitMix64(seed: seed)))
+        let second = try await waits(.equal(using: SplitMix64(seed: seed)))
 
         #expect(first == second, "seed \(seed)")
         for wait in first {
@@ -516,17 +396,6 @@ struct JitterTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(.timeLimit(.minutes(1)))
     func decorrelatedJitterOnADelayedUnitOfWorkWaitsFromTheDelayToThreeTimesIt() async throws {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         let duration: Duration = .seconds(10)
         func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
@@ -541,8 +410,8 @@ struct JitterTests {
         let limit: Duration = .seconds(30)
         let seed: UInt64 = 0xDDEC
 
-        let first = try await waits(.decorrelated(using: SplitMix64(state: seed)))
-        let second = try await waits(.decorrelated(using: SplitMix64(state: seed)))
+        let first = try await waits(.decorrelated(using: SplitMix64(seed: seed)))
+        let second = try await waits(.decorrelated(using: SplitMix64(seed: seed)))
 
         #expect(first == second, "seed \(seed)")
         #expect(first.first == duration, "seed \(seed)")
@@ -559,17 +428,6 @@ struct JitterTests {
     @Test(.timeLimit(.minutes(1))) func cancellingDuringAJitteredUnitOfWorkDelayEndsItAtOnce()
         async throws
     {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         let clock = TrackedTestClock()
         let expectedSleepers = 0
 
@@ -577,7 +435,7 @@ struct JitterTests {
             try await DeferredTask { 1 }
                 .delay(
                     for: .seconds(10), clock: clock,
-                    jitter: .decorrelated(using: SplitMix64(state: 0xDCA9))
+                    jitter: .decorrelated(using: SplitMix64(seed: 0xDCA9))
                 )
                 .execute()
         }
@@ -594,17 +452,6 @@ struct JitterTests {
     @Test(.timeLimit(.minutes(1))) func fullJitterOnADelayedSequenceWaitsUnderTheDelayAndReproducesFromTheSeed()
         async throws
     {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         /// Never suspends and never moves; records each wait it was asked for.
         final class RecordingClock: Clock, @unchecked Sendable {
             private let lock = NSLock()
@@ -626,8 +473,8 @@ struct JitterTests {
         let seed: UInt64 = 0x5F11
         let count = 20
 
-        let first = try await waits(.full(using: SplitMix64(state: seed)))
-        let second = try await waits(.full(using: SplitMix64(state: seed)))
+        let first = try await waits(.full(using: SplitMix64(seed: seed)))
+        let second = try await waits(.full(using: SplitMix64(seed: seed)))
 
         #expect(first.count == count)
         #expect(first == second, "seed \(seed)")
@@ -642,17 +489,6 @@ struct JitterTests {
     func equalJitterOnADelayedSequenceWaitsInTheUpperHalfOfTheDelayAndReproducesFromTheSeed()
         async throws
     {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         /// Never suspends and never moves; records each wait it was asked for.
         final class RecordingClock: Clock, @unchecked Sendable {
             private let lock = NSLock()
@@ -674,8 +510,8 @@ struct JitterTests {
         let seed: UInt64 = 0x5E0A
         let count = 20
 
-        let first = try await waits(.equal(using: SplitMix64(state: seed)))
-        let second = try await waits(.equal(using: SplitMix64(state: seed)))
+        let first = try await waits(.equal(using: SplitMix64(seed: seed)))
+        let second = try await waits(.equal(using: SplitMix64(seed: seed)))
 
         #expect(first.count == count)
         #expect(first == second, "seed \(seed)")
@@ -688,17 +524,6 @@ struct JitterTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(.timeLimit(.minutes(1)))
     func decorrelatedJitterOnADelayedSequenceWaitsFromTheDelayToThreeTimesIt() async throws {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         /// Never suspends and never moves; records each wait it was asked for.
         final class RecordingClock: Clock, @unchecked Sendable {
             private let lock = NSLock()
@@ -721,8 +546,8 @@ struct JitterTests {
         let seed: UInt64 = 0x5DEC
         let count = 20
 
-        let first = try await waits(.decorrelated(using: SplitMix64(state: seed)))
-        let second = try await waits(.decorrelated(using: SplitMix64(state: seed)))
+        let first = try await waits(.decorrelated(using: SplitMix64(seed: seed)))
+        let second = try await waits(.decorrelated(using: SplitMix64(seed: seed)))
 
         #expect(first.count == count)
         #expect(first == second, "seed \(seed)")
@@ -740,20 +565,9 @@ struct JitterTests {
     @Test(.timeLimit(.minutes(1))) func cancellingDuringAJitteredSequenceDelayEndsItAtOnce()
         async throws
     {
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         let clock = TrackedTestClock()
         let delayed = [1].async.delay(
-            for: .seconds(10), clock: clock, jitter: .equal(using: SplitMix64(state: 0x5CA9)))
+            for: .seconds(10), clock: clock, jitter: .equal(using: SplitMix64(seed: 0x5CA9)))
         let expectedSleepers = 0
 
         let delaying = Task {
@@ -796,20 +610,9 @@ struct JitterTests {
                 lock.withLock { _waits.append(now.duration(to: deadline)) }
             }
         }
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         let clock = TickClock()
         let seed: UInt64 = 0x0DD
-        let jitter = BackoffJitter.full(using: SplitMix64(state: seed))
+        let jitter = BackoffJitter.full(using: SplitMix64(seed: seed))
         let expected = Set((0 ..< 7).map { Ticks(count: $0) })
 
         for _ in 0 ..< 500 {
@@ -851,22 +654,11 @@ struct JitterTests {
                 lock.withLock { _waits.append(now.duration(to: deadline)) }
             }
         }
-        /// SplitMix64: a small seeded generator, so a failure reproduces from its seed.
-        struct SplitMix64: RandomNumberGenerator, Sendable {
-            var state: UInt64
-            mutating func next() -> UInt64 {
-                state &+= 0x9E37_79B9_7F4A_7C15
-                var z = state
-                z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-                z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-                return z ^ (z >> 31)
-            }
-        }
         let clock = TickClock()
         let seed: UInt64 = 0xB16
         // Three times this is past Int.max; only the waits themselves need to fit.
         let duration = Ticks(count: Int.max / 2)
-        let jitter = BackoffJitter.decorrelated(using: SplitMix64(state: seed))
+        let jitter = BackoffJitter.decorrelated(using: SplitMix64(seed: seed))
         let expected: [Ticks] = [duration]
 
         try await DeferredTask { }

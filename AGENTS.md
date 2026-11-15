@@ -107,9 +107,6 @@ Every shell command gets a timeout. macOS has no `timeout`; use
   `advance(by:whenSleeping:)` waits until that many sleeps are registered before moving time.
   swift-clocks' `TestClock.advance` only yields a fixed number of times first, so a late sleep
   misses the advance.
-- **Seeded randomness** comes from SwiftPRNG (Building blocks), which isn't in `PACKAGES` yet. The
-  change that next needs a seeded generator adds it, and replaces the hand-written ones in
-  `ExponentialBackoffResetAndJitterTests` (AFLU-42).
 
 ## Building blocks
 

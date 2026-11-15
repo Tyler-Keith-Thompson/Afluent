@@ -163,13 +163,17 @@ extension AsyncSequences.Throttle.AsyncIterator {
             -> ElementEvent
         {
             let element: ElementEvent
+            let subject = self._nextElement
             do {
-                element = try await self._nextElement.execute()
+                element = try await subject.execute()
             } catch {
                 element = .error(error)
             }
 
-            self._nextElement = .init()
+            // While this waited, a later element may have replaced the subject; that one is next.
+            if self._nextElement === subject {
+                self._nextElement = .init()
+            }
             self._lastElementEmittedInstant = instant()
             self._finished = element.isFinished
             return element
@@ -186,10 +190,9 @@ extension AsyncSequences.Throttle.AsyncIterator {
             _finished
         }
 
-        // using a SingleValueSubject means that we need to re-init the subject every time we want to send a new value
-        // this _seems_ like it may introduce a race condition, but it does not
-        // this is because the _nextElement subject will just await whatever has been sent or will be sent
-        // even if the actor's _nextValue property happens to be set while a previously-set _nextValue is still awaiting
+        // A SingleValueSubject holds one value, so each element after the first gets a fresh one. An
+        // element can replace it while the consumer is suspended reading the old one, so the consumer
+        // only clears the subject it read.
         private var _nextElement = SingleValueSubject<ElementEvent>()
         private var _lastElementEmittedInstant: C.Instant?
         private var _finished = false

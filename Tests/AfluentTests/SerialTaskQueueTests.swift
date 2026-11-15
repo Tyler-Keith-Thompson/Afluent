@@ -122,9 +122,9 @@ struct SerialTaskQueueTests {
         // The stream never yields, so only cancelling the job ends its wait.
         let (neverYields, neverYieldsContinuation) = AsyncStream<Void>.makeStream()
         var queue: SerialTaskQueue? = SerialTaskQueue()
-        // The fire-and-forget spelling doesn't keep the queue alive.
+        // A synchronous closure picks the fire-and-forget overload, which doesn't keep the queue alive.
         let enqueueWithoutWaiting = { (queue: SerialTaskQueue) in
-            queue.enqueueWithoutWaiting {
+            queue.enqueue {
                 startedContinuation.yield()
                 for await _ in neverYields {}
                 endedContinuation.yield(Task.isCancelled)
@@ -162,12 +162,12 @@ struct SerialTaskQueueTests {
 
         // Fire and forget multiple tasks - use non-throwing version
         for i in 1...3 {
-            queue.enqueueWithoutWaiting {
+            {queue.enqueue {
                 await test.addExecution(i)
                 if i == 3 {
                     try sub.send()
                 }
-            }
+            }}() // this is some stupid-ass cermony because Swift insists on preferring the async method since we're async. Despite the fact that doesn't compile.
         }
 
         // Wait a bit for all tasks to complete
@@ -225,10 +225,11 @@ struct SerialTaskQueueTests {
         final class Capture: Sendable {}
         let ranAfterCancel = LockIsolated(false)
         weak var released: Capture?
+        // A synchronous closure picks the fire-and-forget overload over the awaiting one.
         func enqueueWithoutWaiting() {
             let capture = Capture()
             released = capture
-            queue.enqueueWithoutWaiting {
+            queue.enqueue {
                 _ = capture
                 ranAfterCancel.setValue(true)
             }
@@ -353,11 +354,11 @@ struct SerialTaskQueueTests {
         final class EnqueuesOnDeinit: Sendable {
             let queue: SerialTaskQueue
             init(_ queue: SerialTaskQueue) { self.queue = queue }
-            deinit { queue.enqueueWithoutWaiting {} }
+            deinit { queue.enqueue {} }
         }
         // A synchronous caller picks the fire-and-forget overload over the awaiting one.
         func enqueueWithoutWaiting(_ queue: SerialTaskQueue, _ job: sending @escaping () async -> Void) {
-            queue.enqueueWithoutWaiting(job)
+            queue.enqueue(job)
         }
         let queue = SerialTaskQueue()
         let (gate, open) = AsyncStream<Void>.makeStream()
@@ -382,7 +383,7 @@ struct SerialTaskQueueTests {
         final class Capture: Sendable {}
         // A synchronous caller picks the fire-and-forget overload over the awaiting one.
         func enqueueWithoutWaiting(_ queue: SerialTaskQueue, _ job: sending @escaping () async -> Void) {
-            queue.enqueueWithoutWaiting(job)
+            queue.enqueue(job)
         }
         let queue = SerialTaskQueue()
         let (firstGate, openFirst) = AsyncStream<Void>.makeStream()

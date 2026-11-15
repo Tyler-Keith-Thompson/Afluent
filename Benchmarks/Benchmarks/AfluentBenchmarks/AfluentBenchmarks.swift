@@ -191,6 +191,20 @@ let benchmarks: @Sendable () -> Void = {
         }
     }
 
+    // MARK: timeout on a sequence: a stream that never goes quiet, iterated through the idle timer.
+
+    Benchmark("AsyncSequence.timeout: BASELINE for-await") { benchmark in
+        for _ in benchmark.scaledIterations {
+            blackHole(await sum(of: stream(of: count)))
+        }
+    }
+
+    Benchmark("AsyncSequence.timeout: for-await") { benchmark in
+        for _ in benchmark.scaledIterations {
+            blackHole(try await sum(of: stream(of: count).timeout(.seconds(60))))
+        }
+    }
+
     // MARK: eraseToAnyAsyncSequence: a stream iterated through the type-erased wrapper.
 
     Benchmark("eraseToAnyAsyncSequence: BASELINE for-await") { benchmark in

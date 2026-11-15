@@ -9,7 +9,7 @@ import Foundation
 
 /// An error indicating a timeout has occurred during asynchronous work.
 ///
-/// This error can be thrown from operations that support timeouts, such as ``AsynchronousUnitOfWork/timeout(_:customError:)`` and ``AsynchronousUnitOfWork/timeout(_:clock:tolerance:customError:)``.
+/// This error can be thrown from operations that support timeouts, such as ``AsynchronousUnitOfWork/timeout(_:customError:)`` and ``AsynchronousUnitOfWork/timeout(_:clock:tolerance:customError:)``, and from sequences that go quiet for too long, through ``_Concurrency/AsyncSequence/timeout(_:customError:)`` and ``_Concurrency/AsyncSequence/timeout(_:clock:tolerance:customError:)``.
 ///
 /// You can compare two `TimeoutError` values for equality, but the associated `duration` is not considered—only the fact that a timeout occurred.
 ///

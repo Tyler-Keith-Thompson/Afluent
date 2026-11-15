@@ -348,4 +348,76 @@ struct TimeoutSequenceTests {
             timeout: .seconds(2))
         #expect(clock.sleepingCount == 0)
     }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(.timeLimit(.minutes(1))) func anElementAfterTheDeadlineThrowsEvenWhenTheTimerWakesLate() async throws {
+        /// A clock whose time moves only when the test says, and whose sleeps never wake.
+        struct StalledClock: Clock {
+            typealias Duration = Swift.Duration
+            typealias Instant = TestClock<Duration>.Instant
+            let current = LockIsolated(Instant())
+            var now: Instant { current.value }
+            var minimumResolution: Duration { .zero }
+            func sleep(until deadline: Instant, tolerance: Duration?) async throws {
+                // Never sent: this waits until the sleeping task is cancelled.
+                try await SingleValueSubject<Void>().execute()
+            }
+        }
+        let clock = StalledClock()
+        let (stream, continuation) = AsyncStream<Int>.makeStream()
+        defer { continuation.finish() }
+        let received = LockIsolated([Int]())
+        let expected: [Int] = [1]
+
+        let task = Task {
+            for try await element in stream.timeout(.milliseconds(10), clock: clock) {
+                received.withValue { $0.append(element) }
+            }
+        }
+
+        continuation.yield(1)
+        try await wait(until: received.value.count == 1, timeout: .seconds(2))
+        clock.current.withValue { $0 = $0.advanced(by: .milliseconds(10)) }
+        continuation.yield(2)
+
+        let result = await task.result
+        #expect(throws: TimeoutError.timedOut) { try result.get() }
+        #expect(received.value == expected)
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test(.timeLimit(.minutes(1))) func cancellationBetweenElementsThrowsAndCancelsTheUpstreamAndTheTimer() async throws {
+        let clock = TrackedTestClock()
+        let upstreamCancelled = ManagedAtomic(false)
+        let (upstream, continuation) = AsyncStream<Int>.makeStream()
+        defer { continuation.finish() }
+        continuation.onTermination = { termination in
+            if case .cancelled = termination {
+                upstreamCancelled.store(true, ordering: .sequentiallyConsistent)
+            }
+        }
+        continuation.yield(1)
+        let sequence = upstream.timeout(.milliseconds(10), clock: clock)
+
+        let task = Task { () -> (Int?, (any Error)?) in
+            var iterator = sequence.makeAsyncIterator()
+            let first = try await iterator.next()
+            withUnsafeCurrentTask { $0?.cancel() }
+            do {
+                _ = try await iterator.next()
+                return (first, nil)
+            } catch {
+                return (first, error)
+            }
+        }
+
+        let (first, error) = try await task.value
+        try await wait(
+            until: upstreamCancelled.load(ordering: .sequentiallyConsistent)
+                && clock.sleepingCount == 0,
+            timeout: .seconds(2))
+        let expectedFirst: Int? = 1
+        #expect(first == expectedFirst)
+        #expect(error is CancellationError)
+    }
 }

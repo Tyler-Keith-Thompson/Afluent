@@ -24,18 +24,28 @@ extension AsyncSequences {
             let tolerance: C.Duration?
             let customError: (any Error)?
             var iterator: AsyncThrowingStream<Element, any Error>.Iterator?
+            var continuation: AsyncThrowingStream<Element, any Error>.Continuation?
 
             public mutating func next() async throws -> Element? {
-                try Task.checkCancellation()
+                guard !Task.isCancelled else {
+                    // Ends the stream, which cancels the upstream and the timer.
+                    continuation?.finish()
+                    throw CancellationError()
+                }
                 if iterator == nil {
-                    iterator = start().makeAsyncIterator()
+                    let (stream, continuation) = start()
+                    iterator = stream.makeAsyncIterator()
+                    self.continuation = continuation
                 }
                 return try await iterator?.next()
             }
 
             /// Starts pulling the upstream and the idle timer. The timer's deadline moves forward
             /// with every element; whichever of the two ends first finishes the stream.
-            private func start() -> AsyncThrowingStream<Element, any Error> {
+            private func start() -> (
+                AsyncThrowingStream<Element, any Error>,
+                AsyncThrowingStream<Element, any Error>.Continuation
+            ) {
                 let (stream, continuation) = AsyncThrowingStream<Element, any Error>.makeStream()
                 let upstream = upstream
                 let duration = duration
@@ -44,7 +54,7 @@ extension AsyncSequences {
                 let timeoutError = customError ?? TimeoutError.timedOut(duration: duration)
                 guard duration > .zero else {
                     continuation.finish(throwing: timeoutError)
-                    return stream
+                    return (stream, continuation)
                 }
                 let state = CriticalState(
                     IdleState(deadline: clock.now.advanced(by: duration), finished: false))
@@ -56,7 +66,15 @@ extension AsyncSequences {
                                 for try await element in upstream {
                                     let delivered = state.withCriticalRegion { state in
                                         guard !state.finished else { return false }
-                                        state.deadline = clock.now.advanced(by: duration)
+                                        let now = clock.now
+                                        // The timer may wake late; an element after the deadline
+                                        // doesn't excuse the gap before it.
+                                        guard now < state.deadline else {
+                                            state.finished = true
+                                            continuation.finish(throwing: timeoutError)
+                                            return false
+                                        }
+                                        state.deadline = now.advanced(by: duration)
                                         continuation.yield(element)
                                         return true
                                     }
@@ -75,12 +93,15 @@ extension AsyncSequences {
                                 } catch {
                                     return
                                 }
-                                // Unchanged since the sleep began: no element arrived in time.
-                                let expired = state.withCriticalRegion { $0.deadline == deadline }
-                                if expired {
-                                    Self.finish(state) { continuation.finish(throwing: timeoutError) }
-                                    return
+                                let done = state.withCriticalRegion { state in
+                                    if state.finished { return true }
+                                    // Moved: an element arrived before the deadline.
+                                    guard state.deadline == deadline else { return false }
+                                    state.finished = true
+                                    continuation.finish(throwing: timeoutError)
+                                    return true
                                 }
+                                if done { return }
                             }
                         }
                         await group.next()
@@ -88,7 +109,7 @@ extension AsyncSequences {
                     }
                 }
                 continuation.onTermination = { _ in task.cancel() }
-                return stream
+                return (stream, continuation)
             }
         }
 

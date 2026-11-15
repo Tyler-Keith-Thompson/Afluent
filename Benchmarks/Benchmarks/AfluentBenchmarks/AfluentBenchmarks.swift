@@ -222,7 +222,10 @@ let benchmarks: @Sendable () -> Void = {
 
     Benchmark("AsyncSequence.retry failures: for-await") { benchmark in
         for _ in benchmark.scaledIterations {
-            blackHole(try await sum(of: FailsThenYields(failures: count).retry(UInt(count))))
+            // The one element is the index of the attempt that succeeded.
+            let total = try await sum(of: FailsThenYields(failures: count).retry(UInt(count)))
+            guard total == count else { throw MissingValues(total: total, expected: count) }
+            blackHole(total)
         }
     }
 

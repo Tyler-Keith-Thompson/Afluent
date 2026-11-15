@@ -79,17 +79,19 @@ extension AsyncSequences {
         }
 
         public func next() async throws -> Upstream.Element? {
-            do {
-                try Task.checkCancellation()
-                return try await advance()
-            } catch {
-                try error.throwIf(CancellationError.self)
+            // A loop, not a recursive call: a run of failures adds no frames.
+            while true {
+                do {
+                    try Task.checkCancellation()
+                    return try await advance()
+                } catch {
+                    try error.throwIf(CancellationError.self)
 
-                if try await strategy.handle(error: error) {
-                    restart()
-                    return try await next()
-                } else {
-                    throw error
+                    if try await strategy.handle(error: error) {
+                        restart()
+                    } else {
+                        throw error
+                    }
                 }
             }
         }
@@ -172,18 +174,20 @@ extension AsyncSequences {
         }
 
         public func next() async throws -> Upstream.Element? {
-            do {
-                try Task.checkCancellation()
-                return try await advance()
-            } catch {
-                try error.throwIf(CancellationError.self)
-                    .throwIf(not: state.error)
+            // A loop, not a recursive call: a run of failures adds no frames.
+            while true {
+                do {
+                    try Task.checkCancellation()
+                    return try await advance()
+                } catch {
+                    try error.throwIf(CancellationError.self)
+                        .throwIf(not: state.error)
 
-                if try await strategy.handle(error: error) {
-                    restart()
-                    return try await next()
-                } else {
-                    throw error
+                    if try await strategy.handle(error: error) {
+                        restart()
+                    } else {
+                        throw error
+                    }
                 }
             }
         }
@@ -266,18 +270,20 @@ extension AsyncSequences {
         }
 
         public func next() async throws -> Upstream.Element? {
-            do {
-                try Task.checkCancellation()
-                return try await advance()
-            } catch {
-                try error.throwIf(CancellationError.self)
-                    .throwIf(not: state.error)
+            // A loop, not a recursive call: a run of failures adds no frames.
+            while true {
+                do {
+                    try Task.checkCancellation()
+                    return try await advance()
+                } catch {
+                    try error.throwIf(CancellationError.self)
+                        .throwIf(not: state.error)
 
-                if try await strategy.handle(error: error) {
-                    restart()
-                    return try await next()
-                } else {
-                    throw error
+                    if try await strategy.handle(error: error) {
+                        restart()
+                    } else {
+                        throw error
+                    }
                 }
             }
         }

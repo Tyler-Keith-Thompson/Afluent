@@ -69,3 +69,18 @@ stored property, `share()`, a cache. So a closure that implicitly captured `self
 
 It was deprecated in 1.x in favour of `enqueue(_:)`, which does the same thing. Write
 `try await queue.enqueue { … }` where you wrote `try await queue.queue { … }`.
+
+## Only Afluent's own types conform to `AsynchronousUnitOfWork`
+
+In 1.x the protocol's machinery was public: conformers supplied `state: TaskState<Success>` and
+`_operation() -> AsynchronousOperation<Success>`, and both types were public API. That was never
+meant for outside use, and a type built on it could easily get cancellation or task bookkeeping
+wrong.
+
+2.0 takes them out of the public API. `TaskState`, `AsynchronousOperation` and the two
+requirements are no longer visible, so a type outside Afluent can't conform.
+
+- **Code that uses units of work is unaffected.** `execute()`, `run()`, `result`, `cancel()`,
+  every operator and `some AsynchronousUnitOfWork<T>` work as before.
+- **A type of your own that conformed** stops compiling. Build it from `DeferredTask { }` and
+  Afluent's operators instead, or wrap an existing unit of work with `eraseToAnyUnitOfWork()`.

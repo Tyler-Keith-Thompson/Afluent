@@ -6,7 +6,7 @@
 import ConcurrencyExtras
 import Testing
 
-@testable import Afluent
+@_spi(Conformance) @testable import Afluent
 
 struct TaskStateTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)

@@ -34,7 +34,7 @@ extension AsynchronousUnitOfWork {
     /// - Throws: Rethrows any error thrown by the asynchronous unit of work.
     /// - Note: This method is asynchronous and will complete when the assignment has been made or the operation fails.
     public func assign<Root: AnyObject & Sendable>(
-        to keyPath: ReferenceWritableKeyPath<Root, Success>, on object: Root
+        to keyPath: ReferenceWritableKeyPath<Root, Success> & Sendable, on object: Root
     ) async throws {
         _ = try await handleEvents(receiveOutput: { [weak object] in
             object?[keyPath: keyPath] = $0

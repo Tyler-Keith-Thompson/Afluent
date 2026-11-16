@@ -99,10 +99,19 @@ struct AnyAsyncSequenceTests {
     }
 
     @Test(.timeLimit(.minutes(1))) func copiesOfAnErasedIteratorShareItsPosition() async throws {
-        let erased = AsyncStream<Int> { continuation in
-            for element in 1 ... 3 { continuation.yield(element) }
-            continuation.finish()
-        }.eraseToAnyAsyncSequence()
+        /// A sequence whose iterator is a value: copies of it, unerased, would each start over.
+        struct Counting: AsyncSequence, Sendable {
+            struct AsyncIterator: AsyncIteratorProtocol {
+                var current = 1
+                mutating func next() async -> Int? {
+                    guard current <= 3 else { return nil }
+                    defer { current += 1 }
+                    return current
+                }
+            }
+            func makeAsyncIterator() -> AsyncIterator { AsyncIterator() }
+        }
+        let erased = Counting().eraseToAnyAsyncSequence()
         var original = erased.makeAsyncIterator()
         var copy = original
         let expected: [Int?] = [1, 2, 3, nil]

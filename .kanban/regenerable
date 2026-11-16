@@ -1,0 +1,8 @@
+# Ignored files Afluent's own commands regenerate, which `kanban worktree finish` may delete
+# (.gitignore syntax). Anything else ignored, such as a .env, still keeps a worktree.
+# `just spm-test` resolves the root package; its resolution is not committed.
+/Package.resolved
+# `just bench-simulated`: the harness copy, toolchain stamp and lock, per machine.
+Benchmarks/.harness/
+# `just bench-simulated`: the run's results before they are recorded as the `simulated` baseline.
+Benchmarks/.benchmarkBaselines/*/simulated-current/

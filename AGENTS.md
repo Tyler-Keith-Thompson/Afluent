@@ -180,16 +180,16 @@ Watch for these:
 
 Ship finished work yourself; don't wait to be asked, and never end a task with finished work
 unmerged. `main` takes changes only through Trunk's merge queue, and every merge releases a patch
-version, so ship once per batch: when the work the owner gave you is done (the whole request, or
-Ready is empty when working the backlog), put everything it produced on one branch.
+version, so ship once per unit of work: each backlog item on a branch of its own, and a request
+from outside the backlog on one branch once it is all done.
 
 1. Verify the committed state in a clean worktree: `bazel test //...` in debug, then
    `--config=release`.
-2. Push the branch and open a pull request (`gh pr create`), one per backlog item. The owner
-   reviews it and queues it with a `/trunk merge` comment; that comment is their approval, so
-   never post it yourself. Trunk tests it on a `trunk-merge/` branch against the current `main`
-   and merges it once the checks `.trunk/trunk.yaml` names pass. If Trunk drops a PR the owner
-   queued for a GitHub-side reason (checks stuck as expected, an incident), queue it again.
+2. Push the branch and open a pull request (`gh pr create`). The owner reviews it and queues it
+   with a `/trunk merge` comment; that comment is their approval, so never post it yourself.
+   Trunk tests it on a `trunk-merge/` branch against the current `main` and merges it once the
+   checks `.trunk/trunk.yaml` names pass. If Trunk drops a PR the owner queued for a GitHub-side
+   reason (checks stuck as expected, an incident), queue it again.
 3. Watch it merge (`gh pr view --json state`), then the Release and DocC workflows to green, and
    fix anything that breaks in a new pull request.
 4. Don't add CI steps that rebuild without the owner's approval. A job that must pass before a

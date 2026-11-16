@@ -14,7 +14,7 @@ every project built; delete a rule only when it cannot apply here, and say so in
 
 ```
 Sources/<Module>/                One directory per module, each with a generated BUILD.bazel
-Sources/Afluent/             Umbrella module (@_exported imports) and the landing DocC catalog
+Sources/Afluent/             The library: DeferredTask, the operators, subjects, caches, SerialTaskQueue
 Tests/<Module>Tests/             One test target per module; Performance/ holds speed-reliant tests
 Tests/AfluentTests/          The suite for Afluent and AfluentTesting
 Tests/AfluentTestSupport/    Shared test fixtures (data only)
@@ -99,6 +99,14 @@ Every shell command gets a timeout. macOS has no `timeout`; use
   module was once published at `/Afluent/<Module>/documentation/<module>/`;
   `scripts/docs_redirects.sh` writes a redirect at every old address when the DocC workflow
   publishes, so links into the old sites keep working. A new module needs no entry there.
+- **Greptile** reviews a pull request once when it opens, and only when asked after that. Its
+  findings are inline threads, even beside an approval: answer each one, fix it or say why not,
+  and resolve it. After pushing fixes, comment `@greptile review` once per head commit. Batch fixes
+  into one push, since each review costs the owner.
+- **Tests that move time** use `Tests/AfluentTests/TestHelpers/TrackedTestClock.swift`. Its
+  `advance(by:whenSleeping:)` waits until that many sleeps are registered before moving time.
+  swift-clocks' `TestClock.advance` only yields a fixed number of times first, so a late sleep
+  misses the advance.
 
 ## Building blocks
 
@@ -172,14 +180,16 @@ Watch for these:
 
 Ship finished work yourself; don't wait to be asked, and never end a task with finished work
 unmerged. `main` takes changes only through Trunk's merge queue, and every merge releases a patch
-version, so ship once per batch: when the work the owner gave you is done (the whole request, or
-Ready is empty when working the backlog), put everything it produced on one branch.
+version, so ship once per unit of work: each backlog item on a branch of its own, and a request
+from outside the backlog on one branch once it is all done.
 
 1. Verify the committed state in a clean worktree: `bazel test //...` in debug, then
    `--config=release`.
-2. Push the branch, open a pull request (`gh pr create`) and queue it with a `/trunk merge`
-   comment (`gh pr comment --body "/trunk merge"`). Trunk tests it on a `trunk-merge/` branch
-   against the current `main` and merges it once the checks `.trunk/trunk.yaml` names pass.
+2. Push the branch and open a pull request (`gh pr create`). The owner reviews it and queues it
+   with a `/trunk merge` comment; that comment is their approval, so never post it yourself.
+   Trunk tests it on a `trunk-merge/` branch against the current `main` and merges it once the
+   checks `.trunk/trunk.yaml` names pass. If Trunk drops a PR the owner queued for a GitHub-side
+   reason (checks stuck as expected, an incident), queue it again.
 3. Watch it merge (`gh pr view --json state`), then the Release and DocC workflows to green, and
    fix anything that breaks in a new pull request.
 4. Don't add CI steps that rebuild without the owner's approval. A job that must pass before a

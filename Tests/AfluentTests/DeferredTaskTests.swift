@@ -72,4 +72,24 @@ struct AfluentTests {
             }
         }
     }
+
+    @Test(.timeLimit(.minutes(1)))
+    func aDeferredTaskHeldByAnObjectWhoseOperationCapturesItWeaklyDoesNotKeepItAlive() async throws {
+        /// Holds a unit of work whose operation reads the owner, as a view model holds a request.
+        final class Owner: Sendable {
+            let value = 1
+            let work = CriticalState<DeferredTask<Int?>?>(nil)
+            init() { work.withCriticalRegion { $0 = DeferredTask { [weak self] in self?.value } } }
+        }
+        var owner: Owner? = Owner()
+        weak let released = owner
+        let work = try #require(owner?.work.withCriticalRegion { $0 })
+        let expectedWhileHeld: Int? = 1
+
+        let whileHeld = try await work.execute()
+        owner = nil
+
+        #expect(whileHeld == expectedWhileHeld)
+        #expect(released == nil)
+    }
 }

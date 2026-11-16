@@ -19,11 +19,11 @@ extension AsyncSequences {
     ///
     /// With jitter, the ticks keep the same schedule, one per interval with no drift, and each tick
     /// fires at a random point inside its period instead of at its end: the period's start plus the
-    /// jittered interval (see ``BackoffJitter``).
+    /// jittered interval (see ``Jitter``).
     public struct TimerSequence<C: Clock>: AsyncSequence, Sendable {
         public typealias Element = C.Instant
 
-        init(interval: C.Duration, tolerance: C.Duration?, clock: C, jitter: BackoffJitter) {
+        init(interval: C.Duration, tolerance: C.Duration?, clock: C, jitter: Jitter) {
             self.interval = interval
             self.tolerance = tolerance
             self.clock = clock
@@ -33,12 +33,12 @@ extension AsyncSequences {
         private let interval: C.Duration
         private let tolerance: C.Duration?
         private let clock: C
-        private let jitter: BackoffJitter
+        private let jitter: Jitter
 
         public struct AsyncIterator: AsyncIteratorProtocol {
             private var cancellables: Set<AnyCancellable> = []
 
-            init(interval: C.Duration, tolerance: C.Duration?, clock: C, jitter: BackoffJitter) {
+            init(interval: C.Duration, tolerance: C.Duration?, clock: C, jitter: Jitter) {
                 self.interval = interval
                 self.tolerance = tolerance
                 self.clock = clock
@@ -48,7 +48,7 @@ extension AsyncSequences {
             private let interval: C.Duration
             private let tolerance: C.Duration?
             private let clock: C
-            private let jitter: BackoffJitter
+            private let jitter: Jitter
             private var last: C.Instant?
             private var finished = false
 
@@ -88,10 +88,10 @@ extension TimerSequence where C == ContinuousClock {
     /// - Parameters:
     ///   - interval: The time interval between emitted instants.
     ///   - tolerance: An optional tolerance for scheduling, allowing slight variance in timing.
-    ///   - jitter: Where each tick falls inside its period. Defaults to ``BackoffJitter/none``, which
-    ///     ticks at the end of each period. ``BackoffJitter/full(using:)`` ticks anywhere in it,
-    ///     ``BackoffJitter/equal(using:)`` in its second half, and
-    ///     ``BackoffJitter/decorrelated(using:)``, whose waits start at the full interval, at its end.
+    ///   - jitter: Where each tick falls inside its period. Defaults to ``Jitter/none``, which
+    ///     ticks at the end of each period. ``Jitter/full(using:)`` ticks anywhere in it,
+    ///     ``Jitter/equal(using:)`` in its second half, and
+    ///     ``Jitter/decorrelated(using:)``, whose waits start at the full interval, at its end.
     /// - Returns: A timer sequence on a `ContinuousClock`.
     ///
     /// ## Example
@@ -103,7 +103,7 @@ extension TimerSequence where C == ContinuousClock {
     /// // Prints a line every second with the current instant.
     /// ```
     public static func publish(
-        every interval: C.Duration, tolerance: C.Duration? = nil, jitter: BackoffJitter = .none
+        every interval: C.Duration, tolerance: C.Duration? = nil, jitter: Jitter = .none
     ) -> AsyncSequences.TimerSequence<C> {
         AsyncSequences.TimerSequence(
             interval: interval, tolerance: tolerance, clock: .init(), jitter: jitter)
@@ -118,10 +118,10 @@ extension TimerSequence {
     ///   - interval: The time interval between emitted instants.
     ///   - tolerance: An optional tolerance for scheduling, allowing slight variance in timing.
     ///   - clock: The clock instance to use for timing.
-    ///   - jitter: Where each tick falls inside its period. Defaults to ``BackoffJitter/none``, which
-    ///     ticks at the end of each period. ``BackoffJitter/full(using:)`` ticks anywhere in it,
-    ///     ``BackoffJitter/equal(using:)`` in its second half, and
-    ///     ``BackoffJitter/decorrelated(using:)``, whose waits start at the full interval, at its end.
+    ///   - jitter: Where each tick falls inside its period. Defaults to ``Jitter/none``, which
+    ///     ticks at the end of each period. ``Jitter/full(using:)`` ticks anywhere in it,
+    ///     ``Jitter/equal(using:)`` in its second half, and
+    ///     ``Jitter/decorrelated(using:)``, whose waits start at the full interval, at its end.
     /// - Returns: A timer sequence on `clock`.
     ///
     /// ## Example
@@ -135,7 +135,7 @@ extension TimerSequence {
     /// ```
     public static func publish(
         every interval: C.Duration, tolerance: C.Duration? = nil, clock: C,
-        jitter: BackoffJitter = .none
+        jitter: Jitter = .none
     ) -> AsyncSequences.TimerSequence<C> {
         AsyncSequences.TimerSequence(
             interval: interval, tolerance: tolerance, clock: clock, jitter: jitter)

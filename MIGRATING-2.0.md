@@ -36,3 +36,12 @@ with no lock and no cast.
 - **Code that sends an `AnyAsyncIterator` to another task**, or stores one in a `Sendable` type,
   now gets a `Sendable` diagnostic. Send the `AnyAsyncSequence` instead and make the iterator
   where it is used.
+
+## `BackoffJitter` is now `Jitter`
+
+The jitter type randomizes every wait in Afluent, not only retry backoff: `ExponentialBackoffStrategy`,
+`TimerSequence` and `delay` on units of work and sequences all take it as their `jitter:` parameter.
+2.0 names it for what it does. No typealias keeps the old name.
+
+- **Write `Jitter` where you wrote `BackoffJitter`**: `let jitter: Jitter = .full(using: generator)`.
+- **Arguments written as `.none`, `.full()`, `.equal()` or `.decorrelated()`** compile unchanged.

@@ -1,5 +1,5 @@
 //
-//  BackoffJitter.swift
+//  Jitter.swift
 //  Afluent
 //
 
@@ -28,7 +28,7 @@
 /// let heartbeat = TimerSequence.publish(every: .seconds(30), jitter: .full())
 /// ```
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
-public struct BackoffJitter: Sendable {
+public struct Jitter: Sendable {
     enum Kind: Sendable {
         case full
         case equal
@@ -37,7 +37,7 @@ public struct BackoffJitter: Sendable {
 
     struct State: Sendable {
         var generator: any RandomNumberGenerator & Sendable
-        /// The last wait this jitter produced, for ``BackoffJitter/decorrelated(using:)``.
+        /// The last wait this jitter produced, for ``Jitter/decorrelated(using:)``.
         var previous: (any DurationProtocol)?
     }
 
@@ -56,7 +56,7 @@ public struct BackoffJitter: Sendable {
     }
 
     /// Waits exactly the nominal wait.
-    public static var none: BackoffJitter { BackoffJitter() }
+    public static var none: Jitter { Jitter() }
 
     /// Waits a random duration from zero up to the nominal wait.
     ///
@@ -66,8 +66,8 @@ public struct BackoffJitter: Sendable {
     ///   in `0 ..< d`.
     public static func full(
         using generator: some RandomNumberGenerator & Sendable = SystemRandomNumberGenerator()
-    ) -> BackoffJitter {
-        BackoffJitter(kind: .full, generator: generator)
+    ) -> Jitter {
+        Jitter(kind: .full, generator: generator)
     }
 
     /// Waits half the nominal wait plus a random duration up to the other half.
@@ -78,8 +78,8 @@ public struct BackoffJitter: Sendable {
     ///   becomes one in `d / 2 ..< d`.
     public static func equal(
         using generator: some RandomNumberGenerator & Sendable = SystemRandomNumberGenerator()
-    ) -> BackoffJitter {
-        BackoffJitter(kind: .equal, generator: generator)
+    ) -> Jitter {
+        Jitter(kind: .equal, generator: generator)
     }
 
     /// Waits a random duration from the nominal wait up to three times the previous wait this
@@ -97,8 +97,8 @@ public struct BackoffJitter: Sendable {
     ///   `previous` is the last wait it produced.
     public static func decorrelated(
         using generator: some RandomNumberGenerator & Sendable = SystemRandomNumberGenerator()
-    ) -> BackoffJitter {
-        BackoffJitter(kind: .decorrelated, generator: generator)
+    ) -> Jitter {
+        Jitter(kind: .decorrelated, generator: generator)
     }
 
     /// The wait to use in place of `delay`.

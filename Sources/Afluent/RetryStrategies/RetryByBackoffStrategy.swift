@@ -112,11 +112,11 @@ extension BackoffStrategy where Self == ExponentialBackoffStrategy<ContinuousClo
     ///   - base: The base duration for the backoff, which will exponentially increase with each retry.
     ///   - maxCount: The maximum number of attempts. Defaults to `UInt.max`, which never stops.
     ///   - maxDelay: The maximum duration to wait.
-    ///   - jitter: How each delay is randomized. Defaults to ``BackoffJitter/none``.
+    ///   - jitter: How each delay is randomized. Defaults to ``Jitter/none``.
     /// - Returns: An `ExponentialBackoffStrategy` configured with the provided base and maximum retry count.
     public static func exponential(
         base: UInt, maxCount: UInt = .max,
-        maxDelay: ContinuousClock.Duration = .seconds(Int.max), jitter: BackoffJitter = .none
+        maxDelay: ContinuousClock.Duration = .seconds(Int.max), jitter: Jitter = .none
     ) -> ExponentialBackoffStrategy<Clock> {
         ExponentialBackoffStrategy(base: base, maxCount: maxCount, maxDelay: maxDelay, jitter: jitter)
     }
@@ -128,11 +128,11 @@ extension BackoffStrategy where Self == ExponentialBackoffStrategy<ContinuousClo
     /// - Parameters:
     ///   - maxCount: The maximum number of attempts. Defaults to `UInt.max`, which never stops.
     ///   - maxDelay: The maximum duration to wait.
-    ///   - jitter: How each delay is randomized. Defaults to ``BackoffJitter/none``.
+    ///   - jitter: How each delay is randomized. Defaults to ``Jitter/none``.
     /// - Returns: An `ExponentialBackoffStrategy` configured with a base of 2 and the provided maximum retry count.
     public static func binaryExponential(
         maxCount: UInt = .max, maxDelay: ContinuousClock.Duration = .seconds(Int.max),
-        jitter: BackoffJitter = .none
+        jitter: Jitter = .none
     ) -> ExponentialBackoffStrategy<Clock> {
         ExponentialBackoffStrategy(base: 2, maxCount: maxCount, maxDelay: maxDelay, jitter: jitter)
     }
@@ -150,7 +150,7 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
     var count = 1
     let maxCount: UInt
     let maxDelay: Clock.Duration
-    let jitter: BackoffJitter
+    let jitter: Jitter
 
     /// Creates a new exponential backoff strategy with the given base and maximum retry count.
     ///
@@ -159,9 +159,9 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
     ///   - maxCount: The maximum number of attempts. Defaults to `UInt.max`, which never stops.
     ///   - maxDelay: The maximum duration to wait.
     ///   - jitter: How each delay is randomized, after it is capped at `maxDelay`; the jittered
-    ///     delay is capped at `maxDelay` too. Defaults to ``BackoffJitter/none``.
+    ///     delay is capped at `maxDelay` too. Defaults to ``Jitter/none``.
     public init(
-        base: UInt, maxCount: UInt = .max, maxDelay: Clock.Duration, jitter: BackoffJitter = .none
+        base: UInt, maxCount: UInt = .max, maxDelay: Clock.Duration, jitter: Jitter = .none
     ) {
         self.base = base
         self.maxCount = maxCount
@@ -176,10 +176,10 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
     ///   - maxCount: The maximum number of attempts. Defaults to `UInt.max`, which never stops.
     ///   - maxDelay: The maximum duration to wait. Defaults to `Int.max` seconds.
     ///   - jitter: How each delay is randomized, after it is capped at `maxDelay`; the jittered
-    ///     delay is capped at `maxDelay` too. Defaults to ``BackoffJitter/none``.
+    ///     delay is capped at `maxDelay` too. Defaults to ``Jitter/none``.
     public init(
         base: UInt, maxCount: UInt = .max, maxDelay: Clock.Duration = .seconds(Int.max),
-        jitter: BackoffJitter = .none
+        jitter: Jitter = .none
     )
     where Clock.Duration == Duration {
         self.base = base
@@ -190,7 +190,7 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
 
     /// Starts the delays over, as if no retry had happened yet.
     ///
-    /// It also makes decorrelated jitter (``BackoffJitter/decorrelated(using:)``) forget its previous
+    /// It also makes decorrelated jitter (``Jitter/decorrelated(using:)``) forget its previous
     /// wait.
     public func reset() {
         count = 1

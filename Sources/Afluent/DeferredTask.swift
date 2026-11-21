@@ -78,7 +78,7 @@ import Foundation
 /// ```
 public actor DeferredTask<Success: Sendable>: AsynchronousUnitOfWork {
     /// The internal state of the task, tracking its lifecycle and result.
-    public let state = TaskState<Success>()
+    @_spi(Conformance) public let state = TaskState<Success>()
     
     /// The asynchronous operation to be executed when awaited.
     let operation: @Sendable () async throws -> Success
@@ -87,7 +87,7 @@ public actor DeferredTask<Success: Sendable>: AsynchronousUnitOfWork {
     ///
     /// - Parameter operation: An async closure representing the work to be performed. The closure can throw errors and must return a value of type `Success`.
     public init(
-        @_inheritActorContext @_implicitSelfCapture operation: @Sendable @escaping () async throws
+        @_inheritActorContext operation: @Sendable @escaping () async throws
             -> Success
     ) {
         self.operation = operation
@@ -97,7 +97,7 @@ public actor DeferredTask<Success: Sendable>: AsynchronousUnitOfWork {
     ///
     /// - Throws: Errors thrown by the underlying operation or a `CancellationError` if the task is no longer available.
     /// - Returns: An `AsynchronousOperation` wrapping the result of type `Success`.
-    public func _operation() async throws -> AsynchronousOperation<Success> {
+    @_spi(Conformance) public func _operation() async throws -> AsynchronousOperation<Success> {
         AsynchronousOperation { [weak self] in
             guard let self else { throw CancellationError() }
             return try await self.operation()

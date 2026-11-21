@@ -5,7 +5,7 @@
 //  Created by Tyler Thompson on 10/30/23.
 //
 
-import Afluent
+@_spi(Conformance) import Afluent
 import Foundation
 import Testing
 

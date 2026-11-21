@@ -32,7 +32,7 @@ public protocol AsynchronousUnitOfWork<Success>: Sendable where Success: Sendabl
     /// The type of data the unit of work will produce if it succeeds.
     associatedtype Success
 
-    var state: TaskState<Success> { get }
+    @_spi(Conformance) var state: TaskState<Success> { get }
     
     /// Awaits and returns the result of the asynchronous unit of work.
     ///
@@ -94,7 +94,7 @@ public protocol AsynchronousUnitOfWork<Success>: Sendable where Success: Sendabl
     ) async throws -> Success
 
     /// Only useful when creating operators, defines the async function that should execute when the operator executes
-    @Sendable func _operation() async throws -> AsynchronousOperation<Success>
+    @_spi(Conformance) @Sendable func _operation() async throws -> AsynchronousOperation<Success>
 
     /// Cancels the asynchronous unit of work.
     ///
@@ -170,7 +170,7 @@ extension AsynchronousUnitOfWork {
 }
 
 /// Reference to an operation that an operator would execute
-public actor AsynchronousOperation<Success: Sendable> {
+@_spi(Conformance) public actor AsynchronousOperation<Success: Sendable> {
     private let operation: @Sendable () async throws -> Success
     public init(operation: @Sendable @escaping () async throws -> Success) {
         self.operation = operation
@@ -181,7 +181,7 @@ public actor AsynchronousOperation<Success: Sendable> {
     }
 }
 
-public final class TaskState<Success: Sendable>: Sendable {
+@_spi(Conformance) public final class TaskState<Success: Sendable>: Sendable {
     /// The tasks this state created and whether ``cancel()`` has run, in one critical region.
     private struct State {
         var tasks = [Task<Success, Error>]()

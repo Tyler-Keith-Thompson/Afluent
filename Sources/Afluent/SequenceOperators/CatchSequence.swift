@@ -18,7 +18,7 @@ extension AsyncSequences {
 
         init(
             upstream: Upstream,
-            @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error)
+            @_inheritActorContext _ handler: @Sendable @escaping (Error)
                 async throws -> Downstream
         ) {
             self.upstream = upstream
@@ -65,7 +65,7 @@ extension AsyncSequence where Self: Sendable {
     /// }
     /// ```
     public func `catch`<D: AsyncSequence>(
-        @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error) async ->
+        @_inheritActorContext _ handler: @Sendable @escaping (Error) async ->
             D
     ) -> AsyncSequences.Catch<Self, D> {
         AsyncSequences.Catch(upstream: self, handler)
@@ -81,7 +81,7 @@ extension AsyncSequence where Self: Sendable {
     /// ```
     public func `catch`<D: AsyncSequence, E: Error & Equatable>(
         _ error: E,
-        @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (E) async -> D
+        @_inheritActorContext _ handler: @Sendable @escaping (E) async -> D
     ) -> AsyncSequences.Catch<Self, D> {
         tryCatch { err in
             guard let unwrappedError = (err as? E),
@@ -100,7 +100,7 @@ extension AsyncSequence where Self: Sendable {
     /// }
     /// ```
     public func tryCatch<D: AsyncSequence>(
-        @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error)
+        @_inheritActorContext _ handler: @Sendable @escaping (Error)
             async throws -> D
     ) -> AsyncSequences.Catch<Self, D> {
         AsyncSequences.Catch(upstream: self, handler)
@@ -116,7 +116,7 @@ extension AsyncSequence where Self: Sendable {
     /// ```
     public func tryCatch<D: AsyncSequence, E: Error & Equatable>(
         _ error: E,
-        @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (E) async throws
+        @_inheritActorContext _ handler: @Sendable @escaping (E) async throws
             -> D
     ) -> AsyncSequences.Catch<Self, D> {
         tryCatch { err in

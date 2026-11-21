@@ -5,7 +5,7 @@
 
 import Testing
 
-@testable import Afluent
+@_spi(Conformance) @testable import Afluent
 
 /// Each cached value's `deinit` takes the cache's lock, so a value released inside the lock would trap or hang.
 struct CacheReleaseTests {

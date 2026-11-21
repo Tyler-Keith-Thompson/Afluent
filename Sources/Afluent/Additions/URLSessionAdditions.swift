@@ -17,7 +17,7 @@
             (data: Data, response: URLResponse)
         > {
             DeferredTask {
-                try await data(from: url)
+                try await self.data(from: url)
             }
         }
 
@@ -26,7 +26,7 @@
             (data: Data, response: URLResponse)
         > {
             DeferredTask {
-                try await data(for: urlRequest)
+                try await self.data(for: urlRequest)
             }
         }
     }

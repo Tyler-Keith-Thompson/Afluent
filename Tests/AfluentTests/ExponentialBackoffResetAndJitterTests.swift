@@ -150,7 +150,7 @@ struct ExponentialBackoffResetAndJitterTests {
     @Test(.timeLimit(.minutes(1))) func seededJitterStaysInItsRangeAndReproducesFromTheSeed()
         async throws
     {
-        func delays(_ jitter: BackoffJitter) async throws -> [Duration] {
+        func delays(_ jitter: Jitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
             let strategy = ExponentialBackoffStrategy<ImmediateClock<Duration>>(
                 base: 2, maxDelay: .seconds(60), jitter: jitter)

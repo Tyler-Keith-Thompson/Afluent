@@ -19,16 +19,16 @@ extension Workers {
 
         init(
             upstream: Upstream,
-            @_inheritActorContext @_implicitSelfCapture receiveOperation: (
+            @_inheritActorContext receiveOperation: (
                 @Sendable () async throws -> Void
             )?,
-            @_inheritActorContext @_implicitSelfCapture receiveOutput: (
+            @_inheritActorContext receiveOutput: (
                 @Sendable (Success) async throws -> Void
             )?,
-            @_inheritActorContext @_implicitSelfCapture receiveError: (
+            @_inheritActorContext receiveError: (
                 @Sendable (Error) async throws -> Void
             )?,
-            @_inheritActorContext @_implicitSelfCapture receiveCancel: (
+            @_inheritActorContext receiveCancel: (
                 @Sendable () async throws -> Void
             )?
         ) {
@@ -91,16 +91,16 @@ extension AsynchronousUnitOfWork {
     ///
     /// - Note: Errors thrown by any of the provided closures will propagate downstream and cancel the operation.
     public func handleEvents(
-        @_inheritActorContext @_implicitSelfCapture receiveOperation: (
+        @_inheritActorContext receiveOperation: (
             @Sendable () async throws -> Void
         )? = nil,
-        @_inheritActorContext @_implicitSelfCapture receiveOutput: (
+        @_inheritActorContext receiveOutput: (
             @Sendable (Success) async throws -> Void
         )? = nil,
-        @_inheritActorContext @_implicitSelfCapture receiveError: (
+        @_inheritActorContext receiveError: (
             @Sendable (Error) async throws -> Void
         )? = nil,
-        @_inheritActorContext @_implicitSelfCapture receiveCancel: (
+        @_inheritActorContext receiveCancel: (
             @Sendable () async throws -> Void
         )? = nil
     ) -> some AsynchronousUnitOfWork<Success> {

@@ -91,20 +91,20 @@ extension AsyncSequence where Self: Sendable {
     ///
     /// - Note: The returned sequence forwards all events from the upstream.
     public func handleEvents(
-        @_implicitSelfCapture receiveMakeIterator: (@Sendable () -> Void)? = nil,
-        @_inheritActorContext @_implicitSelfCapture receiveNext: (
+        receiveMakeIterator: (@Sendable () -> Void)? = nil,
+        @_inheritActorContext receiveNext: (
             @Sendable () async throws -> Void
         )? = nil,
-        @_inheritActorContext @_implicitSelfCapture receiveOutput: (
+        @_inheritActorContext receiveOutput: (
             @Sendable (Element) async throws -> Void
         )? = nil,
-        @_inheritActorContext @_implicitSelfCapture receiveError: (
+        @_inheritActorContext receiveError: (
             @Sendable (Error) async throws -> Void
         )? = nil,
-        @_inheritActorContext @_implicitSelfCapture receiveComplete: (
+        @_inheritActorContext receiveComplete: (
             @Sendable () async throws -> Void
         )? = nil,
-        @_inheritActorContext @_implicitSelfCapture receiveCancel: (
+        @_inheritActorContext receiveCancel: (
             @Sendable () async throws -> Void
         )? = nil
     ) -> AsyncSequences.HandleEvents<Self> {

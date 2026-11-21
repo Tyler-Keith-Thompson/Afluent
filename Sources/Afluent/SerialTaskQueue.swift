@@ -240,22 +240,6 @@ public final class SerialTaskQueue: Sendable {
         }
     }
 
-    /// Queues a task to be executed serially.
-    ///
-    /// If no task is currently running, the provided task is executed immediately.
-    /// If a task is running, the provided task is added to the queue and will be executed once the current task completes.
-    ///
-    /// - Parameter task: The asynchronous task to be queued and executed.
-    /// - Returns: The result of the task.
-    /// - Throws: An error if the task throws an error.
-    /// - Note: This method has been renamed to `enqueue`. Use `enqueue` instead.
-    @available(*, deprecated, renamed: "enqueue", message: "Use enqueue instead")
-    public func queue<T: Sendable>(_ task: @Sendable @escaping () async throws -> T) async throws
-        -> T
-    {
-        return try await enqueue { try await task() }
-    }
-
     /// Cancels the running task and every queued task that hasn't started; those throw `CancellationError` to their
     /// awaiters, as does any task queued afterwards.
     public func cancelAll() {

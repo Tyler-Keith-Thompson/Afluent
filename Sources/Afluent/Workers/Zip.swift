@@ -187,7 +187,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` producing the transformed result.
     public func zip<D: AsynchronousUnitOfWork, T: Sendable>(
         _ downstream: D,
-        @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (
+        @_inheritActorContext transform: @Sendable @escaping (
             (Success, D.Success)
         ) async throws -> T
     ) -> some AsynchronousUnitOfWork<T> {
@@ -236,7 +236,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` producing the transformed result.
     public func zip<D0: AsynchronousUnitOfWork, D1: AsynchronousUnitOfWork, T: Sendable>(
         _ d0: D0, _ d1: D1,
-        @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (
+        @_inheritActorContext transform: @Sendable @escaping (
             (Success, D0.Success, D1.Success)
         ) async throws -> T
     ) -> some AsynchronousUnitOfWork<T> {
@@ -292,7 +292,7 @@ extension AsynchronousUnitOfWork {
         T: Sendable
     >(
         _ d0: D0, _ d1: D1, _ d2: D2,
-        @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (
+        @_inheritActorContext transform: @Sendable @escaping (
             (Success, D0.Success, D1.Success, D2.Success)
         ) async throws -> T
     ) -> some AsynchronousUnitOfWork<T> {

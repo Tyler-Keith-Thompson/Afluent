@@ -35,7 +35,7 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
         case alreadyCompleted
     }
 
-    public let state = TaskState<Success>()
+    @_spi(Conformance) public let state = TaskState<Success>()
     var alreadySent: Bool {
         subjectState.withCriticalRegion { $0.sentResult != nil }
     }
@@ -44,7 +44,7 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     /// Creates a new `SingleValueSubject`.
     public init() {}
 
-    public func _operation() async throws -> AsynchronousOperation<Success> {
+    @_spi(Conformance) public func _operation() async throws -> AsynchronousOperation<Success> {
         AsynchronousOperation { [weak self] in
             guard let self else { throw CancellationError() }
 

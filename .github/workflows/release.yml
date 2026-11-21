@@ -37,9 +37,21 @@ jobs:
           DEFAULT_BUMP: patch
           INITIAL_VERSION: 0.0.0
           RELEASE_BRANCHES: main
+      # A major release (X.0.0) opens its notes with MIGRATING-X.0.md, the guide to what broke and
+      # what to write instead; GitHub's generated list of pull requests follows it.
+      - name: Pick the release notes
+        id: notes
+        env:
+          TAG: ${{ steps.bump_version.outputs.new_tag }}
+        run: |
+          major="${TAG#v}"; major="${major%%.*}"
+          if [[ "$TAG" =~ ^v?[0-9]+\.0\.0$ && -f "MIGRATING-$major.0.md" ]]; then
+            echo "body_path=MIGRATING-$major.0.md" >> "$GITHUB_OUTPUT"
+          fi
       - name: Create the GitHub release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.bump_version.outputs.new_tag }}
           name: Release ${{ steps.bump_version.outputs.new_tag }}
+          body_path: ${{ steps.notes.outputs.body_path }}
           generate_release_notes: true

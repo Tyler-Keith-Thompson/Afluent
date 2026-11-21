@@ -15,7 +15,7 @@ extension Workers {
 
         init(
             upstream: Upstream,
-            @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (
+            @_inheritActorContext transform: @Sendable @escaping (
                 Upstream.Success
             ) async -> Success
         ) {
@@ -37,7 +37,7 @@ extension Workers {
 
         init(
             upstream: Upstream,
-            @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (
+            @_inheritActorContext transform: @Sendable @escaping (
                 Upstream.Success
             ) async throws -> Success
         ) {
@@ -61,7 +61,7 @@ extension AsynchronousUnitOfWork {
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that emits the transformed value.
     public func map<S: Sendable>(
-        @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (Success) async
+        @_inheritActorContext _ transform: @Sendable @escaping (Success) async
             -> S
     ) -> some AsynchronousUnitOfWork<S> {
         Workers.Map(upstream: self, transform: transform)
@@ -73,7 +73,7 @@ extension AsynchronousUnitOfWork {
     ///   - keyPath: A key path to a property of the upstream's output type.
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that emits the value of the property specified by the key path.
-    public func map<T: Sendable>(_ keyPath: KeyPath<Success, T>) -> some AsynchronousUnitOfWork<T> {
+    public func map<T: Sendable>(_ keyPath: KeyPath<Success, T> & Sendable) -> some AsynchronousUnitOfWork<T> {
         Workers.Map(upstream: self) {
             $0[keyPath: keyPath]
         }
@@ -86,7 +86,7 @@ extension AsynchronousUnitOfWork {
     ///
     /// - Returns: An `AsynchronousUnitOfWork` that emits the transformed value or an error if the transformation fails.
     public func tryMap<S: Sendable>(
-        @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (Success)
+        @_inheritActorContext _ transform: @Sendable @escaping (Success)
             async throws -> S
     ) -> some AsynchronousUnitOfWork<S> {
         Workers.TryMap(upstream: self, transform: transform)

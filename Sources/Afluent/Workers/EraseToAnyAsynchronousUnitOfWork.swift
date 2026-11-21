@@ -19,7 +19,7 @@ public struct AnyAsynchronousUnitOfWork<Success: Sendable>: AsynchronousUnitOfWo
     // this type must explicitly call the upstream's implementation of all AsynchronousUnitOfWork protocol properties
     // this is because we cannot assume any given worker will use the default implementation
 
-    public var state: TaskState<Success> {
+    @_spi(Conformance) public var state: TaskState<Success> {
         upstream.state
     }
     public var result: Result<Success, Error> {
@@ -48,7 +48,7 @@ public struct AnyAsynchronousUnitOfWork<Success: Sendable>: AsynchronousUnitOfWo
         try await upstream.execute(executorPreference: taskExecutor, priority: priority)
     }
     @Sendable
-    public func _operation() async throws -> AsynchronousOperation<Success> {
+    @_spi(Conformance) public func _operation() async throws -> AsynchronousOperation<Success> {
         try await upstream._operation()
     }
     public func cancel() {

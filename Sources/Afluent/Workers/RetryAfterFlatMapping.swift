@@ -19,7 +19,7 @@ extension Workers {
 
         init(
             upstream: Upstream, strategy: Strategy,
-            @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (Error)
+            @_inheritActorContext transform: @Sendable @escaping (Error)
                 async throws -> Downstream
         ) {
             self.upstream = upstream
@@ -64,7 +64,7 @@ extension Workers {
 
         init(
             upstream: Upstream, strategy: Strategy, error: Failure,
-            @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (Failure)
+            @_inheritActorContext transform: @Sendable @escaping (Failure)
                 async throws -> Downstream
         ) {
             self.upstream = upstream
@@ -115,7 +115,7 @@ extension Workers {
 
         init(
             upstream: Upstream, strategy: Strategy, error: Failure.Type,
-            @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (Failure)
+            @_inheritActorContext transform: @Sendable @escaping (Failure)
                 async throws -> Downstream
         ) {
             self.upstream = upstream
@@ -175,7 +175,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` that performs the side effect before each retry.
     public func retry<D: AsynchronousUnitOfWork>(
         _ strategy: some RetryStrategy,
-        @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (Error)
+        @_inheritActorContext _ transform: @Sendable @escaping (Error)
             async throws -> D
     ) -> some AsynchronousUnitOfWork<Success> {
         Workers.RetryAfterFlatMapping(upstream: self, strategy: strategy, transform: transform)
@@ -198,7 +198,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` that performs the side effect before each retry.
     public func retry<D: AsynchronousUnitOfWork>(
         _ retries: UInt = 1,
-        @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (Error)
+        @_inheritActorContext _ transform: @Sendable @escaping (Error)
             async throws -> D
     ) -> some AsynchronousUnitOfWork<Success> {
         Workers.RetryAfterFlatMapping(
@@ -224,7 +224,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` that performs the side effect before retrying on the error.
     public func retry<D: AsynchronousUnitOfWork, E: Error & Equatable>(
         _ retries: UInt = 1, on error: E,
-        @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (E)
+        @_inheritActorContext _ transform: @Sendable @escaping (E)
             async throws -> D
     ) -> some AsynchronousUnitOfWork<Success> {
         Workers.RetryOnAfterFlatMapping(
@@ -250,7 +250,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` that performs the side effect before retrying on the error.
     public func retry<D: AsynchronousUnitOfWork, E: Error & Equatable, S: RetryStrategy>(
         _ strategy: S, on error: E,
-        @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (E)
+        @_inheritActorContext _ transform: @Sendable @escaping (E)
             async throws -> D
     ) -> some AsynchronousUnitOfWork<Success> {
         Workers.RetryOnAfterFlatMapping(
@@ -276,7 +276,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` that performs the side effect before retrying on the error type.
     public func retry<D: AsynchronousUnitOfWork, E: Error>(
         _ retries: UInt = 1, on error: E.Type,
-        @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (E)
+        @_inheritActorContext _ transform: @Sendable @escaping (E)
             async throws -> D
     ) -> some AsynchronousUnitOfWork<Success> {
         Workers.RetryOnCastAfterFlatMapping(
@@ -302,7 +302,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` that performs the side effect before retrying on the error type.
     public func retry<D: AsynchronousUnitOfWork, E: Error, S: RetryStrategy>(
         _ strategy: S, on error: E.Type,
-        @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (E)
+        @_inheritActorContext _ transform: @Sendable @escaping (E)
             async throws -> D
     ) -> some AsynchronousUnitOfWork<Success> {
         Workers.RetryOnCastAfterFlatMapping(

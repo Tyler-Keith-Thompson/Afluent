@@ -18,7 +18,7 @@ extension Workers {
 
         init(
             upstream: Upstream,
-            @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error)
+            @_inheritActorContext _ handler: @Sendable @escaping (Error)
                 async throws -> Downstream
         ) {
             self.upstream = upstream
@@ -73,7 +73,7 @@ extension AsynchronousUnitOfWork {
     /// // result == 42
     /// ```
     public func `catch`<D: AsynchronousUnitOfWork>(
-        @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error) async ->
+        @_inheritActorContext _ handler: @Sendable @escaping (Error) async ->
             D
     ) -> some AsynchronousUnitOfWork<D.Success> where Success == D.Success {
         Workers.Catch(upstream: self, handler)
@@ -116,7 +116,7 @@ extension AsynchronousUnitOfWork {
     /// ```
     public func `catch`<D: AsynchronousUnitOfWork, E: Error & Equatable>(
         _ error: E,
-        @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (E) async -> D
+        @_inheritActorContext _ handler: @Sendable @escaping (E) async -> D
     ) -> some AsynchronousUnitOfWork<D.Success> where Success == D.Success {
         tryCatch { err in
             guard let unwrappedError = (err as? E),
@@ -163,7 +163,7 @@ extension AsynchronousUnitOfWork {
     /// let result = try await recoveredTask.operation().value
     /// ```
     public func tryCatch<D: AsynchronousUnitOfWork>(
-        @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (Error)
+        @_inheritActorContext _ handler: @Sendable @escaping (Error)
             async throws -> D
     ) -> some AsynchronousUnitOfWork<D.Success> where Success == D.Success {
         Workers.Catch(upstream: self, handler)
@@ -210,7 +210,7 @@ extension AsynchronousUnitOfWork {
     /// ```
     public func tryCatch<D: AsynchronousUnitOfWork, E: Error & Equatable>(
         _ error: E,
-        @_inheritActorContext @_implicitSelfCapture _ handler: @Sendable @escaping (E) async throws
+        @_inheritActorContext _ handler: @Sendable @escaping (E) async throws
             -> D
     ) -> some AsynchronousUnitOfWork<D.Success> where Success == D.Success {
         tryCatch { err in

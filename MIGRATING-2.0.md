@@ -45,3 +45,22 @@ The jitter type randomizes every wait in Afluent, not only retry backoff: `Expon
 
 - **Write `Jitter` where you wrote `BackoffJitter`**: `let jitter: Jitter = .full(using: generator)`.
 - **Arguments written as `.none`, `.full()`, `.equal()` or `.decorrelated()`** compile unchanged.
+
+## Closures no longer capture `self` implicitly
+
+In 1.x, the closures passed to `DeferredTask`, `map`, `flatMap`, `catch`, `handleEvents`, `retry`,
+`zip` and the matching sequence operators were marked `@_implicitSelfCapture`, so they could call
+`self`'s methods without writing `self.`, the way `Task { }` can. `Task` gets away with that because
+it runs once and is released when it finishes. A unit of work lives as long as whoever holds it: a
+stored property, `share()`, a cache. So a closure that implicitly captured `self`, stored on
+`self`, was a retain cycle the compiler never pointed out.
+
+2.0 drops the attribute, and these closures follow Swift's ordinary rules.
+
+- **Inside a class, a closure that uses `self` now needs it spelled out.** The compiler says "call
+  to method … in closure requires explicit use of 'self'". Write `[weak self]` when the unit of
+  work is stored on, or outlives, `self`; write `self.` when a strong reference is intended.
+- **In a struct or enum, implicit `self` keeps working** (SE-0269): a value can't form a cycle.
+  In a class, a `[self]` capture list also turns implicit `self` back on, stating the strong
+  capture.
+- Closures still inherit the caller's actor isolation (`@_inheritActorContext`), as before.

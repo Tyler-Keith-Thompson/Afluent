@@ -17,7 +17,7 @@ extension Workers {
 
         init(
             upstream: Upstream,
-            @_inheritActorContext @_implicitSelfCapture transform: @Sendable @escaping (
+            @_inheritActorContext transform: @Sendable @escaping (
                 Upstream.Success
             ) async throws -> Downstream
         ) {
@@ -49,7 +49,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` emitting the successful output of the downstream unit of work.
     /// - Note: The returned unit of work fails if either the upstream or the transformation closure fails.
     public func flatMap<D: AsynchronousUnitOfWork>(
-        @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping (Success)
+        @_inheritActorContext _ transform: @Sendable @escaping (Success)
             async throws -> D
     ) -> some AsynchronousUnitOfWork<D.Success> {
         Workers.FlatMap(upstream: self, transform: transform)
@@ -70,7 +70,7 @@ extension AsynchronousUnitOfWork {
     /// - Returns: An `AsynchronousUnitOfWork` emitting the output of the downstream unit.
     /// - Note: The returned unit of work fails if either the upstream or the transformation closure fails.
     public func flatMap<D: AsynchronousUnitOfWork>(
-        @_inheritActorContext @_implicitSelfCapture _ transform: @Sendable @escaping () async throws
+        @_inheritActorContext _ transform: @Sendable @escaping () async throws
             -> D
     ) -> some AsynchronousUnitOfWork<D.Success> where Success == Void {
         Workers.FlatMap(upstream: self, transform: { _ in try await transform() })

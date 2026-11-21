@@ -46,7 +46,7 @@ struct JitterTests {
                 lock.withLock { _waits.append(now.duration(to: deadline)) }
             }
         }
-        func waits(_ jitter: BackoffJitter) async throws -> [Ticks] {
+        func waits(_ jitter: Jitter) async throws -> [Ticks] {
             let clock = TickClock()
             let strategy = ExponentialBackoffStrategy<TickClock>(
                 base: 2, maxDelay: Ticks(count: 1 << 30), jitter: jitter)
@@ -98,7 +98,7 @@ struct JitterTests {
     @Test(.timeLimit(.minutes(1))) func fullJitterOnABackoffWaitsUnderEachDelayAndReproducesFromTheSeed()
         async throws
     {
-        func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
+        func waits(_ jitter: Jitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
             let strategy = ExponentialBackoffStrategy<ImmediateClock<Duration>>(
                 base: 2, maxDelay: .seconds(60), jitter: jitter)
@@ -126,7 +126,7 @@ struct JitterTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     @Test(.timeLimit(.minutes(1)))
     func equalJitterOnABackoffWaitsInTheUpperHalfOfEachDelayAndReproducesFromTheSeed() async throws {
-        func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
+        func waits(_ jitter: Jitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
             let strategy = ExponentialBackoffStrategy<ImmediateClock<Duration>>(
                 base: 2, maxDelay: .seconds(60), jitter: jitter)
@@ -156,7 +156,7 @@ struct JitterTests {
     func decorrelatedJitterOnABackoffWaitsFromTheDelayToThreeTimesTheLastWaitCappedAtMaxDelay()
         async throws
     {
-        func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
+        func waits(_ jitter: Jitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
             let strategy = ExponentialBackoffStrategy<ImmediateClock<Duration>>(
                 base: 2, maxDelay: .seconds(60), jitter: jitter)
@@ -240,7 +240,7 @@ struct JitterTests {
     {
         let interval: Duration = .seconds(10)
         /// How far into its period each tick fell.
-        func offsets(_ jitter: BackoffJitter) async -> [Duration] {
+        func offsets(_ jitter: Jitter) async -> [Duration] {
             let clock = ImmediateClock<Duration>()
             let start = clock.now
             var iterator = TimerSequence.publish(every: interval, clock: clock, jitter: jitter)
@@ -271,7 +271,7 @@ struct JitterTests {
     func equalJitterOnATimerTicksInTheSecondHalfOfEachPeriodAndReproducesFromTheSeed() async throws {
         let interval: Duration = .seconds(10)
         /// How far into its period each tick fell.
-        func offsets(_ jitter: BackoffJitter) async -> [Duration] {
+        func offsets(_ jitter: Jitter) async -> [Duration] {
             let clock = ImmediateClock<Duration>()
             let start = clock.now
             var iterator = TimerSequence.publish(every: interval, clock: clock, jitter: jitter)
@@ -343,7 +343,7 @@ struct JitterTests {
         async throws
     {
         let duration: Duration = .seconds(10)
-        func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
+        func waits(_ jitter: Jitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
             var waits = [Duration]()
             for _ in 0 ..< 20 {
@@ -371,7 +371,7 @@ struct JitterTests {
         async throws
     {
         let duration: Duration = .seconds(10)
-        func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
+        func waits(_ jitter: Jitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
             var waits = [Duration]()
             for _ in 0 ..< 20 {
@@ -397,7 +397,7 @@ struct JitterTests {
     @Test(.timeLimit(.minutes(1)))
     func decorrelatedJitterOnADelayedUnitOfWorkWaitsFromTheDelayToThreeTimesIt() async throws {
         let duration: Duration = .seconds(10)
-        func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
+        func waits(_ jitter: Jitter) async throws -> [Duration] {
             let clock = ImmediateClock<Duration>()
             var waits = [Duration]()
             for _ in 0 ..< 20 {
@@ -465,7 +465,7 @@ struct JitterTests {
             }
         }
         let interval: Duration = .seconds(10)
-        func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
+        func waits(_ jitter: Jitter) async throws -> [Duration] {
             let clock = RecordingClock()
             for try await _ in Array(1 ... 20).async.delay(for: interval, clock: clock, jitter: jitter) {}
             return clock.waits
@@ -502,7 +502,7 @@ struct JitterTests {
             }
         }
         let interval: Duration = .seconds(10)
-        func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
+        func waits(_ jitter: Jitter) async throws -> [Duration] {
             let clock = RecordingClock()
             for try await _ in Array(1 ... 20).async.delay(for: interval, clock: clock, jitter: jitter) {}
             return clock.waits
@@ -537,7 +537,7 @@ struct JitterTests {
             }
         }
         let interval: Duration = .seconds(10)
-        func waits(_ jitter: BackoffJitter) async throws -> [Duration] {
+        func waits(_ jitter: Jitter) async throws -> [Duration] {
             let clock = RecordingClock()
             for try await _ in Array(1 ... 20).async.delay(for: interval, clock: clock, jitter: jitter) {}
             return clock.waits
@@ -612,7 +612,7 @@ struct JitterTests {
         }
         let clock = TickClock()
         let seed: UInt64 = 0x0DD
-        let jitter = BackoffJitter.full(using: SplitMix64(seed: seed))
+        let jitter = Jitter.full(using: SplitMix64(seed: seed))
         let expected = Set((0 ..< 7).map { Ticks(count: $0) })
 
         for _ in 0 ..< 500 {
@@ -658,7 +658,7 @@ struct JitterTests {
         let seed: UInt64 = 0xB16
         // Three times this is past Int.max; only the waits themselves need to fit.
         let duration = Ticks(count: Int.max / 2)
-        let jitter = BackoffJitter.decorrelated(using: SplitMix64(seed: seed))
+        let jitter = Jitter.decorrelated(using: SplitMix64(seed: seed))
         let expected: [Ticks] = [duration]
 
         try await DeferredTask { }

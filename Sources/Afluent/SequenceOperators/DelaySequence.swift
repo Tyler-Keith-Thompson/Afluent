@@ -17,7 +17,7 @@ extension AsyncSequences {
         let interval: C.Duration
         let clock: C
         let tolerance: C.Duration?
-        let jitter: BackoffJitter
+        let jitter: Jitter
 
         public struct AsyncIterator: AsyncIteratorProtocol {
             typealias Instant = C.Instant
@@ -26,11 +26,11 @@ extension AsyncSequences {
             var iterator: AsyncThrowingStream<(Instant, Element), Error>.Iterator
             let clock: C
             let tolerance: C.Duration?
-            let jitter: BackoffJitter
+            let jitter: Jitter
 
             init(
                 upstream: Upstream, interval: C.Duration, clock: C, tolerance: C.Duration?,
-                jitter: BackoffJitter
+                jitter: Jitter
             ) {
                 self.upstream = upstream
                 self.interval = interval
@@ -80,7 +80,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Parameters:
     ///   - interval: The duration to delay.
     ///   - tolerance: The allowed tolerance for the delay.
-    ///   - jitter: How each element's delay is randomized. Defaults to ``BackoffJitter/none``.
+    ///   - jitter: How each element's delay is randomized. Defaults to ``Jitter/none``.
     ///     Decorrelated jitter waits at most three times `interval`.
     /// - Returns: A sequence that delivers each element `interval` after the upstream produced it.
     ///
@@ -94,7 +94,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// ```
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func delay(
-        for interval: Duration, tolerance: Duration, jitter: BackoffJitter = .none
+        for interval: Duration, tolerance: Duration, jitter: Jitter = .none
     ) -> AsyncSequences.Delay<Self, SuspendingClock> {
         delay(for: interval, tolerance: tolerance, clock: SuspendingClock(), jitter: jitter)
     }
@@ -105,7 +105,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///   - interval: The duration to delay.
     ///   - tolerance: The allowed tolerance for the delay. Default is `nil`.
     ///   - clock: The clock to use for timing the delay.
-    ///   - jitter: How each element's delay is randomized. Defaults to ``BackoffJitter/none``.
+    ///   - jitter: How each element's delay is randomized. Defaults to ``Jitter/none``.
     ///     Decorrelated jitter waits at most three times `interval`.
     /// - Returns: A sequence that delivers each element `interval` after the upstream produced it.
     ///
@@ -118,7 +118,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func delay<C: Clock>(
         for interval: C.Duration, tolerance: C.Duration? = nil, clock: C,
-        jitter: BackoffJitter = .none
+        jitter: Jitter = .none
     ) -> AsyncSequences.Delay<Self, C> {
         AsyncSequences.Delay(
             upstream: self, interval: interval, clock: clock, tolerance: tolerance, jitter: jitter)

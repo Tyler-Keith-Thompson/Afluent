@@ -6,19 +6,18 @@
 //
 
 import Afluent
-import Atomics
 import Foundation
 import Testing
 
 struct JustSequenceTests {
-    func testJustSequenceOnlyEmitsOneValue() async throws {
-        let counter = ManagedAtomic(0)
+    @Test("Just emits its value once, then finishes", .timeLimit(.minutes(1)))
+    func justEmitsItsValueOnceThenFinishes() async throws {
+        let sut = Just(1)
+        let expected = [1]
 
-        for try await val in Just(1) {
-            counter.wrappingIncrement(ordering: .relaxed)
-            #expect(val == 1)
-        }
+        var actual = [Int]()
+        for try await element in sut { actual.append(element) }
 
-        #expect(counter.load(ordering: .relaxed) == 1)
+        #expect(actual == expected)
     }
 }

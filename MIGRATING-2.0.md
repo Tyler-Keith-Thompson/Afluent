@@ -64,3 +64,8 @@ stored property, `share()`, a cache. So a closure that implicitly captured `self
   In a class, a `[self]` capture list also turns implicit `self` back on, stating the strong
   capture.
 - Closures still inherit the caller's actor isolation (`@_inheritActorContext`), as before.
+
+## `SerialTaskQueue.queue(_:)` is removed
+
+It was deprecated in 1.x in favour of `enqueue(_:)`, which does the same thing. Write
+`try await queue.enqueue { … }` where you wrote `try await queue.queue { … }`.

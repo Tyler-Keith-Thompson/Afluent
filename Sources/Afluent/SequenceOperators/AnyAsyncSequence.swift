@@ -28,39 +28,49 @@ extension AsyncSequences {
         }
     }
 
-    public struct AnyAsyncIterator<Element: Sendable>: AsyncIteratorProtocol, Sendable {
-        private final class State: @unchecked Sendable {
-            private var lock = NSRecursiveLock()
-            private var _iterator: any AsyncIteratorProtocol
-            var iterator: any AsyncIteratorProtocol {
-                get {
-                    lock.lock()
-                    defer { lock.unlock() }
-                    return _iterator
-                }
-                set {
-                    lock.lock()
-                    defer { lock.unlock() }
-                    _iterator = newValue
-                }
-            }
+    /// The iterator of an ``AnyAsyncSequence``, forwarding to the erased sequence's iterator.
+    ///
+    /// Like most iterators it is not `Sendable`: iterate it from one task at a time. Copies share the
+    /// erased iterator's position.
+    public struct AnyAsyncIterator<Element: Sendable>: AsyncIteratorProtocol {
+        // A class box rather than an existential: `any AsyncIteratorProtocol<Element, Failure>`
+        // needs macOS 15, and an unconstrained existential returns `Any`, which would need a cast
+        // per element. Subclassing keeps the erased iterator's concrete type, so each `next()` is
+        // one dynamic dispatch.
+        private let box: IteratorBox<Element>
 
-            init(iterator: any AsyncIteratorProtocol) {
-                _iterator = iterator
-            }
-        }
-
-        private let state: State
         init<I: AsyncIteratorProtocol>(erasing iterator: I) where I.Element == Element {
-            state = State(iterator: iterator)
+            box = ConcreteIteratorBox(iterator)
         }
 
         public mutating func next() async throws -> Element? {
-            // Eventually, we'll have primary associated types making the casting nonsense below unnecessary
-            // https://github.com/apple/swift-evolution/blob/main/proposals/0358-primary-associated-types-in-stdlib.md#alternatives-considered
-
-            return try await state.iterator.next() as? Element
+            try await box.next()
         }
+    }
+}
+
+@available(*, unavailable)
+extension AsyncSequences.AnyAsyncIterator: Sendable {}
+
+/// The erased iterator, as a class so ``AsyncSequences/AnyAsyncIterator`` can hold any concrete
+/// iterator type behind one stored property.
+private class IteratorBox<Element> {
+    func next() async throws -> Element? {
+        // Never called: every box is a ConcreteIteratorBox, which overrides it. A trap beats a
+        // thrown error because reaching it is a bug in this file, not something a caller can handle.
+        fatalError("IteratorBox.next() must be overridden")
+    }
+}
+
+private final class ConcreteIteratorBox<Iterator: AsyncIteratorProtocol>: IteratorBox<Iterator.Element> {
+    private var iterator: Iterator
+
+    init(_ iterator: Iterator) {
+        self.iterator = iterator
+    }
+
+    override func next() async throws -> Iterator.Element? {
+        try await iterator.next()
     }
 }
 

@@ -24,7 +24,7 @@ extension Workers {
             }
         }
 
-        public func _operation() async throws -> AsynchronousOperation<Success> {
+        @_spi(Conformance) public func _operation() async throws -> AsynchronousOperation<Success> {
             AsynchronousOperation { [weak self] in
                 guard let self else { throw CancellationError() }
                 return try await self.task.value

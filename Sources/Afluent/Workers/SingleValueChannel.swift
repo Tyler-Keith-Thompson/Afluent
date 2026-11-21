@@ -33,13 +33,13 @@ public actor SingleValueChannel<Success: Sendable>: AsynchronousUnitOfWork {
         case alreadyCompleted
     }
 
-    public let state = TaskState<Success>()
+    @_spi(Conformance) public let state = TaskState<Success>()
     private var channelState = State.noValue
 
     /// Creates a new `SingleValueChannel`.
     public init() {}
 
-    public func _operation() async throws -> AsynchronousOperation<Success> {
+    @_spi(Conformance) public func _operation() async throws -> AsynchronousOperation<Success> {
         AsynchronousOperation { [weak self] in
             guard let self else { throw CancellationError() }
 

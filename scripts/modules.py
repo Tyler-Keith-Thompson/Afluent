@@ -35,6 +35,8 @@ PACKAGES = [
     ("swift-concurrency-extras", "https://github.com/pointfreeco/swift-concurrency-extras.git", "1.1.0"),
     # Tests only: seeded generators that reproduce on every platform and Swift release.
     ("swiftprng", "https://github.com/Tyler-Keith-Thompson/SwiftPRNG.git", "0.0.6"),
+    # Tests only: property tests against naive references (`propertyCheck`).
+    ("swift-property-based", "https://github.com/x-sheep/swift-property-based", "2.0.1"),
     # Tests only: stubbed URLSession responses, on Apple platforms (APPLE_ONLY_PACKAGES).
     ("ohhttpstubs", "https://github.com/AliSoftware/OHHTTPStubs.git", "9.1.0"),
     # Mocks generated from protocols (`@Mockable`). Uncomment when a module first needs one; see
@@ -77,7 +79,8 @@ EXECUTABLES = [
 # holds tests. (name, dependencies)
 TEST_TARGETS = [
     ("AfluentTests", ["Afluent", "AfluentTesting", "ohhttpstubs/OHHTTPStubs", "ohhttpstubs/OHHTTPStubsSwift",
-                      "swift-concurrency-extras/ConcurrencyExtras", "swift-clocks/Clocks", "swift-atomics/Atomics", "swiftprng/Generators"]),
+                      "swift-concurrency-extras/ConcurrencyExtras", "swift-clocks/Clocks", "swift-atomics/Atomics", "swiftprng/Generators",
+                      "swift-property-based/PropertyBased"]),
 ]
 
 # The modules the test-support target depends on (fixtures are usually written against the

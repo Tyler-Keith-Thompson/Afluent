@@ -12,6 +12,7 @@ let package = Package(
         .package(url: "https://github.com/pointfreeco/swift-clocks.git", exact: "1.1.0"),
         .package(url: "https://github.com/pointfreeco/swift-concurrency-extras.git", from: "1.1.0"),
         .package(url: "https://github.com/Tyler-Keith-Thompson/SwiftPRNG.git", from: "0.0.6"),
+        .package(url: "https://github.com/x-sheep/swift-property-based", from: "2.0.1"),
         .package(url: "https://github.com/AliSoftware/OHHTTPStubs.git", from: "9.1.0"),
     ]
 )

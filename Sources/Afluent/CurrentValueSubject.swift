@@ -72,6 +72,13 @@ public final class CurrentValueSubject<Element: Sendable>: AsyncSequence, Sendab
         Iterator(subscription: broadcaster.subscribe())
     }
 
+    /// Subscribes a new consumer that keeps its place when a wait for the next value is cancelled. It receives the current value, then every value sent from now on.
+    ///
+    /// - Returns: A ``SubjectSubscription``; it unsubscribes when its last copy is released.
+    public func makeSubscription() -> SubjectSubscription<Element> {
+        SubjectSubscription(subscription: broadcaster.subscribe(keepsPlaceOnCancel: true))
+    }
+
     /// Sends a new value to all current consumers and makes it the current value.
     /// - Parameter element: The new value to broadcast.
     public func send(_ element: Element) {

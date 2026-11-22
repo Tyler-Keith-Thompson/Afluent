@@ -124,6 +124,9 @@ public struct BatchStrategy: Sendable {
                 reset: {},
                 run: { fire in
                     for try await _ in signal {
+                        // A signal that ignores cancellation would otherwise be read for ever
+                        // after the batched sequence ends.
+                        guard !Task.isCancelled else { return }
                         fire { true }
                     }
                 })

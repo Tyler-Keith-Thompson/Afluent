@@ -577,6 +577,32 @@ struct BatchSequenceTests {
         #expect(actual == expectedValue)
     }
 
+    @Test("After the consumer cancels, an upstream that ignores cancellation is not read again")
+    func cancelledBatchStopsReadingANonCooperativeUpstream() async throws {
+        let upstream = IgnoresCancellation()
+        let expectedPulls = 1
+        let task = Task {
+            for try await _ in upstream.batch(strategy: .count(10)) {}
+        }
+        try await wait(
+            until: upstream.pulls.load(ordering: .sequentiallyConsistent) == 1
+                && upstream.pending.value != nil,
+            timeout: .seconds(2))
+
+        task.cancel()
+        _ = await task.result
+        let pending = upstream.pending.withValue { pending in
+            defer { pending = nil }
+            return pending
+        }
+        pending?.resume(returning: 1)
+        // The iterator is released once the batch stops reading, rather than asked for more.
+        try await upstream.iteratorReleased.execute()
+        let actualPulls = upstream.pulls.load(ordering: .sequentiallyConsistent)
+
+        #expect(actualPulls == expectedPulls)
+    }
+
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("When the upstream finishes, the timer and the signal subscriptions end")
     func finishingEndsTheTimerAndSignals() async throws {
@@ -612,5 +638,36 @@ struct BatchSequenceTests {
         try await wait(until: clock.sleepingCount == 0, timeout: .seconds(2))
 
         #expect(actual == expected)
+    }
+}
+
+/// An endless upstream whose `next()` waits for the test to hand it an element and ignores
+/// cancellation, and that reports when its iterator is released.
+private struct IgnoresCancellation: AsyncSequence, Sendable {
+    let pulls = ManagedAtomic(0)
+    let pending = LockIsolated<UnsafeContinuation<Int, Never>?>(nil)
+    let iteratorReleased = SingleValueSubject<Void>()
+
+    final class Release: Sendable {
+        let released: SingleValueSubject<Void>
+        init(_ released: SingleValueSubject<Void>) { self.released = released }
+        deinit { try? released.send() }
+    }
+
+    struct AsyncIterator: AsyncIteratorProtocol {
+        let sequence: IgnoresCancellation
+        let release: Release
+
+        mutating func next() async -> Int? {
+            sequence.pulls.wrappingIncrement(ordering: .sequentiallyConsistent)
+            let sequence = sequence
+            return await withUnsafeContinuation { continuation in
+                sequence.pending.setValue(continuation)
+            }
+        }
+    }
+
+    func makeAsyncIterator() -> AsyncIterator {
+        AsyncIterator(sequence: self, release: Release(iteratorReleased))
     }
 }

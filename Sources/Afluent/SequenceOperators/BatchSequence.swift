@@ -107,6 +107,9 @@ extension AsyncSequences.Batch.AsyncIterator {
         func drain(_ upstream: Upstream) async {
             do {
                 for try await element in upstream {
+                    // An upstream that ignores cancellation keeps returning elements; none of
+                    // them can reach a consumer any more, so stop reading.
+                    guard !Task.isCancelled else { return }
                     let accepted = state.withCriticalRegion { state in
                         guard !state.finished else { return false }
                         state.elements.append(element)
@@ -179,7 +182,8 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// iteration begins, so the upstream is read ahead of the consumer, and arrays the consumer
     /// hasn't taken yet are buffered. Cancelling the consumer, or dropping its iterator, cancels
     /// all of them. An upstream or signal that ignores cancellation keeps the internal task alive
-    /// until it returns, though the batched sequence itself ends at once.
+    /// until its pending `next()` returns, and is not read again after that; the batched sequence
+    /// itself ends at once.
     ///
     /// ## Example
     /// ```swift

@@ -14,6 +14,8 @@
 /// (or over an operator chain built on it) begins. It first receives the value that is current at that moment,
 /// then every value sent afterwards, in order; values are buffered for it until it consumes them. Values sent
 /// before it subscribed are not replayed. A consumer that subscribes after completion receives only the completion.
+/// To subscribe before the consumer's task runs, make the iterator now and hand it over as an
+/// ``AsyncIteratorSequence``. Cancelling a task waiting for the next value ends that consumer's subscription.
 ///
 /// ## Example
 /// ```swift

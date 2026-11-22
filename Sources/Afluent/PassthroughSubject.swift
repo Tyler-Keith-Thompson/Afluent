@@ -17,8 +17,12 @@
 /// Values sent while there are no subscribers are discarded; they are never replayed to a later consumer.
 ///
 /// - Important: Starting a `Task` that iterates the subject does not mean it has subscribed yet. If values must
-///   not be missed, wait until the consumer has subscribed before sending, for example with
-///   `handleEvents(receiveMakeIterator:)`.
+///   not be missed, subscribe before starting it: make the iterator now and hand it to the consumer as an
+///   ``AsyncIteratorSequence`` (`AsyncIteratorSequence(subject.makeAsyncIterator())`). Or wait until the consumer
+///   has subscribed before sending, for example with `handleEvents(receiveMakeIterator:)`.
+///
+/// Cancelling a task waiting for the subject's next value ends that consumer's subscription; values sent afterwards
+/// are not delivered to it. To read the subject again, make a new iterator.
 ///
 /// ## Example
 /// ```swift

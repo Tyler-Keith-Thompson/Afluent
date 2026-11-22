@@ -140,7 +140,7 @@ extension BatchStrategy {
     public static func signal<Batched, Success>(_ subject: SingleValueSubject<Success>)
         -> SignalBatchStrategy<Batched, Deferred<AsyncThrowingStream<Success, any Error>>>
     where Self == SignalBatchStrategy<Batched, Deferred<AsyncThrowingStream<Success, any Error>>> {
-        .signal(Deferred { AsyncThrowingStream(once: { try await subject.observe() }) })
+        .signal(Deferred { AsyncThrowingStream(once: { try await subject.operation() }) })
     }
 }
 

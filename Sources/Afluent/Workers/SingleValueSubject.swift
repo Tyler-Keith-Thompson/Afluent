@@ -47,36 +47,7 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     public func _operation() async throws -> AsynchronousOperation<Success> {
         AsynchronousOperation { [weak self] in
             guard let self else { throw CancellationError() }
-
-            // Fast path: the value is already here, so no continuation is needed.
-            let alreadySent = self.subjectState.withCriticalRegion { $0.sentResult }
-            if let alreadySent { return try alreadySent.get() }
-
-            return try await withUnsafeThrowingContinuation { [weak self] continuation in
-                guard let self else {
-                    continuation.resume(throwing: CancellationError())
-                    return
-                }
-                // One critical region either finds the result or adds the continuation to the waiters, so a
-                // `send` between the fast path and here is never missed. The continuation is resumed after the
-                // lock is released.
-                let sent: Result<Success, any Error>? = self.subjectState.withCriticalRegion { subjectState in
-                    switch subjectState {
-                        case .sentValue(let value): return .success(value)
-                        case .sentError(let error): return .failure(error)
-                        case .noValue:
-                            subjectState = .waiting([Waiter(continuation: continuation, observer: nil)])
-                            return nil
-                        case .waiting(var continuations):
-                            // Released first, so the array is uniquely referenced and appends in place.
-                            subjectState = .noValue
-                            continuations.append(Waiter(continuation: continuation, observer: nil))
-                            subjectState = .waiting(continuations)
-                            return nil
-                    }
-                }
-                if let sent { continuation.resume(with: sent) }
-            }
+            return try await self.wait()
         }
     }
 
@@ -145,29 +116,34 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
 }
 
 extension SingleValueSubject {
-    /// Waits for the subject to complete without taking part in its lifetime.
+    /// Waits for the subject to complete.
     ///
-    /// Unlike `execute()`, cancelling the waiting task ends only this wait, with `CancellationError`; the subject
-    /// stays pending for its other awaiters and a later `send`. Operators that only listen to a subject, such as
-    /// `BatchStrategy.signal(_:)`, use this so that ending their own iteration leaves
-    /// the caller's subject alone.
+    /// Cancelling the waiting task ends only this wait, with `CancellationError`; the subject stays pending for its
+    /// other awaiters and a later `send`. `execute()` completes the subject for everyone when cancelled because its
+    /// cancellation handler calls ``cancel()``, not because of this wait.
     ///
     /// - Returns: The value the subject was sent.
     /// - Throws: The error the subject was sent, or `CancellationError` if the waiting task is cancelled first.
-    func observe() async throws -> Success {
-        let observer = Observer()
+    private func wait() async throws -> Success {
+        // Fast path: the value is already here, so no continuation or cancellation handler is needed.
+        if let sent = subjectState.withCriticalRegion({ $0.sentResult }) { return try sent.get() }
+
+        let waiterID = WaiterID()
         return try await withTaskCancellationHandler {
             try await withUnsafeThrowingContinuation { continuation in
-                // Checked under the lock: a cancellation handler that ran before this registration found nothing to
-                // remove, and the task's cancelled flag is set before its handlers run, so it is seen here.
+                // One critical region either finds the result or adds the waiter, so a `send` in between is never
+                // missed. Cancellation is checked under the lock too: a cancellation handler that ran before this
+                // registration found nothing to remove, and the task's cancelled flag is set before its handlers
+                // run, so it is seen here. Continuations are resumed after the lock is released.
                 let sent: Result<Success, any Error>? = subjectState.withCriticalRegion { subjectState in
                     switch subjectState {
                         case .sentValue(let value): return .success(value)
                         case .sentError(let error): return .failure(error)
                         case .noValue, .waiting:
                             guard !Task.isCancelled else { return .failure(CancellationError()) }
-                            let waiter = Waiter(continuation: continuation, observer: observer)
+                            let waiter = Waiter(continuation: continuation, id: waiterID)
                             if case .waiting(var continuations) = subjectState {
+                                // Released first, so the array is uniquely referenced and appends in place.
                                 subjectState = .noValue
                                 continuations.append(waiter)
                                 subjectState = .waiting(continuations)
@@ -182,7 +158,7 @@ extension SingleValueSubject {
         } onCancel: {
             let removed: Waiter? = subjectState.withCriticalRegion { subjectState in
                 guard case .waiting(var continuations) = subjectState,
-                    let index = continuations.firstIndex(where: { $0.observer === observer })
+                    let index = continuations.firstIndex(where: { $0.id === waiterID })
                 else { return nil }
                 subjectState = .noValue
                 let waiter = continuations.remove(at: index)
@@ -193,15 +169,14 @@ extension SingleValueSubject {
         }
     }
 
-    /// An identity for one ``observe()`` call, so its cancellation removes only its own waiter.
-    private final class Observer: Sendable {}
+    /// An identity for one wait, so its cancellation removes only its own waiter.
+    private final class WaiterID: Sendable {}
 
     /// A pending awaiter of the subject.
     private struct Waiter {
         let continuation: UnsafeContinuation<Success, any Error>
-        /// The ``observe()`` call that added this waiter, or `nil` for `execute()`, whose cancellation completes
-        /// the subject instead.
-        let observer: Observer?
+        /// The wait that added this waiter.
+        let id: WaiterID
     }
 
     private enum State {

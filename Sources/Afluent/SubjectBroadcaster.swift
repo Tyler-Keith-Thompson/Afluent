@@ -60,8 +60,10 @@ final class SubjectBroadcaster<Element: Sendable>: Sendable {
         state.withCriticalRegion { $0.current }
     }
 
-    func subscribe() -> Subscription {
-        Subscription(state: state)
+    /// - Parameter keepsPlaceOnCancel: `false` for an iterator, whose cancelled `next()` ends the subscription;
+    ///   `true` for a ``SubjectSubscription``, whose cancelled `next()` throws and keeps the subscriber and its buffer.
+    func subscribe(keepsPlaceOnCancel: Bool = false) -> Subscription {
+        Subscription(state: state, keepsPlaceOnCancel: keepsPlaceOnCancel)
     }
 
     /// Updates the current value (if tracked) and sends it to every subscriber. Does nothing once finished.
@@ -95,9 +97,11 @@ final class SubjectBroadcaster<Element: Sendable>: Sendable {
         private let state: CriticalState<State>
         private let id: Int?
         private let finished: Result<Element?, any Error>?
+        private let keepsPlaceOnCancel: Bool
 
-        fileprivate init(state: CriticalState<State>) {
+        fileprivate init(state: CriticalState<State>, keepsPlaceOnCancel: Bool) {
             self.state = state
+            self.keepsPlaceOnCancel = keepsPlaceOnCancel
             (id, finished) = state.withCriticalRegion { state in
                 if let finished = state.finishedResult {
                     return (nil, finished)
@@ -117,6 +121,7 @@ final class SubjectBroadcaster<Element: Sendable>: Sendable {
 
         func next() async throws -> Element? {
             guard let id else { return try finished?.get() }
+            if keepsPlaceOnCancel { return try await nextKeepingPlace(id: id) }
             let result = await withTaskCancellationHandler { [state] in
                 await withUnsafeContinuation {
                     (continuation: UnsafeContinuation<Result<Element?, any Error>, Never>) in
@@ -134,6 +139,45 @@ final class SubjectBroadcaster<Element: Sendable>: Sendable {
                     $0.subscribers.removeValue(forKey: id)?.continuation
                 }
                 continuation?.resume(returning: .success(nil))
+            }
+            return try result.get()
+        }
+
+        /// Waits for the next value; a cancelled wait throws `CancellationError` and leaves the subscriber, with
+        /// everything buffered for it, in place for the next call.
+        private func nextKeepingPlace(id: Int) async throws -> Element? {
+            let result = await withTaskCancellationHandler { [state] in
+                await withUnsafeContinuation {
+                    (continuation: UnsafeContinuation<Result<Element?, any Error>, Never>) in
+                    state.withCriticalRegion { state in
+                        // Checked under the lock, before anything is taken from the buffer: a cancellation handler
+                        // that ran before this registration found no continuation to resume, and the task's
+                        // cancelled flag is set before its handlers run, so it is seen here.
+                        guard !Task.isCancelled else {
+                            continuation.resume(returning: .failure(CancellationError()))
+                            return
+                        }
+                        guard state.subscribers[id] != nil else {
+                            continuation.resume(returning: .success(nil))
+                            return
+                        }
+                        // A second waiter would replace the first one's continuation, which then never resumes; a
+                        // trap names the misuse where a hang would hide it.
+                        precondition(
+                            state.subscribers[id]!.continuation == nil,
+                            "SubjectSubscription.next() called while another call on the same subscription is waiting")
+                        state.subscribers[id]!.continuation = continuation
+                        state.subscribers[id]!.drain()
+                    }
+                }
+            } onCancel: { [state] in
+                let continuation: UnsafeContinuation<Result<Element?, any Error>, Never>? =
+                    state.withCriticalRegion { state in
+                        guard let continuation = state.subscribers[id]?.continuation else { return nil }
+                        state.subscribers[id]!.continuation = nil
+                        return continuation
+                    }
+                continuation?.resume(returning: .failure(CancellationError()))
             }
             return try result.get()
         }

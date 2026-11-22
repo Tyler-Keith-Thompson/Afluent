@@ -61,6 +61,13 @@ public final class PassthroughSubject<Element: Sendable>: AsyncSequence, Sendabl
         Iterator(subscription: broadcaster.subscribe())
     }
 
+    /// Subscribes a new consumer that keeps its place when a wait for the next value is cancelled. Values sent from now on are buffered for it until it reads them.
+    ///
+    /// - Returns: A ``SubjectSubscription``; it unsubscribes when its last copy is released.
+    public func makeSubscription() -> SubjectSubscription<Element> {
+        SubjectSubscription(subscription: broadcaster.subscribe(keepsPlaceOnCancel: true))
+    }
+
     /// Sends a new value to every current subscriber. If there are no subscribers, the value is discarded.
     /// - Parameter element: The new value to broadcast.
     public func send(_ element: Element) {

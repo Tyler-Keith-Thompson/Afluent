@@ -52,6 +52,44 @@ let benchmarks: @Sendable () -> Void = {
         }
     }
 
+    // MARK: batch: a stream's elements gathered into arrays of a fixed size.
+
+    let batchSize = 10
+
+    // The hand-written form: a for-await loop that appends and emits each full array.
+    Benchmark("batch: BASELINE for-await chunking") { benchmark in
+        for _ in benchmark.scaledIterations {
+            var pending = [Int]()
+            for await element in stream(of: count) {
+                pending.append(element)
+                if pending.count == batchSize {
+                    blackHole(pending)
+                    pending = []
+                }
+            }
+            if !pending.isEmpty { blackHole(pending) }
+        }
+    }
+
+    Benchmark("batch: count") { benchmark in
+        for _ in benchmark.scaledIterations {
+            for try await batch in stream(of: count).batch(strategy: .count(batchSize)) {
+                blackHole(batch)
+            }
+        }
+    }
+
+    // A timer that never fires in the run, so only its arming and resets are measured.
+    Benchmark("batch: either count or time") { benchmark in
+        for _ in benchmark.scaledIterations {
+            let strategy = BatchStrategy.either(
+                .count(batchSize), .time(interval: .seconds(60), clock: ContinuousClock()))
+            for try await batch in stream(of: count).batch(strategy: strategy) {
+                blackHole(batch)
+            }
+        }
+    }
+
     // MARK: SerialTaskQueue: work run one at a time, in order.
 
     Benchmark("SerialTaskQueue: BASELINE actor calls") { benchmark in

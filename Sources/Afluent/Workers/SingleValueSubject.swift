@@ -65,12 +65,12 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
                         case .sentValue(let value): return .success(value)
                         case .sentError(let error): return .failure(error)
                         case .noValue:
-                            subjectState = .waiting([continuation])
+                            subjectState = .waiting([Waiter(continuation: continuation, observer: nil)])
                             return nil
                         case .waiting(var continuations):
                             // Released first, so the array is uniquely referenced and appends in place.
                             subjectState = .noValue
-                            continuations.append(continuation)
+                            continuations.append(Waiter(continuation: continuation, observer: nil))
                             subjectState = .waiting(continuations)
                             return nil
                     }
@@ -96,7 +96,7 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     /// - Complexity: O(*n*), where *n* is the number of pending `execute()` calls.
     public func send(_ value: Success) throws {
         if case .waiting(let waiters) = try complete(.sentValue(value)) {
-            for waiter in waiters { waiter.resume(returning: value) }
+            for waiter in waiters { waiter.continuation.resume(returning: value) }
         }
     }
 
@@ -109,7 +109,7 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     /// - Complexity: O(*n*), where *n* is the number of pending `execute()` calls.
     public func send() throws where Success == Void {
         if case .waiting(let waiters) = try complete(.sentValue(())) {
-            for waiter in waiters { waiter.resume(returning: ()) }
+            for waiter in waiters { waiter.continuation.resume(returning: ()) }
         }
     }
 
@@ -123,7 +123,7 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
     /// - Complexity: O(*n*), where *n* is the number of pending `execute()` calls.
     public func send(error: Error) throws {
         if case .waiting(let waiters) = try complete(.sentError(error)) {
-            for waiter in waiters { waiter.resume(throwing: error) }
+            for waiter in waiters { waiter.continuation.resume(throwing: error) }
         }
     }
 
@@ -145,9 +145,68 @@ public final class SingleValueSubject<Success: Sendable>: AsynchronousUnitOfWork
 }
 
 extension SingleValueSubject {
+    /// Waits for the subject to complete without taking part in its lifetime.
+    ///
+    /// Unlike `execute()`, cancelling the waiting task ends only this wait, with `CancellationError`; the subject
+    /// stays pending for its other awaiters and a later `send`. Operators that only listen to a subject, such as
+    /// `BatchStrategy.signal(_:)`, use this so that ending their own iteration leaves
+    /// the caller's subject alone.
+    ///
+    /// - Returns: The value the subject was sent.
+    /// - Throws: The error the subject was sent, or `CancellationError` if the waiting task is cancelled first.
+    func observe() async throws -> Success {
+        let observer = Observer()
+        return try await withTaskCancellationHandler {
+            try await withUnsafeThrowingContinuation { continuation in
+                // Checked under the lock: a cancellation handler that ran before this registration found nothing to
+                // remove, and the task's cancelled flag is set before its handlers run, so it is seen here.
+                let sent: Result<Success, any Error>? = subjectState.withCriticalRegion { subjectState in
+                    switch subjectState {
+                        case .sentValue(let value): return .success(value)
+                        case .sentError(let error): return .failure(error)
+                        case .noValue, .waiting:
+                            guard !Task.isCancelled else { return .failure(CancellationError()) }
+                            let waiter = Waiter(continuation: continuation, observer: observer)
+                            if case .waiting(var continuations) = subjectState {
+                                subjectState = .noValue
+                                continuations.append(waiter)
+                                subjectState = .waiting(continuations)
+                            } else {
+                                subjectState = .waiting([waiter])
+                            }
+                            return nil
+                    }
+                }
+                if let sent { continuation.resume(with: sent) }
+            }
+        } onCancel: {
+            let removed: Waiter? = subjectState.withCriticalRegion { subjectState in
+                guard case .waiting(var continuations) = subjectState,
+                    let index = continuations.firstIndex(where: { $0.observer === observer })
+                else { return nil }
+                subjectState = .noValue
+                let waiter = continuations.remove(at: index)
+                subjectState = .waiting(continuations)
+                return waiter
+            }
+            removed?.continuation.resume(throwing: CancellationError())
+        }
+    }
+
+    /// An identity for one ``observe()`` call, so its cancellation removes only its own waiter.
+    private final class Observer: Sendable {}
+
+    /// A pending awaiter of the subject.
+    private struct Waiter {
+        let continuation: UnsafeContinuation<Success, any Error>
+        /// The ``observe()`` call that added this waiter, or `nil` for `execute()`, whose cancellation completes
+        /// the subject instead.
+        let observer: Observer?
+    }
+
     private enum State {
         case noValue
-        case waiting([UnsafeContinuation<Success, any Error>])
+        case waiting([Waiter])
         case sentValue(Success)
         case sentError(any Error)
 

@@ -13,14 +13,14 @@
         @Test("count(0) traps")
         func countOfZeroTraps() async {
             await #expect(processExitsWith: .failure) {
-                _ = BatchStrategy.count(0)
+                _ = CountBatchStrategy(0)
             }
         }
 
         @Test("A negative count traps")
         func negativeCountTraps() async {
             await #expect(processExitsWith: .failure) {
-                _ = BatchStrategy.count(-1)
+                _ = CountBatchStrategy(-1)
             }
         }
 
@@ -28,7 +28,7 @@
         @Test("time(interval:) with an interval of zero traps")
         func zeroIntervalTraps() async {
             await #expect(processExitsWith: .failure) {
-                _ = BatchStrategy.time(interval: .zero, clock: ContinuousClock())
+                _ = TimeBatchStrategy(interval: .zero, clock: ContinuousClock())
             }
         }
 
@@ -36,7 +36,7 @@
         @Test("time(interval:) with a negative interval traps")
         func negativeIntervalTraps() async {
             await #expect(processExitsWith: .failure) {
-                _ = BatchStrategy.time(interval: .seconds(-1), clock: ContinuousClock())
+                _ = TimeBatchStrategy(interval: .seconds(-1), clock: ContinuousClock())
             }
         }
     }

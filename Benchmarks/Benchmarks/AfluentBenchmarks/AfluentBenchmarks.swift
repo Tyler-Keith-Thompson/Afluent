@@ -82,7 +82,7 @@ let benchmarks: @Sendable () -> Void = {
     // A timer that never fires in the run, so only its arming and resets are measured.
     Benchmark("batch: either count or time") { benchmark in
         for _ in benchmark.scaledIterations {
-            let strategy = BatchStrategy.either(
+            let strategy = EitherBatchStrategy(
                 .count(batchSize), .time(interval: .seconds(60), clock: ContinuousClock()))
             for try await batch in stream(of: count).batch(strategy: strategy) {
                 blackHole(batch)

@@ -132,7 +132,7 @@ If you're familiar with Combine and are looking to transition to Afluent, this g
 
 - **`assign`**: Afluent also has an `assign` operator, similar to Combine's.
 
-- **`collect(_ strategy:)`**: For an `AsyncSequence`, `batch(strategy:)` groups elements by a `BatchStrategy`: `.count(_:)`, `.time(interval:clock:)`, `.signal(_:)`, or `.either(_:)` of several.
+- **`collect(_ strategy:)`**: For an `AsyncSequence`, `batch(strategy:)` groups elements by a `BatchStrategy`: `.count(_:)`, `.time(interval:clock:)`, `.signal(_:)`, `.either(_:)` of several, or a strategy of your own that conforms to `BatchStrategy`.
 
 - **`sink` and `subscribe`**:
     - For an `AsynchronousUnitOfWork` `subscribe` is the method Afluent provides. It's deliberately a little different than `sink` as only one value will be emitted. However, they serve the same general purpose.

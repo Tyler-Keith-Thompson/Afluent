@@ -59,6 +59,10 @@ public struct SignalBatchStrategy<Element, Signal: AsyncSequence & Sendable>: Ba
 extension BatchStrategy {
     /// Flushes each time the given sequence produces an element.
     ///
+    /// Covers ``PassthroughSubject``, ``CurrentValueSubject`` and any other `AsyncSequence`; the
+    /// signal's elements are ignored, and needn't be `Sendable`. A ``SingleValueSubject`` or
+    /// another ``AsynchronousUnitOfWork`` takes the overloads below, which fire once.
+    ///
     /// ## Example
     /// ```swift
     /// let flush = PassthroughSubject<Void>()
@@ -71,7 +75,7 @@ extension BatchStrategy {
     /// - Returns: A ``SignalBatchStrategy``.
     public static func signal<Batched, Signal>(_ signal: Signal)
         -> SignalBatchStrategy<Batched, Signal>
-    where Self == SignalBatchStrategy<Batched, Signal> {
+    where Self == SignalBatchStrategy<Batched, Signal>, Signal: AsyncSequence & Sendable {
         SignalBatchStrategy(signal)
     }
 }
@@ -80,12 +84,13 @@ extension BatchStrategy {
 extension BatchStrategy {
     /// Flushes once, when the given unit of work completes.
     ///
-    /// The unit of work runs as the signal ``AsynchronousUnitOfWork/toAsyncSequence()``, so a unit
-    /// that fails ends the batched sequence with its error. When the batched sequence ends first,
-    /// the unit's work is cancelled; a unit whose work ignores cancellation keeps the batch's
-    /// internal task alive until it returns, though the batched sequence itself ends at once. A
+    /// The unit's work runs in the signal's task each time iteration begins; a unit that fails
+    /// ends the batched sequence with its error. When the batched sequence ends first, the unit's
+    /// work is cancelled; a unit whose work ignores cancellation keeps the batch's internal task
+    /// alive until it returns, though the batched sequence itself ends at once. A
     /// ``SingleValueSubject`` takes ``signal(_:)-(SingleValueSubject<Success>)`` instead, which
-    /// leaves the subject alone.
+    /// leaves the subject alone. Each batched sequence iterated with this strategy runs the unit
+    /// anew and fires once when it completes.
     ///
     /// ## Example
     /// ```swift
@@ -96,19 +101,16 @@ extension BatchStrategy {
     /// ```
     ///
     /// - Parameter unit: The unit of work whose completion flushes the batch.
-    /// - Returns: A ``SignalBatchStrategy`` over `unit.toAsyncSequence()`.
-    // Disfavored so a SingleValueSubject, also a unit of work, takes its own overload: both
-    // infer `Self` from their return types, which leaves the compiler no other way to rank them.
-    @_disfavoredOverload
+    /// - Returns: A ``SignalBatchStrategy`` over a stream of the unit's one value, made afresh
+    ///   for each iteration.
     public static func signal<Batched, Unit: AsynchronousUnitOfWork>(_ unit: Unit)
-        -> SignalBatchStrategy<Batched, AsynchronousUnitOfWorkSequence<Unit>>
-    where Self == SignalBatchStrategy<Batched, AsynchronousUnitOfWorkSequence<Unit>> {
-        .signal(unit.toAsyncSequence())
+        -> SignalBatchStrategy<Batched, Deferred<AsyncThrowingStream<Unit.Success, any Error>>>
+    where Self == SignalBatchStrategy<Batched, Deferred<AsyncThrowingStream<Unit.Success, any Error>>> {
+        // Deferred, because the one-value stream can be iterated only once and a strategy is a
+        // value that may batch several sequences.
+        .signal(Deferred { AsyncThrowingStream(once: { try await unit.operation() }) })
     }
-}
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-extension BatchStrategy {
     /// Flushes once, when the given subject is sent a value.
     ///
     /// The batched sequence listens to the subject without owning it: when the batched sequence
@@ -117,7 +119,8 @@ extension BatchStrategy {
     /// `CancellationError` (as when another awaiter cancels the subject): then the signal stops
     /// firing and the batches go on. A subject sent a value before iteration begins fires when the
     /// signal's task starts, which may come after elements have arrived, so the first batch may be
-    /// short.
+    /// short. Each batched sequence iterated with this strategy listens anew, so a subject
+    /// already sent a value fires again when a later batched sequence's signal task starts.
     ///
     /// ## Example
     /// ```swift
@@ -130,11 +133,33 @@ extension BatchStrategy {
     /// ```
     ///
     /// - Parameter subject: The subject whose value flushes the batch.
-    /// - Returns: A ``SignalBatchStrategy`` over the subject's value.
-    // Erased because the sequence that listens without owning the subject is internal.
+    /// - Returns: A ``SignalBatchStrategy`` over a stream of the subject's one value, made afresh
+    ///   for each iteration.
+    // The same return type as the unit-of-work overload, so the compiler ranks the two by their
+    // parameters alone and this more specific one wins for a SingleValueSubject.
     public static func signal<Batched, Success>(_ subject: SingleValueSubject<Success>)
-        -> SignalBatchStrategy<Batched, AsyncSequences.AnyAsyncSequence<Success>>
-    where Self == SignalBatchStrategy<Batched, AsyncSequences.AnyAsyncSequence<Success>> {
-        .signal(SingleValueSubjectObservation(subject: subject).eraseToAnyAsyncSequence())
+        -> SignalBatchStrategy<Batched, Deferred<AsyncThrowingStream<Success, any Error>>>
+    where Self == SignalBatchStrategy<Batched, Deferred<AsyncThrowingStream<Success, any Error>>> {
+        .signal(Deferred { AsyncThrowingStream(once: { try await subject.observe() }) })
+    }
+}
+
+extension AsyncThrowingStream where Failure == any Error {
+    /// A stream of the one value `produce` returns, produced in the consumer's task on its first
+    /// request, so cancelling the consumer cancels the work.
+    // `unfolding` rather than a producer task: the work runs in the task that iterates, so
+    // nothing is left running once iteration ends. Typed throughout, so an optional value isn't
+    // confused with the end of the stream.
+    fileprivate init(once produce: @escaping @Sendable () async throws -> Element)
+    where Element: Sendable {
+        let produced = CriticalState(false)
+        self.init(unfolding: {
+            let first = produced.withCriticalRegion { produced in
+                defer { produced = true }
+                return !produced
+            }
+            guard first else { return nil }
+            return try await produce()
+        })
     }
 }

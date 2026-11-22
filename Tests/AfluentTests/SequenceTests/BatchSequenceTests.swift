@@ -368,6 +368,114 @@ struct BatchSequenceTests {
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test("A SingleValueSubject of an optional type fires once, then the count alone batches")
+    func optionalSingleValueSubjectFiresOnce() async throws {
+        let flush = SingleValueSubject<Int?>()
+        let flushes = ManagedAtomic(0)
+        let (upstream, continuation) = AsyncStream<Int>.makeStream()
+        let requests = ManagedAtomic(0)
+        let expected: [[Int]] = [[1, 2, 3], [4, 5, 6]]
+        let task = Task {
+            var received = [[Int]]()
+            let sut = upstream
+                .handleEvents(receiveNext: { requests.wrappingIncrement(ordering: .sequentiallyConsistent) })
+                .batch(strategy: .either(.signal(flush), .count(3), CountsFlushes(flushes: flushes)))
+            for try await batch in sut {
+                received.append(batch)
+            }
+            return received
+        }
+
+        // Registered (its observer runs once at once), then the signal's one flush.
+        try await wait(until: flushes.load(ordering: .sequentiallyConsistent) == 1, timeout: .seconds(2))
+        try flush.send(nil)
+        try await wait(until: flushes.load(ordering: .sequentiallyConsistent) == 2, timeout: .seconds(2))
+        // One element at a time, so a signal that kept firing would split the batches.
+        for element in 1...6 {
+            continuation.yield(element)
+            try await wait(
+                until: requests.load(ordering: .sequentiallyConsistent) == element + 1,
+                timeout: .seconds(2))
+        }
+        continuation.finish()
+        let actual = try await task.value
+
+        #expect(actual == expected)
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test("One SingleValueSubject strategy value fires again in each batched sequence it batches")
+    func reusedSingleValueSubjectStrategyFiresInEachIteration() async throws {
+        let flush = SingleValueSubject<Void>()
+        let strategy: SignalBatchStrategy<Int, Deferred<AsyncThrowingStream<Void, any Error>>> =
+            .signal(flush)
+        let expected: [[[Int]]] = [[[1], [2]], [[1], [2]]]
+        try flush.send()
+        // Counts flushes from before the signal subscribes, and waits for the registration call
+        // and the signal's flush before the first element, so that flush can't split a batch.
+        func batches() async throws -> [[Int]] {
+            let flushes = ManagedAtomic(0)
+            let (upstream, continuation) = AsyncStream<Int>.makeStream()
+            let task = Task {
+                var received = [[Int]]()
+                for try await batch in upstream.batch(
+                    strategy: .either(.count(1), CountsFlushes(flushes: flushes, inner: strategy)))
+                {
+                    received.append(batch)
+                }
+                return received
+            }
+            try await wait(until: flushes.load(ordering: .sequentiallyConsistent) == 2, timeout: .seconds(2))
+            continuation.yield(1)
+            try await wait(until: flushes.load(ordering: .sequentiallyConsistent) == 3, timeout: .seconds(2))
+            continuation.yield(2)
+            continuation.finish()
+            return try await task.value
+        }
+
+        let actual = [try await batches(), try await batches()]
+
+        #expect(actual == expected)
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test("One unit-of-work strategy value runs its unit again in each batched sequence it batches")
+    func reusedUnitOfWorkStrategyRunsInEachIteration() async throws {
+        let runs = ManagedAtomic(0)
+        let unit = DeferredTask { runs.wrappingIncrement(ordering: .sequentiallyConsistent) }
+        let strategy: SignalBatchStrategy<Int, Deferred<AsyncThrowingStream<Void, any Error>>> =
+            .signal(unit)
+        let expected: [[[Int]]] = [[[1], [2]], [[1], [2]]]
+        let expectedRuns = 2
+        // Counts flushes from before the signal subscribes, and waits for the registration call
+        // and the signal's flush before the first element, so that flush can't split a batch.
+        func batches() async throws -> [[Int]] {
+            let flushes = ManagedAtomic(0)
+            let (upstream, continuation) = AsyncStream<Int>.makeStream()
+            let task = Task {
+                var received = [[Int]]()
+                for try await batch in upstream.batch(
+                    strategy: .either(.count(1), CountsFlushes(flushes: flushes, inner: strategy)))
+                {
+                    received.append(batch)
+                }
+                return received
+            }
+            try await wait(until: flushes.load(ordering: .sequentiallyConsistent) == 2, timeout: .seconds(2))
+            continuation.yield(1)
+            try await wait(until: flushes.load(ordering: .sequentiallyConsistent) == 3, timeout: .seconds(2))
+            continuation.yield(2)
+            continuation.finish()
+            return try await task.value
+        }
+
+        let actual = [try await batches(), try await batches()]
+
+        #expect(actual == expected)
+        #expect(runs.load(ordering: .sequentiallyConsistent) == expectedRuns)
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("A SingleValueSubject sent an error ends the batched sequence with it")
     func singleValueSubjectErrorEndsTheSequence() async throws {
         let flush = SingleValueSubject<Void>()
@@ -415,16 +523,25 @@ struct BatchSequenceTests {
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-    @Test("A SingleValueSubject signal takes its own overload, not the unit-of-work one")
-    func singleValueSubjectTakesItsOwnOverload() {
-        func strategy<Strategy: BatchStrategy<Int>>(_ strategy: Strategy) -> any BatchStrategy<Int> {
-            strategy
-        }
+    @Test("Once the batch ends, its internal task ends too while a SingleValueSubject signal is still unsent")
+    func internalTaskEndsWhileTheSubjectIsUnsent() async throws {
         let subject = SingleValueSubject<Void>()
+        let released = SingleValueSubject<Void>()
+        let expected: [[Int]] = [[1, 2]]
+        // Only the batch holds the upstream, and its internal task holds it until it ends.
+        func batches() async throws -> [[Int]] {
+            var received = [[Int]]()
+            let upstream = ReportsRelease(elements: [1, 2], released: released)
+            for try await batch in upstream.batch(strategy: .signal(subject)) {
+                received.append(batch)
+            }
+            return received
+        }
 
-        let actual = strategy(.signal(subject))
+        let actual = try await batches()
+        try await released.execute()
 
-        #expect(actual is SignalBatchStrategy<Int, AsyncSequences.AnyAsyncSequence<Void>>)
+        #expect(actual == expected)
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
@@ -889,5 +1006,54 @@ private final class ClockThatJumpsOnFirstRead: Clock, @unchecked Sendable {
     func sleep(until deadline: Instant, tolerance: Duration? = nil) async throws {
         let offset = lock.withLock { self.offset }
         try await base.sleep(until: deadline.advanced(by: .zero - offset), tolerance: tolerance)
+    }
+}
+
+/// A sequence of fixed elements that reports when it is released.
+private final class ReportsRelease: AsyncSequence, Sendable {
+    let elements: [Int]
+    let released: SingleValueSubject<Void>
+
+    init(elements: [Int], released: SingleValueSubject<Void>) {
+        self.elements = elements
+        self.released = released
+    }
+
+    deinit { try? released.send() }
+
+    func makeAsyncIterator() -> IndexingIterator<[Int]>.AsyncIterator {
+        IndexingIterator<[Int]>.AsyncIterator(elements: elements)
+    }
+}
+
+extension IndexingIterator<[Int]> {
+    /// Iterates fixed elements without holding the sequence that made it.
+    fileprivate struct AsyncIterator: AsyncIteratorProtocol {
+        let elements: [Int]
+        var index = 0
+
+        mutating func next() async -> Int? {
+            guard index < elements.count else { return nil }
+            defer { index += 1 }
+            return elements[index]
+        }
+    }
+}
+
+/// Counts the flushes it hears of, including the call when it starts listening, then runs
+/// `inner`, if given, so none of `inner`'s flushes go uncounted.
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+private struct CountsFlushes<Element>: BatchStrategy {
+    let flushes: ManagedAtomic<Int>
+    var inner: (any BatchStrategy<Element>)? = nil
+
+    func flushes(pending: [Element]) -> Bool {
+        inner?.flushes(pending: pending) ?? false
+    }
+
+    func run(_ flusher: BatchFlusher) async throws {
+        let flushes = flushes
+        flusher.onFlush { flushes.wrappingIncrement(ordering: .sequentiallyConsistent) }
+        try await inner?.run(flusher)
     }
 }

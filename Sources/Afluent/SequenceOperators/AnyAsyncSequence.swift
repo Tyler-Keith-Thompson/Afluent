@@ -56,10 +56,11 @@ extension AsyncSequences {
         }
 
         public mutating func next() async throws -> Element? {
-            // Eventually, we'll have primary associated types making the casting nonsense below unnecessary
-            // https://github.com/apple/swift-evolution/blob/main/proposals/0358-primary-associated-types-in-stdlib.md#alternatives-considered
-
-            return try await state.iterator.next() as? Element
+            // The iterator is stored as `any AsyncIteratorProtocol` because its `Failure` may be `Never`,
+            // which `any AsyncIteratorProtocol<Element, any Error>` cannot hold. Unwrap before casting:
+            // when `Element` is itself Optional, the end-of-sequence `nil` casts to `.some(nil)`.
+            guard let element = try await state.iterator.next() else { return nil }
+            return element as? Element
         }
     }
 }

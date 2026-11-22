@@ -7,9 +7,10 @@ import Foundation
 
 extension AsyncSequences {
     /// Used as the implementation detail for the ``_Concurrency/AsyncSequence/batch(strategy:)`` operator.
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public struct Batch<Upstream: AsyncSequence & Sendable, Strategy: BatchStrategy>: AsyncSequence,
         Sendable
-    where Upstream.Element: Sendable {
+    where Upstream.Element: Sendable, Strategy.Element == Upstream.Element {
         public typealias Element = [Upstream.Element]
         let upstream: Upstream
         let strategy: Strategy
@@ -85,6 +86,7 @@ extension AsyncSequences {
     }
 }
 
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension AsyncSequences.Batch.AsyncIterator {
     /// The elements gathered since the last flush, and how they leave: shared by the upstream's
     /// task and the strategy's.
@@ -107,7 +109,12 @@ extension AsyncSequences.Batch.AsyncIterator {
             return BatchFlusher(
                 flushIfDue: { isDue in batch.flush(if: isDue) },
                 observeFlushes: { observer in
-                    batch.state.withCriticalRegion { $0.flushObservers.append(observer) }
+                    // Called once here, under the same lock as every flush, so a strategy that
+                    // sets its starting point in the observer can't miss a flush.
+                    batch.state.withCriticalRegion { state in
+                        state.flushObservers.append(observer)
+                        observer()
+                    }
                 })
         }
 
@@ -179,9 +186,9 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///
     /// The strategy decides when the pending elements are flushed: every so many elements
     /// (``BatchStrategy/count(_:)``), every interval
-    /// (``BatchStrategy/time(interval:clock:tolerance:)``), on a signal (``SignalBatchStrategy``
-    /// and ``SingleValueSubjectBatchStrategy``), whenever any of several does
-    /// (``BatchStrategy/either(_:)``), or by a rule of your own (``BatchStrategy``). After every
+    /// (``BatchStrategy/time(interval:clock:tolerance:)``), on a signal or a unit of work
+    /// (``SignalBatchStrategy``), whenever any of several does
+    /// (``BatchStrategy/either(_:_:)``), or by a rule of your own (``BatchStrategy``). After every
     /// flush, each strategy starts over. A flush with nothing pending emits nothing; the
     /// sequence never emits an empty array.
     ///
@@ -197,22 +204,23 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// pending `next()` returns, and is not read again after that; the batched sequence itself
     /// ends at once.
     ///
+    /// Batching needs iOS 16, Mac Catalyst 16, macOS 13, tvOS 16, watchOS 9 or visionOS 1.
+    ///
     /// ## Example
     /// ```swift
-    /// let strategy = EitherBatchStrategy(
-    ///     .count(3),
-    ///     .time(interval: .seconds(1), clock: ContinuousClock()))
-    /// for try await batch in [1, 2, 3, 4].async.batch(strategy: strategy) {
+    /// for try await batch in [1, 2, 3, 4].async.batch(strategy: .either(.count(3), .time(interval: .seconds(1), clock: ContinuousClock()))) {
     ///     print(batch) // Prints [1, 2, 3], then [4]
     /// }
     /// ```
     ///
-    /// - Parameter strategy: When to emit the gathered elements.
+    /// - Parameter strategy: When to emit the gathered elements; its `Element` is this
+    ///   sequence's, inferred from the call.
     /// - Returns: A sequence of the upstream's elements, in order, in arrays of one or more.
     /// - Throws: Any error the upstream or the strategy throws.
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func batch<Strategy: BatchStrategy>(strategy: Strategy)
         -> AsyncSequences.Batch<Self, Strategy>
-    {
+    where Strategy.Element == Element {
         AsyncSequences.Batch(upstream: self, strategy: strategy)
     }
 }

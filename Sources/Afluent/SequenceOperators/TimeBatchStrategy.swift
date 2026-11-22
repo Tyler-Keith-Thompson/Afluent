@@ -14,13 +14,13 @@ import Foundation
 ///
 /// ## Example
 /// ```swift
-/// let strategy = TimeBatchStrategy(interval: .seconds(1), clock: ContinuousClock())
-/// for try await readings in sensor.readings.batch(strategy: strategy) {
-///     print(readings) // The readings of each second that had any
+/// for try await second in sensor.readings.batch(
+///     strategy: .time(interval: .seconds(1), clock: ContinuousClock())) {
+///     print(second) // The readings of each second that had any
 /// }
 /// ```
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
-public struct TimeBatchStrategy<C: Clock>: BatchStrategy {
+public struct TimeBatchStrategy<Element, C: Clock>: BatchStrategy {
     /// How long elements gather before they are flushed.
     public let interval: C.Duration
     /// The clock that measures the interval.
@@ -45,6 +45,8 @@ public struct TimeBatchStrategy<C: Clock>: BatchStrategy {
     public func run(_ flusher: BatchFlusher) async throws {
         let clock = clock
         let timer = CriticalState(TimerState(start: clock.now, epoch: 0))
+        // Also called once now, under the batch's lock: the interval starts there, so a flush
+        // that lands before this registration still moves the first deadline.
         flusher.onFlush {
             timer.withCriticalRegion { timer in
                 timer.start = clock.now
@@ -90,9 +92,9 @@ extension BatchStrategy {
     ///   - tolerance: The tolerance of the timer's sleeps. Defaults to `nil`.
     /// - Returns: A ``TimeBatchStrategy``.
     /// - Precondition: `interval` is greater than zero.
-    public static func time<C: Clock>(
+    public static func time<Batched, C: Clock>(
         interval: C.Duration, clock: C, tolerance: C.Duration? = nil
-    ) -> TimeBatchStrategy<C> where Self == TimeBatchStrategy<C> {
+    ) -> TimeBatchStrategy<Batched, C> where Self == TimeBatchStrategy<Batched, C> {
         TimeBatchStrategy(interval: interval, clock: clock, tolerance: tolerance)
     }
 }

@@ -9,6 +9,7 @@ import PropertyBased
 import Testing
 
 struct BatchSequencePropertyTests {
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test(
         "count(n) emits the elements in order in arrays of n, then the remainder, like chunking by hand",
         .timeLimit(.minutes(1)))

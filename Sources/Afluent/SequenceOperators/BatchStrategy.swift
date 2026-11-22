@@ -13,9 +13,9 @@ import Foundation
 /// cause, each strategy starts over. A flush with nothing pending emits nothing.
 ///
 /// The built-in strategies are ``CountBatchStrategy``, ``TimeBatchStrategy``,
-/// ``SignalBatchStrategy``, ``SingleValueSubjectBatchStrategy`` and ``EitherBatchStrategy``,
-/// spelled `.count(_:)`, `.time(interval:clock:tolerance:)`, `.signal(_:)` and `.either(_:)` where
-/// a strategy is expected.
+/// ``SignalBatchStrategy`` (over a sequence or a unit of work) and ``EitherBatchStrategy``,
+/// spelled `.count(_:)`, `.time(interval:clock:tolerance:)`, `.signal(_:)` and `.either(_:_:)`
+/// where a strategy is expected.
 ///
 /// ```swift
 /// // Up to 100 events per upload, and at least one upload every 5 seconds while events arrive.
@@ -33,13 +33,15 @@ import Foundation
 /// default that never flushes. Implement ``flushes(pending:)`` to decide from the pending
 /// elements, after each one arrives. Implement ``run(_:)`` to flush on events of your own: it
 /// runs in a task of its own while the batched sequence is iterated, and is cancelled when the
-/// batched sequence ends. A custom strategy composes with the built-in ones in `.either(_:)`.
+/// batched sequence ends. A custom strategy composes with the built-in ones in `.either(_:_:)`.
+/// `Element` is the batched sequence's element: name it in `flushes(pending:)`, or make the
+/// strategy generic over it when only ``run(_:)`` matters.
 ///
 /// ```swift
 /// /// Flushes after each line, so every batch ends at a line break.
 /// struct LineBatchStrategy: BatchStrategy {
-///     func flushes<Element>(pending: [Element]) -> Bool {
-///         (pending.last as? Character) == "\n"
+///     func flushes(pending: [Character]) -> Bool {
+///         pending.last == "\n"
 ///     }
 /// }
 ///
@@ -48,7 +50,13 @@ import Foundation
 ///     LineBatchStrategy(),
 ///     .time(interval: .seconds(1), clock: ContinuousClock())))
 /// ```
-public protocol BatchStrategy: Sendable {
+///
+/// Batching needs iOS 16, Mac Catalyst 16, macOS 13, tvOS 16, watchOS 9 or visionOS 1.
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+public protocol BatchStrategy<Element>: Sendable {
+    /// The type of the elements the strategy batches: the upstream sequence's element.
+    associatedtype Element
+
     /// Whether to flush now that an element has joined the pending ones.
     ///
     /// Called after every element, with the batched sequence's lock held, so it should be quick
@@ -58,7 +66,7 @@ public protocol BatchStrategy: Sendable {
     ///   empty.
     /// - Returns: `true` to emit `pending` now.
     /// - Complexity: Called once per element; keep it O(1) where you can.
-    func flushes<Element>(pending: [Element]) -> Bool
+    func flushes(pending: [Element]) -> Bool
 
     /// Flushes on the strategy's own events, for as long as the batched sequence is iterated.
     ///
@@ -71,8 +79,9 @@ public protocol BatchStrategy: Sendable {
     func run(_ flusher: BatchFlusher) async throws
 }
 
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
 extension BatchStrategy {
-    public func flushes<Element>(pending: [Element]) -> Bool { false }
+    public func flushes(pending: [Element]) -> Bool { false }
 
     public func run(_ flusher: BatchFlusher) async throws {}
 }

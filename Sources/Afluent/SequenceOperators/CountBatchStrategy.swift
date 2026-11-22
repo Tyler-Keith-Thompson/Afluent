@@ -16,7 +16,8 @@ import Foundation
 ///     print(pair) // Prints [1, 2], then [3, 4], then [5]
 /// }
 /// ```
-public struct CountBatchStrategy: BatchStrategy {
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+public struct CountBatchStrategy<Element>: BatchStrategy {
     /// The number of elements in every batch but the last, which holds what is pending when the
     /// upstream finishes.
     public let count: Int
@@ -30,12 +31,13 @@ public struct CountBatchStrategy: BatchStrategy {
         self.count = count
     }
 
-    public func flushes<Element>(pending: [Element]) -> Bool {
+    public func flushes(pending: [Element]) -> Bool {
         pending.count >= count
     }
 }
 
-extension BatchStrategy where Self == CountBatchStrategy {
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+extension BatchStrategy {
     /// Flushes whenever the given number of elements is pending.
     ///
     /// ## Example
@@ -48,7 +50,8 @@ extension BatchStrategy where Self == CountBatchStrategy {
     /// - Parameter count: The number of elements per batch.
     /// - Returns: A ``CountBatchStrategy``.
     /// - Precondition: `count` is at least 1.
-    public static func count(_ count: Int) -> CountBatchStrategy {
+    public static func count<Batched>(_ count: Int) -> CountBatchStrategy<Batched>
+    where Self == CountBatchStrategy<Batched> {
         CountBatchStrategy(count)
     }
 }

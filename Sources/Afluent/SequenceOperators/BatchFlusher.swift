@@ -10,7 +10,7 @@ import Foundation
 /// ## Example
 /// ```swift
 /// /// Flushes whenever the app moves to the background.
-/// struct BackgroundBatchStrategy: BatchStrategy {
+/// struct BackgroundBatchStrategy<Element>: BatchStrategy {
 ///     let backgrounded: PassthroughSubject<Void>
 ///
 ///     func run(_ flusher: BatchFlusher) async throws {
@@ -42,11 +42,12 @@ public struct BatchFlusher: Sendable {
         flushIfDue(isDue)
     }
 
-    /// Calls `observer` after every flush, whichever strategy caused it, so a strategy can start
-    /// over (a timer restarting from the flush).
+    /// Calls `observer` once now, then after every flush, whichever strategy caused it, so a
+    /// strategy can start over (a timer restarting from the flush).
     ///
-    /// The observer runs with the batched sequence's lock held, so it must be quick and must not
-    /// call this flusher. Flushes before it is added aren't reported.
+    /// The first call and every flush take the same lock, so a strategy that sets its starting
+    /// point in the observer never misses a flush. The observer runs with the batched sequence's
+    /// lock held, so it must be quick and must not call this flusher.
     ///
     /// - Parameter observer: Called after each flush, for as long as the batched sequence is
     ///   iterated.

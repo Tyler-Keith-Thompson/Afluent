@@ -15,6 +15,7 @@ import Testing
 struct BatchSequenceTests {
     // MARK: count
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("count(n) emits arrays of n, then the remainder when the upstream finishes")
     func countEmitsFullBatchesThenTheRemainder() async throws {
         let expected: [[Int]] = [[1, 2], [3, 4], [5]]
@@ -27,6 +28,7 @@ struct BatchSequenceTests {
         #expect(actual == expected)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("count(n) over a multiple of n emits no trailing empty array")
     func countOverAMultipleEmitsNoEmptyArray() async throws {
         let expected: [[Int]] = [[1, 2], [3, 4]]
@@ -39,6 +41,7 @@ struct BatchSequenceTests {
         #expect(actual == expected)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("An empty upstream finishes with no batches")
     func emptyUpstreamEmitsNothing() async throws {
         let expected: [[Int]] = []
@@ -51,6 +54,7 @@ struct BatchSequenceTests {
         #expect(actual == expected)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("One element short of the count is emitted when the upstream finishes")
     func oneElementIsEmittedOnFinish() async throws {
         let expected: [[Int]] = [[7]]
@@ -63,6 +67,7 @@ struct BatchSequenceTests {
         #expect(actual == expected)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("count(1) emits every element in an array of its own")
     func countOfOneEmitsEachElementAlone() async throws {
         let expected: [[Int]] = [[1], [2], [3]]
@@ -75,6 +80,7 @@ struct BatchSequenceTests {
         #expect(actual == expected)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("An upstream error drops the pending elements and is rethrown")
     func upstreamErrorDropsPendingAndRethrows() async throws {
         let (upstream, continuation) = AsyncThrowingStream<Int, any Error>.makeStream()
@@ -195,8 +201,58 @@ struct BatchSequenceTests {
         #expect(actual == expected)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test("A flush that lands before the timer starts listening still moves its first deadline")
+    func flushBeforeTheTimerListensMovesItsDeadline() async throws {
+        // The clock jumps 6 s and the batch flushes the first time the timer reads the time,
+        // between that read and the timer's registration for flushes.
+        let clock = ClockThatJumpsOnFirstRead(jump: .seconds(6))
+        let flusher = LockIsolated<BatchFlusher?>(nil)
+        clock.onFirstRead { flusher.value?.flush() }
+        let gate = SingleValueSubject<Void>()
+        let (upstream, continuation) = AsyncStream<Int>.makeStream()
+        let requests = ManagedAtomic(0)
+        let batches = ManagedAtomic(0)
+        let expected: [[Int]] = [[1, 2], [3, 4]]
+        let task = Task {
+            var received = [[Int]]()
+            let strategy = TimerAfterGate<Int>(
+                timer: TimeBatchStrategy(interval: .seconds(10), clock: clock), gate: gate,
+                flusher: flusher)
+            let sut = upstream
+                .handleEvents(receiveNext: { requests.wrappingIncrement(ordering: .sequentiallyConsistent) })
+                .batch(strategy: strategy)
+            for try await batch in sut {
+                received.append(batch)
+                batches.wrappingIncrement(ordering: .sequentiallyConsistent)
+            }
+            return received
+        }
+
+        continuation.yield(1)
+        continuation.yield(2)
+        try await wait(
+            until: requests.load(ordering: .sequentiallyConsistent) == 3 && flusher.value != nil,
+            timeout: .seconds(2))
+        try gate.send()
+        try await wait(until: batches.load(ordering: .sequentiallyConsistent) == 1, timeout: .seconds(2))
+        try await wait(until: clock.base.sleepingCount == 1, timeout: .seconds(2))
+        continuation.yield(3)
+        try await wait(until: requests.load(ordering: .sequentiallyConsistent) == 4, timeout: .seconds(2))
+        // 10 s on the clock: the first deadline had the flush at 6 s not moved it.
+        try await clock.base.advance(by: .seconds(4), whenSleeping: 1)
+        try await wait(until: clock.base.sleepingCount == 1, timeout: .seconds(2))
+        continuation.yield(4)
+        try await wait(until: requests.load(ordering: .sequentiallyConsistent) == 5, timeout: .seconds(2))
+        continuation.finish()
+        let actual = try await task.value
+
+        #expect(actual == expected)
+    }
+
     // MARK: signal
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("signal flushes on each value a PassthroughSubject sends")
     func signalFlushesOnPassthroughSubject() async throws {
         let flush = PassthroughSubject<Void>()
@@ -237,6 +293,7 @@ struct BatchSequenceTests {
         #expect(actual == expected)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("signal flushes on each value a CurrentValueSubject sends, and its current value flushes nothing")
     func signalFlushesOnCurrentValueSubject() async throws {
         let flush = CurrentValueSubject<Int>(0)
@@ -277,6 +334,7 @@ struct BatchSequenceTests {
         #expect(actual == expected)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("signal flushes once when a SingleValueSubject is sent a value")
     func signalFlushesOnceOnSingleValueSubject() async throws {
         let flush = SingleValueSubject<Void>()
@@ -309,6 +367,7 @@ struct BatchSequenceTests {
         #expect(actual == expected)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("A SingleValueSubject sent an error ends the batched sequence with it")
     func singleValueSubjectErrorEndsTheSequence() async throws {
         let flush = SingleValueSubject<Void>()
@@ -323,6 +382,21 @@ struct BatchSequenceTests {
         #expect(throws: GeneralError.e1) { try result.get() }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test("A unit of work that fails as a signal ends the batched sequence with its error")
+    func failingUnitOfWorkSignalEndsTheSequence() async throws {
+        let (upstream, continuation) = AsyncStream<Int>.makeStream()
+        defer { continuation.finish() }
+        let signal = DeferredTask<Void> { throw GeneralError.e1 }
+
+        let result = await Task {
+            for try await _ in upstream.batch(strategy: .signal(signal)) {}
+        }.result
+
+        #expect(throws: GeneralError.e1) { try result.get() }
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("A finished batched sequence leaves its SingleValueSubject pending for other awaiters")
     func finishingLeavesTheSingleValueSubjectPending() async throws {
         let flush = SingleValueSubject<Int>()
@@ -340,6 +414,55 @@ struct BatchSequenceTests {
         #expect(actual == expectedValue)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test("A SingleValueSubject signal takes its own overload, not the unit-of-work one")
+    func singleValueSubjectTakesItsOwnOverload() {
+        func strategy<Strategy: BatchStrategy<Int>>(_ strategy: Strategy) -> any BatchStrategy<Int> {
+            strategy
+        }
+        let subject = SingleValueSubject<Void>()
+
+        let actual = strategy(.signal(subject))
+
+        #expect(actual is SignalBatchStrategy<Int, AsyncSequences.AnyAsyncSequence<Void>>)
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test("A unit of work whose wait ignores cancellation keeps the internal task waiting after the batch ends")
+    func unitOfWorkSignalThatIgnoresCancellationKeepsWaiting() async throws {
+        let flush = SingleValueSubject<Int>()
+        let waiting = SingleValueSubject<Void>()
+        let waitEnded = SingleValueSubject<Void>()
+        // Not a SingleValueSubject but a unit of work around one, so the generic overload runs it
+        // through toAsyncSequence(): its wait ignores cancellation, so once the batch ends it only
+        // returns when the subject is sent, and then reports the cancellation.
+        let signal = flush.handleEvents(
+            receiveOperation: { try? waiting.send() },
+            receiveCancel: { try? waitEnded.send() })
+        let (upstream, continuation) = AsyncStream<Int>.makeStream()
+        let expectedBatches: [[Int]] = [[1]]
+        let expectedValue = 5
+        let task = Task {
+            var received = [[Int]]()
+            for try await batch in upstream.batch(strategy: .signal(signal)) {
+                received.append(batch)
+            }
+            return received
+        }
+
+        try await waiting.execute()
+        continuation.yield(1)
+        continuation.finish()
+        let actualBatches = try await task.value
+        try flush.send(expectedValue)
+        try await waitEnded.execute()
+        let actual = try await flush.execute()
+
+        #expect(actualBatches == expectedBatches)
+        #expect(actual == expectedValue)
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("A signal that finishes stops firing, and the batches go on until the upstream finishes")
     func finishedSignalStopsFiring() async throws {
         let (signal, signalContinuation) = AsyncStream<Void>.makeStream()
@@ -354,6 +477,7 @@ struct BatchSequenceTests {
         #expect(actual == expected)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("A signal that throws ends the batched sequence with its error and drops the pending elements")
     func throwingSignalEndsTheSequence() async throws {
         let (upstream, continuation) = AsyncStream<Int>.makeStream()
@@ -383,6 +507,7 @@ struct BatchSequenceTests {
         #expect(actualBatches == expectedBatches)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("A SingleValueSubject that someone else cancels stops firing, and the batches go on")
     func cancelledSingleValueSubjectStopsFiring() async throws {
         let flush = SingleValueSubject<Void>()
@@ -399,6 +524,7 @@ struct BatchSequenceTests {
 
     // MARK: either
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("either flushes on whichever of a count and a signal fires")
     func eitherFlushesOnCountOrSignal() async throws {
         let flush = PassthroughSubject<Void>()
@@ -507,24 +633,60 @@ struct BatchSequenceTests {
         #expect(actual == expected)
     }
 
-    @Test("either with the smaller of two counts flushes at the smaller")
-    func eitherOfTwoCountsFlushesAtTheSmaller() async throws {
-        let expected: [[Int]] = [[1, 2], [3, 4], [5]]
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test("A signal that throws inside either ends the batched sequence at once, though a timer still waits")
+    func throwingSignalInEitherEndsAtOnce() async throws {
+        let clock = TrackedTestClock()
+        let (signal, signalContinuation) = AsyncThrowingStream<Void, any Error>.makeStream()
+        signalContinuation.finish(throwing: GeneralError.e1)
+        let (upstream, continuation) = AsyncStream<Int>.makeStream()
+        defer { continuation.finish() }
+
+        let result = await Task {
+            let sut = upstream.batch(
+                strategy: .either(.signal(signal), .time(interval: .seconds(100), clock: clock)))
+            for try await _ in sut {}
+        }.result
+
+        #expect(throws: GeneralError.e1) { try result.get() }
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test("The shorthand spelling infers the element from the upstream")
+    func shorthandSpellingInfersTheElement() async throws {
+        let expected: [[Int]] = [[1, 2, 3], [4]]
 
         var actual = [[Int]]()
-        for try await batch in [1, 2, 3, 4, 5].async.batch(strategy: .either(.count(5), .count(2))) {
+        for try await batch in [1, 2, 3, 4].async.batch(strategy: .either(.count(3), .time(interval: .seconds(1), clock: ContinuousClock()))) {
             actual.append(batch)
         }
 
         #expect(actual == expected)
     }
 
-    @Test("either of no strategies emits everything in one array when the upstream finishes")
-    func eitherOfNothingCollectsEverything() async throws {
-        let expected: [[Int]] = [[1, 2, 3]]
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test("Strategies spelled with their types batch the same as the shorthand")
+    func explicitSpellingsBatchTheSame() async throws {
+        let strategy: EitherBatchStrategy<Int> = .either(.count(2), CountBatchStrategy(5))
+        let named = EitherBatchStrategy<Int>(CountBatchStrategy(2))
+        let expected: [[Int]] = [[1, 2], [3]]
 
         var actual = [[Int]]()
-        for try await batch in [1, 2, 3].async.batch(strategy: .either()) {
+        for try await batch in [1, 2, 3].async.batch(strategy: strategy) { actual.append(batch) }
+        var actualNamed = [[Int]]()
+        for try await batch in [1, 2, 3].async.batch(strategy: named) { actualNamed.append(batch) }
+
+        #expect(actual == expected)
+        #expect(actualNamed == expected)
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test("either with the smaller of two counts flushes at the smaller")
+    func eitherOfTwoCountsFlushesAtTheSmaller() async throws {
+        let expected: [[Int]] = [[1, 2], [3, 4], [5]]
+
+        var actual = [[Int]]()
+        for try await batch in [1, 2, 3, 4, 5].async.batch(strategy: .either(.count(5), .count(2))) {
             actual.append(batch)
         }
 
@@ -577,6 +739,7 @@ struct BatchSequenceTests {
         #expect(actual == expectedValue)
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("After the consumer cancels, an upstream that ignores cancellation is not read again")
     func cancelledBatchStopsReadingANonCooperativeUpstream() async throws {
         let upstream = IgnoresCancellation()
@@ -669,5 +832,62 @@ private struct IgnoresCancellation: AsyncSequence, Sendable {
 
     func makeAsyncIterator() -> AsyncIterator {
         AsyncIterator(sequence: self, release: Release(iteratorReleased))
+    }
+}
+
+/// A strategy that hands its flusher to the test, waits for a gate, then runs a timer.
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+private struct TimerAfterGate<Element>: BatchStrategy {
+    let timer: TimeBatchStrategy<Element, ClockThatJumpsOnFirstRead>
+    let gate: SingleValueSubject<Void>
+    let flusher: LockIsolated<BatchFlusher?>
+
+    func run(_ flusher: BatchFlusher) async throws {
+        self.flusher.setValue(flusher)
+        try await gate.execute()
+        try await timer.run(flusher)
+    }
+}
+
+/// A tracked test clock whose time, the first time it is read, jumps ahead and runs a hook, then
+/// returns the time from before the jump.
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+private final class ClockThatJumpsOnFirstRead: Clock, @unchecked Sendable {
+    typealias Duration = Swift.Duration
+    typealias Instant = TrackedTestClock.Instant
+
+    let base = TrackedTestClock()
+    private let jump: Duration
+    private let lock = NSLock()
+    private var offset = Duration.zero
+    private var hook: (@Sendable () -> Void)?
+
+    init(jump: Duration) {
+        self.jump = jump
+    }
+
+    func onFirstRead(_ hook: @escaping @Sendable () -> Void) {
+        lock.withLock { self.hook = hook }
+    }
+
+    var now: Instant {
+        let (current, hook): (Instant, (@Sendable () -> Void)?) = lock.withLock {
+            let current = base.now.advanced(by: offset)
+            let hook = self.hook
+            if hook != nil {
+                self.hook = nil
+                offset += jump
+            }
+            return (current, hook)
+        }
+        hook?()
+        return current
+    }
+
+    var minimumResolution: Duration { .zero }
+
+    func sleep(until deadline: Instant, tolerance: Duration? = nil) async throws {
+        let offset = lock.withLock { self.offset }
+        try await base.sleep(until: deadline.advanced(by: .zero - offset), tolerance: tolerance)
     }
 }

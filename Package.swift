@@ -9,6 +9,16 @@ import PackageDescription
 // Every target directory holds a BUILD.bazel, which SwiftPM must be told to ignore.
 let bazelFiles = ["BUILD.bazel"]
 
+// The WebAssembly test run (scripts/wasi_test.py) sets AFLUENT_WASI_TESTS to a comma-separated
+// list of test targets: the package then declares only those, as one binary of every target
+// can pass wasmtime's limit of a million functions, and leaves out each test file with an exit
+// test, since WASI cannot start a child process. Unset, nothing changes.
+let wasiTests = Context.environment["AFLUENT_WASI_TESTS"].map { Set($0.split(separator: ",").map(String.init)) }
+
+func testExcludes(_ excludes: [String], wasi exitTestFiles: [String]) -> [String] {
+    wasiTests == nil ? excludes : excludes + exitTestFiles
+}
+
 // Where the Apple-only packages' products are linked (APPLE_ONLY_PACKAGES in scripts/modules.py).
 let applePlatforms: [Platform] = [.macOS, .macCatalyst, .iOS, .tvOS, .watchOS, .visionOS]
 
@@ -37,7 +47,7 @@ let targets: [Target] = [
     // Shared fixtures (data only) for every test target.
     .target(name: "AfluentTestSupport", path: "Tests/AfluentTestSupport", exclude: bazelFiles),
 
-    .testTarget(name: "AfluentTests", dependencies: ["Afluent", "AfluentTesting", .product(name: "OHHTTPStubs", package: "ohhttpstubs", condition: .when(platforms: applePlatforms)), .product(name: "OHHTTPStubsSwift", package: "ohhttpstubs", condition: .when(platforms: applePlatforms)), .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"), .product(name: "Clocks", package: "swift-clocks"), .product(name: "Atomics", package: "swift-atomics"), .product(name: "Generators", package: "swiftprng"), .product(name: "PropertyBased", package: "swift-property-based")], exclude: bazelFiles),
+    .testTarget(name: "AfluentTests", dependencies: ["Afluent", "AfluentTesting", .product(name: "OHHTTPStubs", package: "ohhttpstubs", condition: .when(platforms: applePlatforms)), .product(name: "OHHTTPStubsSwift", package: "ohhttpstubs", condition: .when(platforms: applePlatforms)), .product(name: "ConcurrencyExtras", package: "swift-concurrency-extras"), .product(name: "Clocks", package: "swift-clocks"), .product(name: "Atomics", package: "swift-atomics"), .product(name: "Generators", package: "swiftprng"), .product(name: "PropertyBased", package: "swift-property-based")], exclude: testExcludes(bazelFiles, wasi: ["SubjectSubscriptionExitTests.swift", "SequenceTests/BatchSequenceExitTests.swift"])),
 ]
 
 let package = Package(
@@ -46,5 +56,5 @@ let package = Package(
     platforms: [.iOS(.v15), .macOS(.v13), .macCatalyst(.v15), .tvOS(.v16), .watchOS(.v9), .visionOS(.v1)],
     products: products,
     dependencies: dependencies,
-    targets: targets
+    targets: targets.filter { $0.type != .test || wasiTests?.contains($0.name) ?? true }
 )

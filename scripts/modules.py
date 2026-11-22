@@ -261,6 +261,21 @@ def exclude_arg(path):
     return ""
 
 
+def exit_test_files(directory, excludes):
+    """Swift files under `directory` (outside `excludes`) holding an exit test, as a Swift array literal."""
+    root = os.path.join(ROOT, directory)
+    found = []
+    for folder, _, files in sorted(os.walk(root)):
+        for file in sorted(files):
+            rel = os.path.relpath(os.path.join(folder, file), root)
+            if not file.endswith(".swift") or any(rel.startswith(e) for e in excludes):
+                continue
+            with open(os.path.join(folder, file), encoding="utf-8") as f:
+                if "processExitsWith" in f.read():
+                    found.append(rel)
+    return "[" + ", ".join(f'"{f}"' for f in found) + "]"
+
+
 def package_swift():
     lines = [
         "// swift-tools-version: 6.4",
@@ -273,6 +288,16 @@ def package_swift():
         "",
         "// Every target directory holds a BUILD.bazel, which SwiftPM must be told to ignore.",
         'let bazelFiles = ["BUILD.bazel"]',
+        "",
+        f"// The WebAssembly test run (scripts/wasi_test.py) sets {PROJECT.upper()}_WASI_TESTS to a comma-separated",
+        "// list of test targets: the package then declares only those, as one binary of every target",
+        "// can pass wasmtime's limit of a million functions, and leaves out each test file with an exit",
+        "// test, since WASI cannot start a child process. Unset, nothing changes.",
+        f'let wasiTests = Context.environment["{PROJECT.upper()}_WASI_TESTS"].map {{ Set($0.split(separator: ",").map(String.init)) }}',
+        "",
+        "func testExcludes(_ excludes: [String], wasi exitTestFiles: [String]) -> [String] {",
+        "    wasiTests == nil ? excludes : excludes + exitTestFiles",
+        "}",
         "",
     ]
     if APPLE_ONLY_PACKAGES:
@@ -329,7 +354,7 @@ def package_swift():
         dl = ", ".join(spm_dep(d) for d in deps)
         files = excluded(f"Tests/{name}")
         ex = "[" + ", ".join(f'"{f}"' for f in files) + "]" if files != ["BUILD.bazel"] else "bazelFiles"
-        lines.append(f'    .testTarget(name: "{name}", dependencies: [{dl}], exclude: {ex}),')
+        lines.append(f'    .testTarget(name: "{name}", dependencies: [{dl}], exclude: testExcludes({ex}, wasi: {exit_test_files(f"Tests/{name}", files)})),')
     if PERFORMANCE_TESTS:
         lines += [
             "",
@@ -338,7 +363,7 @@ def package_swift():
         for name, deps in TEST_TARGETS:
             if name in PERFORMANCE_TESTS:
                 dl = ", ".join(spm_dep(d) for d in deps)
-                lines.append(f'    .testTarget(name: "{performance_target(name)}", dependencies: [{dl}], path: "Tests/{name}/Performance"),')
+                lines.append(f'    .testTarget(name: "{performance_target(name)}", dependencies: [{dl}], path: "Tests/{name}/Performance", exclude: testExcludes([], wasi: {exit_test_files(f"Tests/{name}/Performance", [])})),')
     lines += [
         "]",
         "",
@@ -348,7 +373,7 @@ def package_swift():
         f"    platforms: {PLATFORMS},",
         "    products: products,",
         "    dependencies: dependencies,",
-        "    targets: targets",
+        "    targets: targets.filter { $0.type != .test || wasiTests?.contains($0.name) ?? true }",
         ")",
         "",
     ]

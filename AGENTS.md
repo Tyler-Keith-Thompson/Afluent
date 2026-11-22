@@ -59,6 +59,7 @@ Every shell command gets a timeout. macOS has no `timeout`; use
 | `just build` / `just test` | Build / test everything (debug) |
 | `bazel test //Tests/XTests` | One test target (`just test-one //Tests/XTests`) |
 | `just filter <pattern>` | Tests whose name matches |
+| `just wasi-test [-c release] [--targets X,Y]` | SwiftPM tests on wasm32-wasi under wasmtime: a 32-bit `Int` |
 | `just test-release` | `--config=release`: builds and runs only the `XPerformanceTests` targets |
 | `just spm-test`, `just verify` | SwiftPM tests; both build systems |
 | `just modules` | Regenerate build files from `scripts/modules.py` |
@@ -87,6 +88,32 @@ Every shell command gets a timeout. macOS has no `timeout`; use
 - Exit tests (`#expect(processExitsWith:)`) go in files of their own, apart from the other tests:
   builds for platforms that cannot start a child process leave those files out.
 
+### 32-bit `Int` (WebAssembly)
+
+watchOS's arm64_32 and wasm32 have a 32-bit `Int`. `just wasi-test` (`scripts/wasi_test.py`)
+builds the SwiftPM test targets with `swift build --build-tests --swift-sdk
+swift-6.4.3-RELEASE_wasm` through swiftly into `.build/wasm`, then runs each binary with
+`wasmtime run --dir . <binary> --testing-library swift-testing`, logs in `.build/wasm/logs`.
+Needs swiftly's 6.4.3 toolchain, its WebAssembly SDK (`swift sdk list`; swift.org's "Getting
+Started with Swift SDKs for WebAssembly" has the install command) and `brew install wasmtime`. If
+the toolchain crashes on the manifest against a newer Xcode's SDK, pass `--xcode
+/Applications/Xcode-<older>.app`.
+
+- One binary of every target can pass wasmtime's limit of a million functions, so targets run in
+  groups (`<PROJECT>_WASI_TESTS`, the project's name in capitals, makes `Package.swift` declare
+  only those).
+- Not run on WASI: files with exit tests (no child processes; the manifest leaves them out), and
+  anything needing threads or Dispatch (`#if canImport(Dispatch)`). On WASI a pending sleep can hold the one thread
+  until its deadline, and cancelling it doesn't end it sooner. So the script runs tests one at a
+  time (`--no-parallel`), `Tests/AfluentTests/TestHelpers/TimeLimitOnWASI.swift` turns
+  `.timeLimit` off there (its timer would stall the body it bounds), and a test that sleeps on
+  the real clock while waiting on other work sits under `#if !os(WASI)`.
+- Without WebAssembly tail calls, every await that doesn't suspend deepens the stack, so the
+  script links a 64 MB stack and gives wasmtime a 256 MB one, which ten thousand consecutive
+  retries fit in. Until PT-48 lands in the template, these `wasi_test.py` changes (Swift 6.4.3,
+  per-target runners, the stacks, `--no-parallel`) are local; on `just template-update`, take
+  the template's side once it has them.
+
 ## Afluent
 
 - **CI is Bazel**, cached by BuildBuddy, with one SwiftPM test job (CI.yml). Compatibility.yml
@@ -95,6 +122,12 @@ Every shell command gets a timeout. macOS has no `timeout`; use
   queue waits for every job (`.trunk/trunk.yaml`); a job renamed in a workflow is renamed there.
 - **OHHTTPStubs** is Objective-C and Apple-only (`APPLE_ONLY_PACKAGES`): tests that use it sit
   under `#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS)`.
+- **WASI** has no Dispatch, no URLSession and no signals. `QueueExecutor` sits under
+  `#if canImport(Dispatch)`, the URLSession additions under
+  `#if canImport(Darwin) || canImport(FoundationNetworking)`, and the breakpoint operators trap
+  there instead of raising `SIGTRAP` (`debugTrap()`). Tests that use those APIs, Dispatch or
+  `Thread` carry the same guards, so `just wasi-test` builds; swift-concurrency-extras has no
+  `withMainSerialExecutor` there, and `TestHelpers/MainSerialExecutorOnWASI.swift` stands in.
 - **Documentation addresses.** The combined site is at `/Afluent/documentation/<module>/`. Each
   module was once published at `/Afluent/<Module>/documentation/<module>/`;
   `scripts/docs_redirects.sh` writes a redirect at every old address when the DocC workflow
@@ -173,6 +206,7 @@ Watch for these:
 |---|---|
 | Any library code | `bazel test` for every target in `bazel query 'rdeps(//Tests/..., //Sources/X)'`, then `just test-release` |
 | `scripts/modules.py` | `just modules`, `just test` (which runs `//:package_swift_test`), `just spm` |
+| Integer arithmetic that could overflow, or anything platform-conditional | `just wasi-test -c release --targets XTests` (a 32-bit `Int`) |
 | `Benchmarks/`, or an API the benchmarks call | `cd Benchmarks && env -u TOOLCHAINS xcrun --toolchain default swift build -c release` |
 | A change meant to be faster | `just bench-simulated-compare --target <Module>Benchmarks`, not `just bench-compare` |
 

@@ -102,6 +102,7 @@ TEST_SIZES = {name: "medium" for name in [
 # out under release. Debug runs both. A `.timeLimit` that only guards a small input against a hang
 # does not make a test speed-reliant.
 PERFORMANCE_TESTS = [
+    "AfluentTests",
 ]
 
 # Performance tests run up to their one-minute limits each, so their targets get "medium" (300 s).

@@ -132,13 +132,12 @@ where Base: Sendable, Base.Element: Sendable {
         }
 
         struct Side {
-            var buffer = [Element]()
+            var buffer = FIFOQueue<Element>()
             var terminal: Terminal?
             var continuation: UnsafeContinuation<Result<Element?, Error>, Never>?
 
             mutating func drain() {
-                if !buffer.isEmpty, let continuation {
-                    let element = buffer.removeFirst()
+                if let continuation, let element = buffer.popFirst() {
                     continuation.resume(returning: .success(element))
                     self.continuation = nil
                 } else if let terminal, let continuation {

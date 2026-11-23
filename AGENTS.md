@@ -111,7 +111,8 @@ the toolchain crashes on the manifest against a newer Xcode's SDK, pass `--xcode
 - Without WebAssembly tail calls, every await that doesn't suspend deepens the stack, so the
   script links a 64 MB stack and gives wasmtime a 256 MB one, which ten thousand consecutive
   retries fit in. Until PT-48 lands in the template, these `wasi_test.py` changes (Swift 6.4.3,
-  per-target runners, the stacks, `--no-parallel`) are local; on `just template-update`, take
+  per-target runners, the stacks, `--no-parallel`, failing on a runner's exit code and on
+  time-limit issues) are local; on `just template-update`, take
   the template's side once it has them.
 
 ## Afluent

@@ -66,20 +66,20 @@ def run(cmd, env, log, timeout):
             return -1
 
 
-def group_failed(lines):
-    """Whether a group's test log shows a failure.
+def group_failed(statuses, lines, binaries):
+    """Whether a group failed: a runner exited nonzero, an issue was recorded, or a runner wrote no
+    summary line (it trapped or was killed before its run finished).
 
-    A time limit that reaches WASI stalls its test until the limit passes (see `main`), so the
-    binary's exit status says nothing on its own. A group fails when an issue besides a time limit
-    was recorded, or when the log has no summary line: the binary trapped or was killed before the
-    run finished.
+    Until PT-48: the template's copy excuses "Time limit was exceeded" issues and ignores exit
+    codes. Here TimeLimitOnWASI.swift keeps every `.timeLimit` from reaching WASI, so a time-limit
+    issue means that overload stopped winning, and it fails the run like any other issue.
     """
-    summary = any(re.search(r"Test run with \d+ tests", line) for line in lines)
-    return bool(issues_besides_time_limits(lines)) or not summary
+    summaries = [line for line in lines if re.search(r"Test run with \d+ tests", line)]
+    return any(status != 0 for status in statuses) or bool(issues(lines)) or len(summaries) < len(binaries)
 
 
-def issues_besides_time_limits(lines):
-    return [line for line in lines if "recorded an issue" in line and "Time limit was exceeded" not in line]
+def issues(lines):
+    return [line for line in lines if "recorded an issue" in line]
 
 
 def main():
@@ -123,7 +123,7 @@ def main():
         # body it bounds; Tests/AfluentTests/TestHelpers/TimeLimitOnWASI.swift turns `.timeLimit`
         # off there, and `--timeout` bounds the run instead.
         log = os.path.join(logs, tag + "-test.log")
-        status = 0
+        statuses = []
         with open(log, "w"):
             pass
         binaries = test_binaries(products, group)
@@ -131,24 +131,22 @@ def main():
             test = ["wasmtime", "run", "-W", f"max-wasm-stack={WASM_CALL_STACK}", "--dir", ".", binary,
                     "--testing-library", "swift-testing", "--no-parallel"]
             part = log + ".part"
-            status = run(test, env, part, args.timeout) or status
+            statuses.append(run(test, env, part, args.timeout))
             with open(log, "a") as whole, open(part, errors="replace") as f:
                 whole.write(f.read())
             os.remove(part)
         lines = open(log, errors="replace").read().splitlines()
         summary = [line.strip() for line in lines if re.search(r"Test run with \d+ tests", line)]
-        # A time limit that reaches WASI is always exceeded (see above); the rest are the issues.
-        issues = issues_besides_time_limits(lines)
-        print(f"{tag} exit {status}: {summary[-1] if summary else 'no summary'}; {len(issues)} issues besides time"
-              f" limits ({', '.join(group)})")
-        for line in issues[:20]:
+        recorded = issues(lines)
+        print(f"{tag} exit {statuses}: {summary[-1] if summary else 'no summary'}; {len(recorded)} issues"
+              f" ({', '.join(group)})")
+        for line in recorded[:20]:
             print("    " + line[:300])
         # A trap ends the binary: name the test frames of its backtrace.
         frames = [line.strip() for line in lines if re.search(r"(xctest|wasm)!\S*Tests", line)]
         for line in frames[:3]:
             print("    trap: " + line[:300])
-        # One summary per binary; a binary that trapped or was killed wrote none.
-        if group_failed(lines) or len(summary) < len(binaries):
+        if group_failed(statuses, lines, binaries):
             failed.append(tag)
     print("FAILED: " + ", ".join(failed) if failed else "All groups passed.")
     return 1 if failed else 0

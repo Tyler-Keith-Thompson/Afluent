@@ -167,6 +167,11 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Returns: A sequence of the same elements that throws if the upstream goes quiet.
     /// - Throws: `TimeoutError` (or `customError`) when `duration` passes between elements, and
     ///   any error the upstream throws.
+    ///
+    /// - Note: On WASI, a sleep on a real clock (`ContinuousClock`, `SuspendingClock`) holds the one thread
+    ///   until its deadline, even when other work is ready, and cancelling it doesn't end it sooner. So the
+    ///   timer can hold the thread before the upstream runs, then count that wait against it and throw even
+    ///   though elements were ready. A test clock is unaffected.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func timeout(_ duration: Duration, customError: (any Error)? = nil)
         -> AsyncSequences.Timeout<Self, SuspendingClock>
@@ -203,6 +208,11 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// - Returns: A sequence of the same elements that throws if the upstream goes quiet.
     /// - Throws: `TimeoutError` (or `customError`) when `duration` passes between elements, and
     ///   any error the upstream throws.
+    ///
+    /// - Note: On WASI, a sleep on a real clock (`ContinuousClock`, `SuspendingClock`) holds the one thread
+    ///   until its deadline, even when other work is ready, and cancelling it doesn't end it sooner. So the
+    ///   timer can hold the thread before the upstream runs, then count that wait against it and throw even
+    ///   though elements were ready. A test clock is unaffected.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func timeout<C: Clock>(
         _ duration: C.Duration, clock: C, tolerance: C.Duration? = nil,

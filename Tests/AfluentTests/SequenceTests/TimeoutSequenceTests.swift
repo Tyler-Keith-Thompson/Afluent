@@ -51,8 +51,11 @@ struct TimeoutSequenceTests {
         #expect(received == expected)
     }
 
-    // On WASI the timer's sleep on the real clock holds the one thread until its deadline, so the
-    // timer fires before the upstream's elements are delivered.
+    // Left out on WASI because of the Swift concurrency runtime there (checked with Swift 6.4.3's
+    // wasm SDK under wasmtime), not Afluent: its single-threaded executor lets a pending real-clock
+    // `Task.sleep` hold the thread until its deadline even when other jobs are ready, and a
+    // cancelled sleep doesn't end sooner. The timer child sleeps before the upstream child runs, so
+    // the late-element check counts the whole gap and throws `TimeoutError` with nothing received.
     #if !os(WASI)
         @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
         @Test(.timeLimit(.minutes(1))) func timeoutOnTheDefaultClockPassesElementsThrough()

@@ -12,8 +12,8 @@ extension AsynchronousUnitOfWork {
     /// allowing you to pause execution when specific output values or errors occur.
     ///
     /// ## Discussion
-    /// When the provided conditions evaluate to `true`, a `SIGTRAP` signal is raised,
-    /// which typically causes the program to pause execution in a debugger.
+    /// When the provided conditions evaluate to `true`, a `SIGTRAP` signal is raised
+    /// (a trap on WASI), which typically causes the program to pause execution in a debugger.
     /// This enables you to inspect state or step through code at critical points.
     ///
     /// - Parameters:
@@ -57,12 +57,12 @@ extension AsynchronousUnitOfWork {
         handleEvents(
             receiveOutput: { output in
                 if try await receiveOutput?(output) == true {
-                    raise(SIGTRAP)
+                    debugTrap()
                 }
             },
             receiveError: { error in
                 if try await receiveError?(error) == true {
-                    raise(SIGTRAP)
+                    debugTrap()
                 }
             })
     }
@@ -70,8 +70,8 @@ extension AsynchronousUnitOfWork {
     /// Inserts an unconditional breakpoint on error into the asynchronous unit of work.
     ///
     /// ## Discussion
-    /// This function triggers a `SIGTRAP` signal whenever the asynchronous operation produces an error,
-    /// allowing you to pause execution immediately when any failure occurs.
+    /// This function triggers a `SIGTRAP` signal (a trap on WASI) whenever the asynchronous
+    /// operation produces an error, allowing you to pause execution immediately when any failure occurs.
     ///
     /// ## Example
     /// ```swift

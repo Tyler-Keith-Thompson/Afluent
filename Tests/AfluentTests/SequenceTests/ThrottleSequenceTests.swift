@@ -39,91 +39,94 @@ struct ThrottleSequenceTests {
         }
     }
 
-    // When 2 reaches the throttle while 1 is still being handed to the consumer, 2 must not be lost
-    // as the consumer clears the slot it read 1 from. The consumer runs on an executor the test
-    // holds, so both elements arrive before it resumes with 1.
-    @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-    @Test(.timeLimit(.minutes(1)))
-    func throttleWithLatestEmitsAnElementSentWhileThePreviousOneIsConsumed() async throws {
-        /// Runs jobs one at a time on a queue, and keeps them while held.
-        final class HoldingExecutor: TaskExecutor, Sendable {
-            struct State {
-                var held = false
-                var running = false
-                var pending = [UnownedJob]()
-            }
-            let state = Mutex(State())
-            let queue = DispatchQueue(label: "HoldingExecutor")
+    // The held executor drains on a dispatch queue of its own; WASI has no Dispatch.
+    #if canImport(Dispatch)
+        // When 2 reaches the throttle while 1 is still being handed to the consumer, 2 must not be lost
+        // as the consumer clears the slot it read 1 from. The consumer runs on an executor the test
+        // holds, so both elements arrive before it resumes with 1.
+        @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+        @Test(.timeLimit(.minutes(1)))
+        func throttleWithLatestEmitsAnElementSentWhileThePreviousOneIsConsumed() async throws {
+            /// Runs jobs one at a time on a queue, and keeps them while held.
+            final class HoldingExecutor: TaskExecutor, Sendable {
+                struct State {
+                    var held = false
+                    var running = false
+                    var pending = [UnownedJob]()
+                }
+                let state = Mutex(State())
+                let queue = DispatchQueue(label: "HoldingExecutor")
 
-            /// Whether no job is running or waiting: the tasks on it are suspended.
-            var idle: Bool { state.withLock { !$0.running && $0.pending.isEmpty } }
-            var waiting: Int { state.withLock { $0.pending.count } }
+                /// Whether no job is running or waiting: the tasks on it are suspended.
+                var idle: Bool { state.withLock { !$0.running && $0.pending.isEmpty } }
+                var waiting: Int { state.withLock { $0.pending.count } }
 
-            func enqueue(_ job: consuming ExecutorJob) {
-                let job = UnownedJob(job)
-                state.withLock { $0.pending.append(job) }
-                queue.async { self.drain() }
-            }
+                func enqueue(_ job: consuming ExecutorJob) {
+                    let job = UnownedJob(job)
+                    state.withLock { $0.pending.append(job) }
+                    queue.async { self.drain() }
+                }
 
-            func hold() { state.withLock { $0.held = true } }
+                func hold() { state.withLock { $0.held = true } }
 
-            func release() {
-                state.withLock { $0.held = false }
-                queue.async { self.drain() }
-            }
+                func release() {
+                    state.withLock { $0.held = false }
+                    queue.async { self.drain() }
+                }
 
-            private func drain() {
-                while let job = state.withLock({ state -> UnownedJob? in
-                    guard !state.held, !state.pending.isEmpty else {
-                        state.running = false
-                        return nil
+                private func drain() {
+                    while let job = state.withLock({ state -> UnownedJob? in
+                        guard !state.held, !state.pending.isEmpty else {
+                            state.running = false
+                            return nil
+                        }
+                        state.running = true
+                        return state.pending.removeFirst()
+                    }) {
+                        job.runSynchronously(on: asUnownedTaskExecutor())
                     }
-                    state.running = true
-                    return state.pending.removeFirst()
-                }) {
-                    job.runSynchronously(on: asUnownedTaskExecutor())
                 }
             }
-        }
-        let executor = HoldingExecutor()
-        let clock = TrackedTestClock()
-        let (stream, continuation) = AsyncStream<Int>.makeStream()
-        defer { continuation.finish() }
-        let upstreamRequests = ManagedAtomic(0)
-        let upstream = stream.handleEvents(receiveNext: {
-            upstreamRequests.wrappingIncrement(ordering: .sequentiallyConsistent)
-        })
-        let received = LockIsolated([Int]())
-        let expected: [Int] = [1, 2]
+            let executor = HoldingExecutor()
+            let clock = TrackedTestClock()
+            let (stream, continuation) = AsyncStream<Int>.makeStream()
+            defer { continuation.finish() }
+            let upstreamRequests = ManagedAtomic(0)
+            let upstream = stream.handleEvents(receiveNext: {
+                upstreamRequests.wrappingIncrement(ordering: .sequentiallyConsistent)
+            })
+            let received = LockIsolated([Int]())
+            let expected: [Int] = [1, 2]
 
-        let throttled = upstream.throttle(for: .seconds(1), clock: clock, latest: true)
-        let task = Task(executorPreference: executor) {
-            for try await element in throttled {
-                received.withValue { $0.append(element) }
+            let throttled = upstream.throttle(for: .seconds(1), clock: clock, latest: true)
+            let task = Task(executorPreference: executor) {
+                for try await element in throttled {
+                    received.withValue { $0.append(element) }
+                }
             }
+            defer { task.cancel() }
+
+            // The upstream is pulled and the consumer is suspended, waiting for an element.
+            try await wait(
+                until: upstreamRequests.load(ordering: .sequentiallyConsistent) == 1 && executor.idle,
+                timeout: .seconds(2))
+            executor.hold()
+            continuation.yield(1)
+            continuation.yield(2)
+            // The third request comes once 2 has been handed to the throttle; the consumer's
+            // resumption with 1 is still held.
+            try await wait(
+                until: upstreamRequests.load(ordering: .sequentiallyConsistent) == 3
+                    && executor.waiting > 0,
+                timeout: .seconds(2))
+            executor.release()
+            try await wait(until: received.value == [1], timeout: .seconds(2))
+            try await clock.advance(by: .seconds(1), whenSleeping: 1)
+            try await wait(until: received.value.count == 2, timeout: .seconds(2))
+
+            #expect(received.value == expected)
         }
-        defer { task.cancel() }
-
-        // The upstream is pulled and the consumer is suspended, waiting for an element.
-        try await wait(
-            until: upstreamRequests.load(ordering: .sequentiallyConsistent) == 1 && executor.idle,
-            timeout: .seconds(2))
-        executor.hold()
-        continuation.yield(1)
-        continuation.yield(2)
-        // The third request comes once 2 has been handed to the throttle; the consumer's
-        // resumption with 1 is still held.
-        try await wait(
-            until: upstreamRequests.load(ordering: .sequentiallyConsistent) == 3
-                && executor.waiting > 0,
-            timeout: .seconds(2))
-        executor.release()
-        try await wait(until: received.value == [1], timeout: .seconds(2))
-        try await clock.advance(by: .seconds(1), whenSleeping: 1)
-        try await wait(until: received.value.count == 2, timeout: .seconds(2))
-
-        #expect(received.value == expected)
-    }
+    #endif
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test func throttleChecksForCancellation_whenLatestIsFalse() async throws {

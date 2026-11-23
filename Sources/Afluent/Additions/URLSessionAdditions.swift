@@ -1,4 +1,6 @@
-#if os(macOS) || os(iOS) || os(tvOS) || os(watchOS) || os(visionOS) || swift(>=6.0)
+// URLSession is Foundation's on Apple platforms and FoundationNetworking's elsewhere; WASI's SDK
+// has neither, so the check names where the type lives rather than a list of operating systems.
+#if canImport(Darwin) || canImport(FoundationNetworking)
     //
     //  URLSessionAdditions.swift
     //

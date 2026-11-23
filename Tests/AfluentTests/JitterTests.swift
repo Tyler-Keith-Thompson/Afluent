@@ -17,19 +17,19 @@ struct JitterTests {
     @Test(.timeLimit(.minutes(1))) func jitterWorksOnAClockWhoseDurationIsNotSwiftDuration()
         async throws
     {
-        /// A whole number of ticks.
+        /// A whole number of ticks, 64-bit so 2^30 × 1024 fits where `Int` is 32 bits (wasm32).
         struct Ticks: DurationProtocol, Hashable {
-            var count: Int
+            var count: Int64
             static var zero: Ticks { Ticks(count: 0) }
             static func + (lhs: Ticks, rhs: Ticks) -> Ticks { Ticks(count: lhs.count + rhs.count) }
             static func - (lhs: Ticks, rhs: Ticks) -> Ticks { Ticks(count: lhs.count - rhs.count) }
             static func < (lhs: Ticks, rhs: Ticks) -> Bool { lhs.count < rhs.count }
-            static func / (lhs: Ticks, rhs: Int) -> Ticks { Ticks(count: lhs.count / rhs) }
-            static func * (lhs: Ticks, rhs: Int) -> Ticks { Ticks(count: lhs.count * rhs) }
+            static func / (lhs: Ticks, rhs: Int) -> Ticks { Ticks(count: lhs.count / Int64(rhs)) }
+            static func * (lhs: Ticks, rhs: Int) -> Ticks { Ticks(count: lhs.count * Int64(rhs)) }
             static func / (lhs: Ticks, rhs: Ticks) -> Double { Double(lhs.count) / Double(rhs.count) }
         }
         struct TickInstant: InstantProtocol {
-            var ticks: Int
+            var ticks: Int64
             func advanced(by duration: Ticks) -> TickInstant { TickInstant(ticks: ticks + duration.count) }
             func duration(to other: TickInstant) -> Ticks { Ticks(count: other.ticks - ticks) }
             static func < (lhs: TickInstant, rhs: TickInstant) -> Bool { lhs.ticks < rhs.ticks }
@@ -52,13 +52,13 @@ struct JitterTests {
                 base: 2, maxDelay: Ticks(count: 1 << 30), jitter: jitter)
             for _ in 0 ..< 40 {
                 _ = try await strategy.backoff(
-                    clock: clock, durationUnit: { (n: Int) in Ticks(count: n * 1024) })
+                    clock: clock, durationUnit: { (n: Int) in Ticks(count: Int64(n) * 1024) })
             }
             return clock.waits
         }
         // The delay without jitter: 2^n × 1024 ticks, capped at 2^30.
         let cap = Ticks(count: 1 << 30)
-        let exact = (1 ... 40).map { n in min(Ticks(count: (1 << n) * 1024), cap) }
+        let exact = (1 ... 40).map { n in min(Ticks(count: (Int64(1) << n) * 1024), cap) }
         let seed: UInt64 = 0x71C5
 
         let full = try await waits(.full(using: SplitMix64(seed: seed)))

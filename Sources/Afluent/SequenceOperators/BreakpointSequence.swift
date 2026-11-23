@@ -11,7 +11,7 @@ extension AsyncSequence where Self: Sendable {
     /// Introduces a conditional breakpoint into the async sequence.
     ///
     /// Use this to pause execution in a debugger when a specified output or error condition is met.
-    /// If the provided closure returns `true`, a `SIGTRAP` signal is raised.
+    /// If the provided closure returns `true`, a `SIGTRAP` signal is raised (a trap on WASI).
     ///
     /// - Parameters:
     ///   - receiveOutput: Closure called with each output. Return `true` to trigger a breakpoint. Default is `nil`.
@@ -35,12 +35,12 @@ extension AsyncSequence where Self: Sendable {
         handleEvents(
             receiveOutput: { output in
                 if try await receiveOutput?(output) == true {
-                    raise(SIGTRAP)
+                    debugTrap()
                 }
             },
             receiveError: { error in
                 if try await receiveError?(error) == true {
-                    raise(SIGTRAP)
+                    debugTrap()
                 }
             })
     }

@@ -59,6 +59,11 @@ extension AsynchronousUnitOfWork {
     /// - Parameter customError: Optional error to throw if a timeout occurs. Defaults to `TimeoutError.timedOut`.
     /// - Returns: An `AsynchronousUnitOfWork` that throws if the duration is exceeded.
     /// - Throws: `TimeoutError` if the duration elapses before completion.
+    ///
+    /// - Note: On WASI, a sleep on a real clock (`ContinuousClock`, `SuspendingClock`) holds the one thread
+    ///   until its deadline, even when other work is ready, and cancelling it doesn't end it sooner. So the
+    ///   timeout waits out its whole duration and can fire before work that would finish sooner has run. A
+    ///   test clock is unaffected.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func timeout(_ duration: Duration, customError: Error? = nil)
         -> some AsynchronousUnitOfWork<Success>
@@ -84,6 +89,11 @@ extension AsynchronousUnitOfWork {
     /// - Parameter customError: Optional error to throw if a timeout occurs. Defaults to `TimeoutError.timedOut`.
     /// - Returns: An `AsynchronousUnitOfWork` that throws if the duration is exceeded.
     /// - Throws: `TimeoutError` if the duration elapses before completion.
+    ///
+    /// - Note: On WASI, a sleep on a real clock (`ContinuousClock`, `SuspendingClock`) holds the one thread
+    ///   until its deadline, even when other work is ready, and cancelling it doesn't end it sooner. So the
+    ///   timeout waits out its whole duration and can fire before work that would finish sooner has run. A
+    ///   test clock is unaffected.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func timeout<C: Clock>(
         _ duration: C.Duration, clock: C, tolerance: C.Duration? = nil, customError: Error? = nil

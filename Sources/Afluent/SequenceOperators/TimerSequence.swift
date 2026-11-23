@@ -102,6 +102,11 @@ extension TimerSequence where C == ContinuousClock {
     /// }
     /// // Prints a line every second with the current instant.
     /// ```
+    ///
+    /// - Note: On WASI, a sleep on a real clock (`ContinuousClock`, `SuspendingClock`) holds the one thread
+    ///   until its deadline, even when other work is ready, and cancelling it doesn't end it sooner. So each
+    ///   tick's sleep holds up other work until it ends, and cancelling the sequence doesn't end a pending
+    ///   sleep early. A test clock is unaffected.
     public static func publish(
         every interval: C.Duration, tolerance: C.Duration? = nil, jitter: BackoffJitter = .none
     ) -> AsyncSequences.TimerSequence<C> {
@@ -133,6 +138,11 @@ extension TimerSequence {
     /// }
     /// // Prints a line every second with the current instant.
     /// ```
+    ///
+    /// - Note: On WASI, a sleep on a real clock (`ContinuousClock`, `SuspendingClock`) holds the one thread
+    ///   until its deadline, even when other work is ready, and cancelling it doesn't end it sooner. So each
+    ///   tick's sleep holds up other work until it ends, and cancelling the sequence doesn't end a pending
+    ///   sleep early. A test clock is unaffected.
     public static func publish(
         every interval: C.Duration, tolerance: C.Duration? = nil, clock: C,
         jitter: BackoffJitter = .none

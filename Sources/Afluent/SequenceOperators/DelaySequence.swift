@@ -92,6 +92,10 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///     print(value)
     /// }
     /// ```
+    ///
+    /// - Note: On WASI, a sleep on a real clock (`ContinuousClock`, `SuspendingClock`) holds the one thread
+    ///   until its deadline, even when other work is ready, and cancelling it doesn't end it sooner. So each
+    ///   delay waits out its whole duration, even when cancelled. A test clock is unaffected.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func delay(
         for interval: Duration, tolerance: Duration, jitter: BackoffJitter = .none
@@ -115,6 +119,10 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     ///     print(value)
     /// }
     /// ```
+    ///
+    /// - Note: On WASI, a sleep on a real clock (`ContinuousClock`, `SuspendingClock`) holds the one thread
+    ///   until its deadline, even when other work is ready, and cancelling it doesn't end it sooner. So each
+    ///   delay waits out its whole duration, even when cancelled. A test clock is unaffected.
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     public func delay<C: Clock>(
         for interval: C.Duration, tolerance: C.Duration? = nil, clock: C,

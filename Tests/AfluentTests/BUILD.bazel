@@ -3,8 +3,8 @@
 load("@rules_apple//apple:macos.bzl", "macos_unit_test")
 load("//tools:swift_rules.bzl", "swift_library", "swift_test")
 
-# The tests, built once and linked into two runners.
-# Tagged `debug-only`: none of these relies on speed, so
+# The tests, built once and linked into two runners; the speed-reliant ones, in Performance/, are
+# AfluentPerformanceTests below. Tagged `debug-only`: none of these relies on speed, so
 # `--config=release` neither builds nor runs them (.bazelrc).
 swift_library(
     name = "AfluentTestsLibrary",
@@ -12,7 +12,7 @@ swift_library(
     # Tests are found through metadata the linker would otherwise drop, since nothing
     # references them by name.
     alwayslink = True,
-    srcs = glob(["**/*.swift"]),
+    srcs = glob(["**/*.swift"], exclude = ["Performance/**"]),
     module_name = "AfluentTests",
     tags = ["debug-only"],
     # Read by //:package_swift_test, which checks Package.swift against the Bazel graph.
@@ -55,4 +55,55 @@ macos_unit_test(
     # Visible so `//:xcodeproj` can name it as a top-level target.
     visibility = ["//visibility:public"],
     deps = [":AfluentTestsLibrary"],
+)
+
+# The speed-reliant tests (PERFORMANCE_TESTS in scripts/modules.py): debug and `--config=release`
+# both run them.
+swift_library(
+    name = "AfluentPerformanceTestsLibrary",
+    testonly = True,
+    # Tests are found through metadata the linker would otherwise drop, since nothing
+    # references them by name.
+    alwayslink = True,
+    srcs = glob(["Performance/**/*.swift"]),
+    module_name = "AfluentPerformanceTests",
+    # Read by //:package_swift_test, which checks Package.swift against the Bazel graph.
+    visibility = ["//:__pkg__"],
+    deps = [
+        "//Sources/Afluent",
+        "//Sources/AfluentTesting",
+        "@swiftpkg_swift_concurrency_extras//:ConcurrencyExtras",
+        "@swiftpkg_swift_clocks//:Clocks",
+        "@swiftpkg_swift_atomics//:Atomics",
+        "@swiftpkg_swiftprng//:Generators",
+        "@swiftpkg_swift_property_based//:PropertyBased",
+    ] + select({
+        # Apple-only packages (APPLE_ONLY_PACKAGES in scripts/modules.py).
+        "@platforms//os:macos": [
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubs",
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubsSwift",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+# `bazel test` / `just test`: a standalone executable, fast to start and run in Bazel's sandbox.
+swift_test(
+    name = "AfluentPerformanceTests",
+    size = "medium",
+    deps = [":AfluentPerformanceTestsLibrary"],
+)
+
+# The generated Xcode project: a real .xctest bundle (an MH_BUNDLE), which is what Xcode's test
+# runner loads. `manual` keeps it out of `bazel test //...`; it runs through xcodebuild, so it
+# is only for Xcode. XCTest refuses exit tests in a sandboxed host, hence `no-sandbox`.
+macos_unit_test(
+    name = "AfluentPerformanceTestsBundle",
+    bundle_name = "AfluentPerformanceTests",
+    size = "medium",
+    minimum_os_version = "13.0",
+    tags = ["manual", "no-sandbox"],
+    # Visible so `//:xcodeproj` can name it as a top-level target.
+    visibility = ["//visibility:public"],
+    deps = [":AfluentPerformanceTestsLibrary"],
 )

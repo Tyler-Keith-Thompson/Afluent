@@ -3,4 +3,5 @@
 # The test packages that also hold a speed-reliant target, `<Name>PerformanceTests` built from
 # Performance/, which the root BUILD.bazel cannot find from the directory layout alone.
 PERFORMANCE_TEST_PACKAGES = [
+    "Tests/AfluentTests",
 ]

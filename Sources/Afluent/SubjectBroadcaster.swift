@@ -11,15 +11,15 @@
 /// it, so the subscriber sees exactly the current value followed by later sends.
 final class SubjectBroadcaster<Element: Sendable>: Sendable {
     fileprivate struct Subscriber: Sendable {
-        var buffer = [Element]()
+        var buffer = FIFOQueue<Element>()
         var terminal: Result<Element?, any Error>?
         var continuation: UnsafeContinuation<Result<Element?, any Error>, Never>?
 
         mutating func drain() {
             guard let continuation else { return }
-            if !buffer.isEmpty {
+            if let element = buffer.popFirst() {
                 self.continuation = nil
-                continuation.resume(returning: .success(buffer.removeFirst()))
+                continuation.resume(returning: .success(element))
             } else if let terminal {
                 self.continuation = nil
                 // A failure is delivered once; afterwards the subscriber is simply finished.

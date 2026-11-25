@@ -15,9 +15,10 @@ struct CriticalStateTests {
         #expect(freshIsUnique)
 
         let copy = state
-        let copiedIsUnique = state.isKnownUniquelyReferenced()
+        // `withExtendedLifetime` keeps the copy alive across the check; an optimized build ends an
+        // unused copy's lifetime before it, so the state would read as unique again.
+        let copiedIsUnique = withExtendedLifetime(copy) { state.isKnownUniquelyReferenced() }
         #expect(copiedIsUnique == false)
-        _ = copy
     }
 
     @Test("Concurrent critical regions on a CriticalState don't lose updates")

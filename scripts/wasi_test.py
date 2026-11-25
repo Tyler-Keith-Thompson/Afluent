@@ -110,8 +110,10 @@ def main():
         # returns through its caller's continuation, so a loop of awaits that never suspend (ten
         # thousand consecutive retries) deepens both stacks until something suspends. 8 MB of
         # linear-memory stack and wasmtime's 16 MB call stack both overflow on those; these hold.
+        # Afluent's own: `-enable-testing`, because suites `@testable import Afluent`, which a release
+        # build otherwise refuses ("not compiled for testing").
         build = ["swiftly", "run", "swift", "build", "-c", args.configuration, "--build-tests",
-                 "--swift-sdk", sdk, "--scratch-path", SCRATCH,
+                 "-Xswiftc", "-enable-testing", "--swift-sdk", sdk, "--scratch-path", SCRATCH,
                  "-Xlinker", "-z", "-Xlinker", f"stack-size={LINEAR_MEMORY_STACK}", f"+{args.swift}"]
         if run(build, env, os.path.join(logs, tag + "-build.log"), args.timeout) != 0:
             print(f"{tag} build FAILED ({', '.join(group)}): see .build/wasm/logs/{tag}-build.log")

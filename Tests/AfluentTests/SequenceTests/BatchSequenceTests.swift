@@ -771,10 +771,13 @@ struct BatchSequenceTests {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("The shorthand spelling infers the element from the upstream")
     func shorthandSpellingInfersTheElement() async throws {
+        // A clock nobody advances, so the count alone ends each batch. On a real clock the timer can
+        // fire between elements: on WASI's one thread its sleep holds the thread until the deadline.
+        let clock = TrackedTestClock()
         let expected: [[Int]] = [[1, 2, 3], [4]]
 
         var actual = [[Int]]()
-        for try await batch in [1, 2, 3, 4].async.batch(strategy: .either(.count(3), .time(interval: .seconds(1), clock: ContinuousClock()))) {
+        for try await batch in [1, 2, 3, 4].async.batch(strategy: .either(.count(3), .time(interval: .seconds(1), clock: clock))) {
             actual.append(batch)
         }
 

@@ -103,6 +103,11 @@ def main():
     args = parser.parse_args()
     sdk = args.sdk or f"swift-{args.swift}-RELEASE_wasm"
     targets = args.targets.split(",") if args.targets else all_targets()
+    # Afluent's own: a name the manifest doesn't know would build nothing for it and pass silently.
+    unknown = sorted(set(targets) - set(all_targets()))
+    if unknown:
+        print("Unknown test targets: " + ", ".join(unknown))
+        return 2
     env = dict(os.environ)
     if args.xcode:
         env["DEVELOPER_DIR"] = os.path.join(args.xcode, "Contents", "Developer")
@@ -130,6 +135,14 @@ def main():
             print(f"{tag} FAILED ({', '.join(group)}): the build wrote no test binary to .build/wasm/{args.configuration}")
             failed.append(tag)
             continue
+        # Afluent's own: with per-target runners, every target in the group must have one, or its
+        # tests would be skipped while the run reports success.
+        if binaries[0].endswith("-test-runner.wasm"):
+            missing = [target for target in group
+                       if not os.path.isfile(os.path.join(products, f"{target}-test-runner.wasm"))]
+            if missing:
+                print(f"{tag} FAILED: the build wrote no runner for {', '.join(missing)}")
+                failed.append(f"{tag} {','.join(missing)}")
         for binary in binaries:
             name = os.path.basename(binary).removesuffix(".wasm").removesuffix(".xctest")
             # In parallel by default: on WASI a time limit's timer holds the one thread until it

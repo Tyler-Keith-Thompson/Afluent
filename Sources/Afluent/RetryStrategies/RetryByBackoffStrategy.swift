@@ -147,7 +147,9 @@ extension BackoffStrategy where Self == ExponentialBackoffStrategy<ContinuousClo
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrategy {
     let base: UInt
-    var count = 1
+    // A `UInt`, like `maxCount`: it only grows while below `maxCount`, so `+= 1` can't overflow, and the
+    // count saturates at `UInt.max` when `maxCount` is `UInt.max` (no limit) rather than trapping.
+    var count: UInt = 1
     let maxCount: UInt
     let maxDelay: Clock.Duration
     let jitter: BackoffJitter
@@ -200,11 +202,11 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
     public func backoff<T: BinaryInteger>(clock: Clock, durationUnit: ClockDurationUnit<Clock, T>)
         async throws -> Bool
     {
-        guard count < maxCount else { return false }
+        guard maxCount == .max || count < maxCount else { return false }
         // Past what `T` holds, the delay is already beyond any cap.
         let delay = T(exactly: pow(Double(base), Double(count))).map(durationUnit) ?? maxDelay
         // Spent before the sleep, so a reset() during it isn't undone when the sleep ends.
-        count += 1
+        if count < .max { count += 1 }
         try await clock.sleep(for: jitter.jittered(min(delay, maxDelay), upTo: maxDelay))
         return true
     }

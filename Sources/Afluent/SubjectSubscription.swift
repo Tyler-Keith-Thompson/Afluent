@@ -35,8 +35,8 @@
 /// let second = try await subscription.next() // "login"
 /// ```
 ///
-/// - Important: Wait on a subscription from one task at a time. Calling ``next()`` while another call on the same
-///   subscription is still waiting traps.
+/// Wait on a subscription from one task at a time. A call to ``next()`` made while another call on the same
+/// subscription is waiting throws ``ConcurrentNext``, and the waiting call carries on as if it hadn't been made.
 public struct SubjectSubscription<Element: Sendable>: AsyncIteratorProtocol, Sendable {
     let subscription: SubjectBroadcaster<Element>.Subscription
 
@@ -44,11 +44,17 @@ public struct SubjectSubscription<Element: Sendable>: AsyncIteratorProtocol, Sen
     ///
     /// - Returns: The next value, or `nil` once the subject has finished and every buffered value has been
     ///   returned.
-    /// - Throws: The error the subject finished with, after every buffered value has been returned; or
-    ///   `CancellationError` if the calling task is cancelled before a value arrives, which leaves the subscription
-    ///   and its buffer as they were.
-    /// - Precondition: No other call to `next()` on this subscription is waiting.
+    /// - Throws: The error the subject finished with, after every buffered value has been returned;
+    ///   `CancellationError` if the calling task is cancelled before a value arrives; or ``ConcurrentNext`` if
+    ///   another call to `next()` on this subscription is waiting. Neither of the last two changes the subscription,
+    ///   its buffer or the waiting call.
     public func next() async throws -> Element? {
         try await subscription.next()
+    }
+
+    /// The error ``next()`` throws when another call on the same subscription is already waiting.
+    public struct ConcurrentNext: Error, Equatable {
+        /// Creates the error.
+        public init() {}
     }
 }

@@ -104,3 +104,12 @@ extension BatchStrategy {
         EitherBatchStrategy([first] + rest)
     }
 }
+
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+extension EitherBatchStrategy: ValidatedBatchStrategy {
+    func validate() throws {
+        for case let strategy as any ValidatedBatchStrategy in strategies {
+            try strategy.validate()
+        }
+    }
+}

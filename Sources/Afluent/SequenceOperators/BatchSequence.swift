@@ -28,6 +28,9 @@ extension AsyncSequences {
                     throw CancellationError()
                 }
                 if iterator == nil {
+                    // Before anything starts, so an out-of-range argument is the first thing the
+                    // caller hears and no element is read or emitted.
+                    try (strategy as? any ValidatedBatchStrategy)?.validate()
                     let (stream, continuation) = start()
                     iterator = stream.makeAsyncIterator()
                     self.continuation = continuation

@@ -24,15 +24,29 @@ public struct CountBatchStrategy<Element>: BatchStrategy {
 
     /// Creates a strategy that flushes every `count` elements.
     ///
-    /// - Parameter count: The number of elements per batch.
-    /// - Precondition: `count` is at least 1.
+    /// A `count` below 1 is accepted here, and the batched sequence throws ``NonPositiveCount``
+    /// from its first `next()`.
+    ///
+    /// - Parameter count: The number of elements per batch: at least 1.
     public init(_ count: Int) {
-        precondition(count >= 1, "A batch's count must be at least 1, not \(count)")
         self.count = count
     }
 
     public func flushes(pending: [Element]) -> Bool {
         pending.count >= count
+    }
+
+    /// The error a batched sequence throws when its ``CountBatchStrategy`` has a count below 1.
+    public struct NonPositiveCount: Error, Equatable {
+        /// Creates the error.
+        public init() {}
+    }
+}
+
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+extension CountBatchStrategy: ValidatedBatchStrategy {
+    func validate() throws {
+        guard count >= 1 else { throw NonPositiveCount() }
     }
 }
 
@@ -47,9 +61,9 @@ extension BatchStrategy {
     /// }
     /// ```
     ///
-    /// - Parameter count: The number of elements per batch.
+    /// - Parameter count: The number of elements per batch: at least 1, or the batched sequence
+    ///   throws ``CountBatchStrategy/NonPositiveCount`` from its first `next()`.
     /// - Returns: A ``CountBatchStrategy``.
-    /// - Precondition: `count` is at least 1.
     public static func count<Batched>(_ count: Int) -> CountBatchStrategy<Batched>
     where Self == CountBatchStrategy<Batched> {
         CountBatchStrategy(count)

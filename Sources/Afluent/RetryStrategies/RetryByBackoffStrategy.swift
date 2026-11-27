@@ -168,7 +168,9 @@ extension BackoffStrategy where Self == ExponentialBackoffStrategy<ContinuousClo
     ///   - jitter: How each delay is randomized. Defaults to ``BackoffJitter/none``.
     /// - Returns: An `ExponentialBackoffStrategy` with those delays.
     ///
-    /// Traps if `initialDelay` is negative, or if `multiplier` is less than `1` or isn't finite.
+    /// A negative `initialDelay`, or a `multiplier` below `1` or not finite, is accepted here, and
+    /// the first retry throws ``ExponentialBackoffStrategy/NegativeInitialDelay`` or
+    /// ``ExponentialBackoffStrategy/InvalidMultiplier`` instead of waiting.
     public static func exponential(
         initialDelay: ContinuousClock.Duration, multiplier: Double = 2, maxCount: UInt = .max,
         maxDelay: ContinuousClock.Duration = .seconds(Int.max), jitter: BackoffJitter = .none
@@ -294,20 +296,32 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
     ///   - jitter: How each delay is randomized, after it is capped at `maxDelay`; the jittered
     ///     delay is capped at `maxDelay` too. Defaults to ``BackoffJitter/none``.
     ///
-    /// Traps if `initialDelay` is negative, or if `multiplier` is less than `1` or isn't finite.
+    /// A negative `initialDelay`, or a `multiplier` below `1` or not finite, is accepted here, and
+    /// ``backoff(clock:durationUnit:)`` throws ``NegativeInitialDelay`` or ``InvalidMultiplier``
+    /// instead of waiting, so the retry ends with that error.
     public init(
         initialDelay: Duration, multiplier: Double = 2, maxCount: UInt = .max,
         maxDelay: Duration = .seconds(Int.max), jitter: BackoffJitter = .none
     )
     where Clock.Duration == Duration {
-        precondition(initialDelay >= .zero, "initialDelay must not be negative")
-        precondition(
-            multiplier.isFinite && multiplier >= 1, "multiplier must be finite and at least 1")
         self.schedule = .geometric(
             initial: initialDelay, multiplier: multiplier, next: initialDelay)
         self.maxCount = maxCount
         self.maxDelay = maxDelay
         self.jitter = jitter
+    }
+
+    /// The error ``backoff(clock:durationUnit:)`` throws when the strategy's initial delay is negative.
+    public struct NegativeInitialDelay: Error, Equatable {
+        /// Creates the error.
+        public init() {}
+    }
+
+    /// The error ``backoff(clock:durationUnit:)`` throws when the strategy's multiplier is below `1`
+    /// or isn't finite.
+    public struct InvalidMultiplier: Error, Equatable {
+        /// Creates the error.
+        public init() {}
     }
 
     /// Starts the delays over, as if no retry had happened yet.
@@ -322,9 +336,19 @@ public actor ExponentialBackoffStrategy<Clock: _Concurrency.Clock>: BackoffStrat
         jitter.reset()
     }
 
+    /// Waits the next delay and reports whether to retry.
+    ///
+    /// - Returns: `false` once `maxCount` attempts have been made, `true` after waiting otherwise.
+    /// - Throws: ``NegativeInitialDelay`` or ``InvalidMultiplier`` when the strategy was made with
+    ///   that argument out of range, checked before `maxCount`; `CancellationError` if the wait is
+    ///   cancelled.
     public func backoff<T: BinaryInteger>(clock: Clock, durationUnit: ClockDurationUnit<Clock, T>)
         async throws -> Bool
     {
+        if case .geometric(let initial, let multiplier, _) = schedule {
+            guard initial >= .zero else { throw NegativeInitialDelay() }
+            guard multiplier.isFinite, multiplier >= 1 else { throw InvalidMultiplier() }
+        }
         guard maxCount == .max || count < maxCount else { return false }
         let delay: Clock.Duration
         switch schedule {

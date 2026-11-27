@@ -14,6 +14,22 @@ bazel_dep(name = "rules_swift", version = "4.3.0")
 # on it failed before it ran.
 bazel_dep(name = "rules_apple", version = "5.4.0")
 
+# rules_swift's @system_sdk holds only the macOS and iOS SDKs unless the root module names more,
+# and analysis of a watchOS, tvOS or visionOS target fails without its SDK there. //Platforms
+# builds Afluent for each of them (PLATFORMS in scripts/modules.py).
+system_sdk = use_extension("@rules_swift//swift:extensions.bzl", "system_sdk")
+system_sdk.configure_sdks(names = [
+    "AppleTVOS",
+    "AppleTVSimulator",
+    "MacOSX",
+    "WatchOS",
+    "WatchSimulator",
+    "XROS",
+    "XRSimulator",
+    "iPhoneOS",
+    "iPhoneSimulator",
+])
+
 # ── Xcode project generation ─────────────────────────────────────────
 # Bazel is the build system, but the package still has to be workable in Xcode (debugger,
 # test navigator, Instruments). `just generate` builds a project from the Bazel graph, so the

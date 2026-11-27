@@ -84,3 +84,7 @@ requirements are no longer visible, so a type outside Afluent can't conform.
   every operator and `some AsynchronousUnitOfWork<T>` work as before.
 - **A type of your own that conformed** stops compiling. Build it from `DeferredTask { }` and
   Afluent's operators instead, or wrap an existing unit of work with `eraseToAnyUnitOfWork()`.
+- **A conformer that carried data beside its work** (a progress stream, buffer-drop reports, a
+  handle) returns `work.carrying(data)` instead: a `Workers.Carrying` that runs, executes and
+  cancels `work`, composes with every operator, and holds the data in `value`. Declaring your
+  type's own conformance, even one that forwards to a unit of work it holds, needs the SPI.

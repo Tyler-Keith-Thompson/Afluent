@@ -31,6 +31,22 @@ swift_library(
             "@swiftpkg_ohhttpstubs//:OHHTTPStubs",
             "@swiftpkg_ohhttpstubs//:OHHTTPStubsSwift",
         ],
+        "@platforms//os:ios": [
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubs",
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubsSwift",
+        ],
+        "@platforms//os:tvos": [
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubs",
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubsSwift",
+        ],
+        "@platforms//os:watchos": [
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubs",
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubsSwift",
+        ],
+        "@platforms//os:visionos": [
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubs",
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubsSwift",
+        ],
         "//conditions:default": [],
     }),
 )
@@ -80,6 +96,22 @@ swift_library(
     ] + select({
         # Apple-only packages (APPLE_ONLY_PACKAGES in scripts/modules.py).
         "@platforms//os:macos": [
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubs",
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubsSwift",
+        ],
+        "@platforms//os:ios": [
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubs",
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubsSwift",
+        ],
+        "@platforms//os:tvos": [
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubs",
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubsSwift",
+        ],
+        "@platforms//os:watchos": [
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubs",
+            "@swiftpkg_ohhttpstubs//:OHHTTPStubsSwift",
+        ],
+        "@platforms//os:visionos": [
             "@swiftpkg_ohhttpstubs//:OHHTTPStubs",
             "@swiftpkg_ohhttpstubs//:OHHTTPStubsSwift",
         ],

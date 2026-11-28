@@ -1,5 +1,28 @@
 # First-party Swift rule wrappers; see swift_rules.bzl.
 
+load(":python_test.bzl", "python_test")
+
+# tools/bazel's daily sweep of stale output bases (tools/sweep-output-bases).
+python_test(
+    name = "sweep_output_bases_test",
+    size = "small",
+    src = "sweep_output_bases_test.py",
+    data = [
+        "bazel",
+        "sweep-output-bases",
+    ],
+)
+
+# Source locations for the DocC rules (tools/docc.bzl), wherever a module's compile ran.
+exports_files(["docc_symbol_graph.py"])
+
+python_test(
+    name = "docc_symbol_graph_test",
+    size = "small",
+    src = "docc_symbol_graph_test.py",
+    data = ["docc_symbol_graph.py"],
+)
+
 # Debug builds (the default; `--config=release` builds opt). Modules that generate mocks define
 # MOCKING only under this setting (MOCKING in scripts/modules.py).
 config_setting(
@@ -7,3 +30,7 @@ config_setting(
     values = {"compilation_mode": "dbg"},
     visibility = ["//visibility:public"],
 )
+
+# The Info.plist of a module's resource bundle on Apple platforms (RESOURCES in scripts/modules.py,
+# tools/resources.bzl): the keys SwiftPM writes into the bundle it builds for the same resources.
+exports_files(["ResourceBundleInfo.plist"])

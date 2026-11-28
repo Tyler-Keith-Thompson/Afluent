@@ -1,0 +1,4 @@
+# Bazel names the convenience symlink to the output tree after the checkout's directory
+# (bazel-<dir>), so a worktree or a clone under another name gets one .bazelignore can't name in
+# advance. Without this, `//...` would follow it into the output tree.
+ignore_directories(["bazel-*"])

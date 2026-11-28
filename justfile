@@ -3,8 +3,11 @@ BAZEL := "bazel"
 
 # Optimized builds use a separate output base: switching --compilation_mode changes the
 # configuration, and sharing a base with debug builds would discard the analysis cache on every
-# switch (which .bazelrc refuses).
-BAZEL_RELEASE := "bazel --output_base=" + home_directory() + "/Library/Caches/bazel-afluent-release"
+# switch (which .bazelrc refuses). Each checkout gets its own, so two never wait on one server's
+# lock or overwrite each other's outputs. It sits in Bazel's output user root under a 32-digit hex
+# name like the debug base's, where tools/sweep-output-bases deletes it once its checkout is gone.
+BAZEL_RELEASE_OUTPUT_BASE := cache_directory() / "bazel" / ("_bazel_" + env("USER", "root")) / replace_regex(sha256(PROJECT_ROOT + ":release"), '^(.{32}).*$', '$1')
+BAZEL_RELEASE := "bazel --output_base=" + BAZEL_RELEASE_OUTPUT_BASE
 
 # SwiftPM runs through Xcode's default toolchain. A development snapshot selected through
 # TOOLCHAINS (or first on PATH via swiftly) can fail to read the SDK's Testing module.
@@ -56,6 +59,23 @@ verify: test spm-test
 modules:
     python3 {{PROJECT_ROOT}}/scripts/modules.py
 
+[doc('Refresh the checked-in copies of generated sources (GENERATED_SOURCES in scripts/modules.py) that SwiftPM compiles')]
+sources:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd {{PROJECT_ROOT}}
+    targets=$({{BAZEL}} query 'attr(generator_function, generated_swift_source, kind(genrule, //Sources/... + //Tests/...))')
+    [ -n "$targets" ] || { echo "No generated sources (GENERATED_SOURCES in scripts/modules.py)."; exit 0; }
+    {{BAZEL}} build $targets
+    for target in $targets; do
+        package="${target#//}"; package="${package%%:*}"
+        for output in $({{BAZEL}} cquery "$target" --output=files 2>/dev/null); do
+            copy="$package/Generated/${output#*/bin/$package/}"
+            mkdir -p "$(dirname "$copy")"
+            install -m 644 "$output" "$copy"
+        done
+    done
+
 [doc('Build the combined DocC site for every library module into .build/docs (what the DocC workflow publishes)')]
 docs:
     {{BAZEL}} build //:docs
@@ -64,7 +84,7 @@ docs:
 
 [doc('SwiftPM tests on wasm32-wasi under wasmtime, a 32-bit Int, in groups of targets, e.g. just wasi-test, just wasi-test -c release, or just wasi-test --targets GreetingsTests')]
 wasi-test *args="":
-    python3 -u {{PROJECT_ROOT}}/scripts/wasi_test.py {{args}}
+    python3 -u {{PROJECT_ROOT}}/scripts/wasi_test.py --serial {{args}}
 
 # The checkout of BenchmarkHarness whose benchmark-harness tool records simulated baselines.
 BENCHMARK_HARNESS := env("BENCHMARK_HARNESS", home_directory() / "workspace" / "BenchmarkHarness")

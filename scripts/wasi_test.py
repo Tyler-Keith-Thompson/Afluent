@@ -14,6 +14,12 @@ pass wasmtime's limit of a million functions, so the targets run in groups of `-
 Package.swift then declares only its test targets and leaves out each test file with an exit test
 (WASI cannot start a child process). Builds go to .build/wasm, logs to .build/wasm/logs.
 
+The toolchain writes one `<Target>-test-runner.wasm` per test target, or, if older, one
+`<Project>PackageTests.xctest` for the group; each runs in turn. Without wasm tail calls,
+every await that doesn't suspend deepens both stacks, so the binaries link a 64 MB stack and run
+with a 256 MB wasm stack, enough for a 10,000-deep chain of such awaits. `--serial` runs a binary's
+tests one at a time (Swift Testing's `--no-parallel`).
+
 If the swift.org toolchain crashes compiling the manifest against a newer Xcode's macOS SDK, pass
 an older Xcode: `--xcode /Applications/Xcode-26.2.0.app` (or set <PROJECT>_WASI_XCODE).
 """
@@ -29,9 +35,6 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import modules  # noqa: E402
 
 SCRATCH = os.path.join(ROOT, ".build", "wasm")
-# Stack sizes, in bytes, for the test binaries: see the build command in `main`.
-LINEAR_MEMORY_STACK = 64 << 20
-WASM_CALL_STACK = 256 << 20
 
 
 def all_targets():
@@ -43,20 +46,6 @@ def all_targets():
     return names
 
 
-# Until PT-48: this, the 6.4.3 default, the stack sizes and --no-parallel differ from the template's
-# copy; take the template's side on an update once PT-48 has landed.
-def test_binaries(products, group):
-    """The test binaries the build wrote for a group of targets.
-
-    Swift 6.3's build links every test target into one `<Project>PackageTests.xctest`; Swift 6.4's
-    writes a `<Target>-test-runner.wasm` per test target instead.
-    """
-    runners = [os.path.join(products, f"{target}-test-runner.wasm") for target in group]
-    if all(os.path.exists(runner) for runner in runners):
-        return runners
-    return [os.path.join(products, f"{modules.PROJECT}PackageTests.xctest")]
-
-
 def run(cmd, env, log, timeout):
     with open(log, "w") as f:
         try:
@@ -66,20 +55,39 @@ def run(cmd, env, log, timeout):
             return -1
 
 
-def group_failed(statuses, lines, binaries):
-    """Whether a group failed: a runner exited nonzero, an issue was recorded, or a runner wrote no
-    summary line (it trapped or was killed before its run finished).
+def group_failed(status, lines):
+    """Whether a binary's run failed: it exited nonzero, recorded an issue, or wrote no summary line
+    (it trapped or was killed before the run finished).
 
-    Until PT-48: the template's copy excuses "Time limit was exceeded" issues and ignores exit
-    codes. Here TimeLimitOnWASI.swift keeps every `.timeLimit` from reaching WASI, so a time-limit
-    issue means that overload stopped winning, and it fails the run like any other issue.
+    Afluent's own: the template's copy excuses "Time limit was exceeded" issues and so ignores the
+    exit status. Here Tests/AfluentTests/TestHelpers/TimeLimitOnWASI.swift keeps every `.timeLimit`
+    from reaching WASI (`just wasi-test` runs `--serial`, where each timer would cost its whole
+    limit), so a time-limit issue means that overload stopped winning, and fails the run like any
+    other issue.
     """
-    summaries = [line for line in lines if re.search(r"Test run with \d+ tests", line)]
-    return any(status != 0 for status in statuses) or bool(issues(lines)) or len(summaries) < len(binaries)
+    summary = any(re.search(r"Test run with \d+ tests?", line) for line in lines)
+    return status != 0 or bool(issues(lines)) or not summary
 
 
 def issues(lines):
     return [line for line in lines if "recorded an issue" in line]
+
+
+# The stacks a deep chain of non-suspending awaits needs: the linear-memory stack the binary links
+# with, and wasmtime's call stack.
+LINEAR_STACK = 64 * 1024 * 1024
+WASM_STACK = 256 * 1024 * 1024
+
+
+def test_binaries(products, group):
+    """The test binaries a group's build wrote: one `<Target>-test-runner.wasm` per target, else (an
+    older toolchain) the one `<Project>PackageTests.xctest`."""
+    runners = [os.path.join(products, f"{target}-test-runner.wasm") for target in group]
+    runners = [path for path in runners if os.path.isfile(path)]
+    if runners:
+        return runners
+    bundle = os.path.join(products, f"{modules.PROJECT}PackageTests.xctest")
+    return [bundle] if os.path.isfile(bundle) else []
 
 
 def main():
@@ -91,9 +99,15 @@ def main():
     parser.add_argument("--sdk", default=None, help="default: swift-<swift>-RELEASE_wasm")
     parser.add_argument("--xcode", default=os.environ.get(f"{modules.PROJECT.upper()}_WASI_XCODE"))
     parser.add_argument("--timeout", type=int, default=3600, help="seconds per build and per run")
+    parser.add_argument("--serial", action="store_true", help="run each binary's tests one at a time")
     args = parser.parse_args()
     sdk = args.sdk or f"swift-{args.swift}-RELEASE_wasm"
     targets = args.targets.split(",") if args.targets else all_targets()
+    # Afluent's own: a name the manifest doesn't know would build nothing for it and pass silently.
+    unknown = sorted(set(targets) - set(all_targets()))
+    if unknown:
+        print("Unknown test targets: " + ", ".join(unknown))
+        return 2
     env = dict(os.environ)
     if args.xcode:
         env["DEVELOPER_DIR"] = os.path.join(args.xcode, "Contents", "Developer")
@@ -106,50 +120,58 @@ def main():
         group = targets[start:start + args.group_size]
         env[f"{modules.PROJECT.upper()}_WASI_TESTS"] = ",".join(group)
         tag = f"{args.configuration}-{start // args.group_size:02}"
-        # Without WebAssembly tail calls, an async function that finishes without suspending
-        # returns through its caller's continuation, so a loop of awaits that never suspend (ten
-        # thousand consecutive retries) deepens both stacks until something suspends. 8 MB of
-        # linear-memory stack and wasmtime's 16 MB call stack both overflow on those; these hold.
-        # Afluent's own: `-enable-testing`, because suites `@testable import Afluent`, which a release
-        # build otherwise refuses ("not compiled for testing").
+        # `-enable-testing`: suites `@testable import Afluent`, which a release build otherwise
+        # refuses ("not compiled for testing").
         build = ["swiftly", "run", "swift", "build", "-c", args.configuration, "--build-tests",
                  "-Xswiftc", "-enable-testing", "--swift-sdk", sdk, "--scratch-path", SCRATCH,
-                 "-Xlinker", "-z", "-Xlinker", f"stack-size={LINEAR_MEMORY_STACK}", f"+{args.swift}"]
+                 # The linear-memory stack, which deep chains of non-suspending awaits overrun.
+                 "-Xlinker", "-z", "-Xlinker", f"stack-size={LINEAR_STACK}", f"+{args.swift}"]
         if run(build, env, os.path.join(logs, tag + "-build.log"), args.timeout) != 0:
             print(f"{tag} build FAILED ({', '.join(group)}): see .build/wasm/logs/{tag}-build.log")
             failed.append(tag)
             continue
-        # One test at a time: on WASI a pending sleep can hold the one thread until its deadline
-        # (and cancelling it doesn't end it sooner), so in parallel one test's sleep stalls the
-        # tasks another is waiting on. For the same reason a time limit's timer would stall the
-        # body it bounds; Tests/AfluentTests/TestHelpers/TimeLimitOnWASI.swift turns `.timeLimit`
-        # off there, and `--timeout` bounds the run instead.
-        log = os.path.join(logs, tag + "-test.log")
-        statuses = []
-        with open(log, "w"):
-            pass
         binaries = test_binaries(products, group)
-        for binary in binaries:
-            test = ["wasmtime", "run", "-W", f"max-wasm-stack={WASM_CALL_STACK}", "--dir", ".", binary,
-                    "--testing-library", "swift-testing", "--no-parallel"]
-            part = log + ".part"
-            statuses.append(run(test, env, part, args.timeout))
-            with open(log, "a") as whole, open(part, errors="replace") as f:
-                whole.write(f.read())
-            os.remove(part)
-        lines = open(log, errors="replace").read().splitlines()
-        summary = [line.strip() for line in lines if re.search(r"Test run with \d+ tests", line)]
-        recorded = issues(lines)
-        print(f"{tag} exit {statuses}: {summary[-1] if summary else 'no summary'}; {len(recorded)} issues"
-              f" ({', '.join(group)})")
-        for line in recorded[:20]:
-            print("    " + line[:300])
-        # A trap ends the binary: name the test frames of its backtrace.
-        frames = [line.strip() for line in lines if re.search(r"(xctest|wasm)!\S*Tests", line)]
-        for line in frames[:3]:
-            print("    trap: " + line[:300])
-        if group_failed(statuses, lines, binaries):
+        if not binaries:
+            print(f"{tag} FAILED ({', '.join(group)}): the build wrote no test binary to .build/wasm/{args.configuration}")
             failed.append(tag)
+            continue
+        # Afluent's own: with per-target runners, every target in the group must have one, or its
+        # tests would be skipped while the run reports success.
+        if binaries[0].endswith("-test-runner.wasm"):
+            missing = [target for target in group
+                       if not os.path.isfile(os.path.join(products, f"{target}-test-runner.wasm"))]
+            if missing:
+                print(f"{tag} FAILED: the build wrote no runner for {', '.join(missing)}")
+                failed.append(f"{tag} {','.join(missing)}")
+        for binary in binaries:
+            name = os.path.basename(binary).removesuffix(".wasm").removesuffix(".xctest")
+            # In parallel by default: on WASI a time limit's timer holds the one thread until it
+            # expires, so every time-limited test reports its limit as exceeded. In parallel the
+            # timers overlap; one at a time (--serial), each costs its whole limit.
+            # The checkout also at its own path, and the binary's real path as argv[0]: SwiftPM's
+            # `Bundle.module` finds a module's resource bundle (RESOURCES in scripts/modules.py) by
+            # its absolute path in the build directory (with the .xctest layout), or beside
+            # Bundle.main (with -test-runner.wasm), which Foundation on WASI takes from argv[0]'s
+            # directory. wasmtime passes the file's
+            # name alone, and Bundle.main is then the guest's `/`.
+            root = os.path.realpath(ROOT)
+            test = ["wasmtime", "run", "-W", f"max-wasm-stack={WASM_STACK}", "--dir", ".", "--dir", f"{root}::{root}",
+                    "--argv0", os.path.realpath(binary), binary,
+                    "--testing-library", "swift-testing"] + (["--no-parallel"] if args.serial else [])
+            log = os.path.join(logs, f"{tag}-{name}-test.log")
+            status = run(test, env, log, args.timeout)
+            lines = open(log, errors="replace").read().splitlines()
+            summary = [line.strip() for line in lines if re.search(r"Test run with \d+ tests?", line)]
+            recorded = issues(lines)
+            print(f"{tag} {name} exit {status}: {summary[-1] if summary else 'no summary'}; {len(recorded)} issues")
+            for line in recorded[:20]:
+                print("    " + line[:300])
+            # A trap ends the binary: name the test frames of its backtrace.
+            frames = [line.strip() for line in lines if re.search(r"(\.xctest|-test-runner\.wasm)!\S*Tests", line)]
+            for line in frames[:3]:
+                print("    trap: " + line[:300])
+            if group_failed(status, lines):
+                failed.append(f"{tag} {name}")
     print("FAILED: " + ", ".join(failed) if failed else "All groups passed.")
     return 1 if failed else 0
 

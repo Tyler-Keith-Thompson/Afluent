@@ -2,7 +2,9 @@
 
 load("@rules_xcodeproj//xcodeproj:defs.bzl", "xcodeproj", "xcschemes")
 load("//tools:docc.bzl", "docc_site")
+load("//tools:examples.bzl", "EXAMPLE_PACKAGES")
 load("//tools:executables.bzl", "EXECUTABLE_PACKAGES")
+load("//tools:macros.bzl", "MACRO_PACKAGES")
 load("//tools:performance_tests.bzl", "PERFORMANCE_TEST_PACKAGES")
 load("//tools:swiftpm.bzl", "swiftpm_manifest_test")
 
@@ -18,11 +20,13 @@ APP_TARGETS = []
 # `Tests/` with a BUILD.bazel holding a swift_test is a test bundle. Listing them by hand means a
 # new suite is invisible in Xcode until somebody remembers to come back here.
 #
-# AfluentTestSupport lives under Tests/ too, but it is a library, so it is excluded by name.
+# AfluentTestSupport lives under Tests/ too, but it is a library, so it is excluded by name, and
+# so is CompileFailures, which holds no test module: its tests check sources that must not compile
+# (tools/compile_failure_test.bzl).
 TEST_PACKAGES = sorted([
     package
     for package in subpackages(include = ["Tests/*"])
-    if package != "Tests/AfluentTestSupport"
+    if package not in ["Tests/AfluentTestSupport", "Tests/CompileFailures"]
 ])
 
 # Xcode runs each package's .xctest bundle target; `bazel test` runs its swift_test (see
@@ -49,10 +53,15 @@ TEST_TARGETS = [bundle for package in TEST_PACKAGES for bundle in TEST_BUNDLES[p
 # The executables (EXECUTABLES in scripts/modules.py), each launchable from a scheme of its own.
 EXECUTABLE_TARGETS = ["//" + package for package in EXECUTABLE_PACKAGES]
 
+# The arguments an executable's scheme launches it with; one not listed launches with none.
+EXECUTABLE_ARGUMENTS = {}
+
 # The project's top-level targets are its test bundles and executables. Every library reaches the
 # project as a dependency of one of them.
 xcodeproj(
     name = "xcodeproj",
+    # Out of the root, where xcodebuild would pick the project over Package.swift.
+    install_directory = "xcode",
     project_name = "Afluent",
     scheme_autogeneration_mode = "none",
     top_level_targets = TEST_TARGETS + EXECUTABLE_TARGETS + APP_TARGETS,
@@ -74,14 +83,19 @@ xcodeproj(
         )
         for package in TEST_PACKAGES
     ] + [
+        # A scheme takes its target's name: what follows the colon, else the package's last
+        # directory (//Apps/X:Y is Y, //Apps/X is X).
         xcschemes.scheme(
-            name = target.split("/")[-1],
-            run = xcschemes.run(launch_target = xcschemes.launch_target(target), args = ["serve"]),
+            name = target.split("/")[-1].split(":")[-1],
+            run = xcschemes.run(
+                launch_target = xcschemes.launch_target(target),
+                args = EXECUTABLE_ARGUMENTS.get(target, []),
+            ),
         )
         for target in EXECUTABLE_TARGETS
     ] + [
         xcschemes.scheme(
-            name = target.split("/")[-1],
+            name = target.split("/")[-1].split(":")[-1],
             run = xcschemes.run(launch_target = xcschemes.launch_target(target)),
         )
         for target in APP_TARGETS
@@ -96,7 +110,7 @@ docc_site(
     archives = [
         "//" + package + ":" + package.removeprefix("Sources/") + "Documentation"
         for package in sorted(subpackages(include = ["Sources/*"]))
-        if package not in EXECUTABLE_PACKAGES and package not in IOS_PACKAGES
+        if package not in EXECUTABLE_PACKAGES and package not in IOS_PACKAGES and package not in EXAMPLE_PACKAGES and package not in MACRO_PACKAGES
     ],
     landing_page_name = "Afluent",
     tags = ["manual"],
@@ -121,5 +135,12 @@ swiftpm_manifest_test(
         for package in TEST_PACKAGES
         if package not in SIMULATOR_TEST_PACKAGES
         for module in TEST_MODULES[package]
+    ],
+    # Every library under Sources/ is a product, the umbrella too, but executables, iOS modules,
+    # example modules and compiler plugins.
+    products = [
+        "//" + package
+        for package in sorted(subpackages(include = ["Sources/*"]))
+        if package not in IOS_PACKAGES and package not in EXECUTABLE_PACKAGES and package not in EXAMPLE_PACKAGES and package not in MACRO_PACKAGES
     ],
 )

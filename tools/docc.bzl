@@ -9,6 +9,7 @@ This is what the swift-docc-plugin does for `generate-documentation
 --enable-experimental-combined-documentation`, with the same flags.
 """
 
+load("@rules_cc//cc/common:cc_common.bzl", "cc_common")
 load("@rules_cc//cc/common:cc_info.bzl", "CcInfo")
 load(
     "@rules_swift//swift:providers.bzl",
@@ -63,10 +64,20 @@ def _catalog_path(files):
     return None
 
 def _extract_symbol_graph(ctx, module_name):
-    """Extracts the module's symbol graph into a directory, with source locations."""
+    """Extracts the module's symbol graph into a directory, with source locations.
+
+    Locations (DocC's links to GitHub, and the doc comments `--warnings-as-errors` checks) come
+    from the module's .swiftsourceinfo, which names each source by the absolute path it was
+    compiled at: another checkout's, when the compile came from a cache, and the extractor drops
+    the location of any file it can't read. So the extractor gets a copy with those paths made
+    relative to the execution root (`tools/docc_symbol_graph.py source-info`) and the sources as
+    inputs, and reads this checkout's files wherever the compile ran.
+    """
     target = ctx.attr.module
     swift_info = target[SwiftInfo]
-    swift_module = swift_info.direct_modules[0].swift
+    module = swift_info.direct_modules[0]
+    swift_module = module.swift
+    sources = module.compilation_context.direct_sources
     swift_toolchain = swift_common.get_toolchain(ctx)
     feature_configuration = swift_common.configure_features(
         ctx = ctx,
@@ -74,47 +85,81 @@ def _extract_symbol_graph(ctx, module_name):
         requested_features = ctx.features,
         unsupported_features = ctx.disabled_features,
     )
+    tool = ctx.file._symbol_graph_tool
 
-    # Source locations (for DocC's links to GitHub) come from the module's .swiftsourceinfo,
-    # which the extractor finds beside the .swiftmodule. rules_swift makes only the
-    # .swiftmodule and .swiftdoc inputs, so the .swiftsourceinfo rides along as the .swiftdoc of
-    # a second entry for the same module.
-    source_info = SwiftInfo(modules = [create_swift_module_context(
-        name = module_name,
-        swift = create_swift_module_inputs(
-            swiftdoc = swift_module.swiftsourceinfo,
-            swiftmodule = swift_module.swiftmodule,
-        ),
-    )])
+    # The extractor finds the .swiftsourceinfo beside the .swiftmodule, so the module and its
+    # .swiftdoc are copied into the directory the relocated .swiftsourceinfo is written to.
+    directory = module_name + ".docs/"
+    swiftmodule = ctx.actions.declare_file(directory + module_name + ".swiftmodule")
+    swiftdoc = ctx.actions.declare_file(directory + module_name + ".swiftdoc")
+    swiftsourceinfo = ctx.actions.declare_file(directory + module_name + ".swiftsourceinfo")
+    ctx.actions.run_shell(
+        command = 'set -e; cp "$1" "$3"; cp "$2" "$4"; shift 4; python3 "$@"',
+        arguments = [
+            swift_module.swiftmodule.path,
+            swift_module.swiftdoc.path,
+            swiftmodule.path,
+            swiftdoc.path,
+            tool.path,
+            "source-info",
+            swift_module.swiftsourceinfo.path,
+            swiftsourceinfo.path,
+        ] + [source.path for source in sources],
+        inputs = [tool, swift_module.swiftmodule, swift_module.swiftdoc, swift_module.swiftsourceinfo],
+        outputs = [swiftmodule, swiftdoc, swiftsourceinfo],
+        env = {"PYTHONDONTWRITEBYTECODE": "1"},
+        mnemonic = "DoccRelocateSourceInfo",
+        progress_message = "Relocating source locations for " + module_name,
+    )
+
+    # rules_swift makes only the .swiftmodule and .swiftdoc inputs, so the .swiftsourceinfo rides
+    # along as the .swiftdoc of a second entry for the same module. The sources ride as headers
+    # of a compilation context, which makes them inputs and adds no flags. The module's own
+    # entries are left out, so the extractor sees only the copy.
+    relocated = SwiftInfo(
+        modules = [
+            create_swift_module_context(
+                name = module_name,
+                swift = create_swift_module_inputs(swiftdoc = swiftdoc, swiftmodule = swiftmodule),
+            ),
+            create_swift_module_context(
+                name = module_name,
+                swift = create_swift_module_inputs(swiftdoc = swiftsourceinfo, swiftmodule = swiftmodule),
+            ),
+        ] + [m for m in swift_info.transitive_modules.to_list() if m.name != module_name],
+    )
+    compilation_contexts = [cc_common.create_compilation_context(headers = depset(sources))]
+    if CcInfo in target:
+        compilation_contexts.append(target[CcInfo].compilation_context)
 
     extracted = ctx.actions.declare_directory(module_name + ".extracted.symbolgraphs")
     swift_common.extract_symbol_graph(
         actions = ctx.actions,
-        compilation_contexts = [target[CcInfo].compilation_context] if CcInfo in target else [],
+        compilation_contexts = compilation_contexts,
         # Matches the swift-docc-plugin's defaults.
         emit_extension_block_symbols = "1",
         feature_configuration = feature_configuration,
-        include_dev_srch_paths = False,
+        # A module that imports Testing (TESTING_MODULES in scripts/modules.py) finds it only on the
+        # developer search paths, as its compile did; every other module keeps them off, as
+        # rules_swift does for anything not testonly.
+        include_dev_srch_paths = ctx.attr.always_include_developer_search_paths,
         minimum_access_level = "public",
         module_name = module_name,
         output_dir = extracted,
-        swift_infos = [swift_info, source_info],
+        swift_infos = [relocated],
         swift_toolchain = swift_toolchain,
     )
 
-    # The source locations are absolute paths into whichever execution root compiled the
-    # module. Rewritten relative to a fixed checkout root, the symbol graphs (and everything
-    # built from them) are the same on every machine.
+    # Rooted at a fixed checkout path, the symbol graphs (and everything built from them) are the
+    # same on every machine. A documented symbol left without a location fails here, since docc
+    # would skip checking its doc comment.
     output_dir = ctx.actions.declare_directory(module_name + ".symbolgraphs")
     ctx.actions.run_shell(
-        command = """\
-for f in "$1"/*.json; do
-  sed -E 's#"file://[^"]*/execroot/_main/#"file://{root}/#g' "$f" > "$2/${{f##*/}}"
-done
-""".format(root = _CHECKOUT_ROOT),
-        arguments = [extracted.path, output_dir.path],
-        inputs = [extracted],
+        command = 'python3 "$@"',
+        arguments = [tool.path, "symbol-graph", module_name, _CHECKOUT_ROOT, extracted.path, output_dir.path],
+        inputs = [tool, extracted],
         outputs = [output_dir],
+        env = {"PYTHONDONTWRITEBYTECODE": "1"},
         mnemonic = "DoccRelocateSymbolGraph",
         progress_message = "Relocating symbol graph for " + module_name,
     )
@@ -217,6 +262,11 @@ docc_archive = rule(
             providers = [DoccArchiveInfo],
             doc = "The archives of the module's first-party dependencies, for cross-module links.",
         ),
+        "always_include_developer_search_paths": attr.bool(
+            default = False,
+            doc = "Whether symbol graph extraction searches the developer paths, where Testing is; " +
+                  "set it as on the module's swift_library.",
+        ),
         "catalog_generator": attr.label(
             allow_single_file = [".py"],
             doc = "A script that adds generated pages to the catalog; see `_generate_catalog`.",
@@ -224,6 +274,10 @@ docc_archive = rule(
         "catalog_generator_srcs": attr.label_list(
             allow_files = [".py"],
             doc = "Modules the generator imports.",
+        ),
+        "_symbol_graph_tool": attr.label(
+            default = "//tools:docc_symbol_graph.py",
+            allow_single_file = True,
         ),
     },
     fragments = ["cpp"],

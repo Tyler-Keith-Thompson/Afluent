@@ -1,0 +1,173 @@
+#!/usr/bin/env python3
+"""Deletes the Bazel output bases nobody will build in again.
+
+Bazel gives every workspace an output base under the output user root and never removes one, so
+each deleted checkout, worktree and scratch copy leaves gigabytes behind. tools/bazel starts this
+in the background at most once a day. An output base is stale when the workspace its README names
+no longer exists, or when no command has run in it for --max-idle-days. A stale base has its
+server stopped, then is deleted. Everything here is a cache Bazel rebuilds on the next command.
+
+Never touched: install/ (Bazel's extracted binaries), cache/ (the repository cache every output
+base shares), anything else not named like an output base, the current workspace's output base,
+and an output base whose lock a running command holds.
+
+    sweep-output-bases --output-user-root DIR --workspace DIR [--max-idle-days N]
+"""
+
+import argparse
+import fcntl
+import hashlib
+import os
+import re
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import time
+
+OUTPUT_BASE_NAME = re.compile(r"[0-9a-f]{32}")
+SECONDS_PER_DAY = 24 * 60 * 60
+SERVER_EXIT_SECONDS = 10
+
+
+def workspace_of(output_base):
+    """The workspace an output base was made for, from the first line of its README."""
+    for name in ("README", "DO_NOT_BUILD_HERE"):
+        try:
+            with open(os.path.join(output_base, name), encoding="utf-8", errors="replace") as file:
+                line = file.readline().strip()
+        except OSError:
+            continue
+        # README's first line is "WORKSPACE: <path>"; DO_NOT_BUILD_HERE holds the path alone.
+        path = line.removeprefix("WORKSPACE:").strip()
+        if path:
+            return path
+    return None
+
+
+def last_used(output_base):
+    """When a command last ran: every command rewrites command.log and adds a profile to the base."""
+    times = []
+    for path in (os.path.join(output_base, "command.log"), output_base):
+        try:
+            times.append(os.stat(path, follow_symlinks=False).st_mtime)
+        except OSError:
+            pass
+    return max(times, default=0)
+
+
+def stale_reason(output_base, now, max_idle_seconds):
+    workspace = workspace_of(output_base)
+    if workspace is not None and not os.path.isdir(workspace):
+        return f"its workspace {workspace} is gone"
+    idle = now - last_used(output_base)
+    if idle > max_idle_seconds:
+        return f"idle for {idle / SECONDS_PER_DAY:.0f} days"
+    return None
+
+
+def command_line(pid):
+    """A process's command line, or "" when no such process runs."""
+    # Linux has /proc (and CI's image may have no ps); macOS has only ps.
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as file:
+            return file.read().replace(b"\0", b" ").decode(errors="replace")
+    except OSError:
+        pass
+    try:
+        return subprocess.run(["ps", "-o", "command=", "-p", str(pid)], capture_output=True, text=True).stdout
+    except OSError:
+        return ""
+
+
+def stop_server(output_base):
+    """Stops the base's server, if its pid file names a live process started for this base."""
+    try:
+        with open(os.path.join(output_base, "server", "server.pid.txt"), encoding="utf-8") as file:
+            pid = int(file.read().strip())
+    except (OSError, ValueError):
+        return
+    # A pid file outlives its server, and the pid may since belong to something else: stop it only
+    # when its command line names this output base, as every Bazel server's does.
+    if output_base not in command_line(pid):
+        return
+    try:
+        os.kill(pid, signal.SIGTERM)
+        # A server that has exited but not been reaped keeps its pid with an empty command line.
+        deadline = time.monotonic() + SERVER_EXIT_SECONDS
+        while output_base in command_line(pid):
+            if time.monotonic() >= deadline:
+                os.kill(pid, signal.SIGKILL)
+                return
+            time.sleep(0.1)
+    except ProcessLookupError:
+        pass
+
+
+def delete_tree(path):
+    """Deletes a tree whose directories Bazel made read-only (external repositories, the execroot)."""
+    # Directories first, top down, so os.walk can list what each one holds. Symbolic links are
+    # neither followed nor changed: they point outside the tree (install/, the workspace).
+    os.chmod(path, os.stat(path).st_mode | stat.S_IRWXU)
+    for directory, subdirectories, _ in os.walk(path):
+        for name in subdirectories:
+            child = os.path.join(directory, name)
+            if not os.path.islink(child):
+                os.chmod(child, os.stat(child).st_mode | stat.S_IRWXU)
+    shutil.rmtree(path)
+
+
+def sweep(output_user_root, workspace, now, max_idle_seconds):
+    """Deletes every stale output base under output_user_root; returns the paths it deleted."""
+    current = {
+        hashlib.md5(path.encode()).hexdigest()
+        for path in {workspace, os.path.realpath(workspace)}
+    }
+    deleted = []
+    for name in sorted(os.listdir(output_user_root)):
+        output_base = os.path.join(output_user_root, name)
+        if not OUTPUT_BASE_NAME.fullmatch(name) or name in current:
+            continue
+        if os.path.islink(output_base) or not os.path.isdir(output_base):
+            continue
+        named = workspace_of(output_base)
+        if named is not None and os.path.realpath(named) == os.path.realpath(workspace):
+            continue
+        reason = stale_reason(output_base, now, max_idle_seconds)
+        if reason is None:
+            continue
+        try:
+            lock = open(os.path.join(output_base, "lock"), "a")
+        except OSError:
+            lock = None
+        try:
+            if lock is not None:
+                # Bazel's client holds this lock for the length of each command.
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            stop_server(output_base)
+            delete_tree(output_base)
+        except OSError as error:
+            print(f"kept {output_base}: {error}", file=sys.stderr)
+            continue
+        finally:
+            if lock is not None:
+                lock.close()
+        print(f"deleted {output_base}: {reason}")
+        deleted.append(output_base)
+    return deleted
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Delete stale Bazel output bases.")
+    parser.add_argument("--output-user-root", required=True)
+    parser.add_argument("--workspace", required=True, help="the workspace whose output base is kept")
+    parser.add_argument("--max-idle-days", type=float, default=7)
+    arguments = parser.parse_args()
+    if not os.path.isdir(arguments.output_user_root):
+        return
+    sweep(arguments.output_user_root, arguments.workspace, time.time(), arguments.max_idle_days * SECONDS_PER_DAY)
+
+
+if __name__ == "__main__":
+    main()

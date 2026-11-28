@@ -27,6 +27,18 @@ struct BatchStrategyArgumentTests {
     }
 
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+    @Test("After throwing NonPositiveCount, the batched sequence's next() returns nil")
+    func nextReturnsNilAfterNonPositiveCount() async throws {
+        let expected: [Int]? = nil
+        var sut = [1, 2, 3].async.batch(strategy: .count(0)).makeAsyncIterator()
+        await #expect(throws: CountBatchStrategy<Int>.NonPositiveCount()) { try await sut.next() }
+
+        let actual = try await sut.next()
+
+        #expect(actual == expected)
+    }
+
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
     @Test("A negative count makes the batched sequence throw NonPositiveCount")
     func negativeCountThrows() async throws {
         let sut = [1, 2, 3].async.batch(strategy: CountBatchStrategy(-1))

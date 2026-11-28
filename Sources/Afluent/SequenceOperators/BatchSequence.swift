@@ -20,14 +20,26 @@ extension AsyncSequences {
             let strategy: Strategy
             var iterator: AsyncThrowingStream<Element, any Error>.Iterator?
             var continuation: AsyncThrowingStream<Element, any Error>.Continuation?
+            // Set when the strategy's arguments fail validation, so later calls return nil, as an
+            // iterator does after it throws.
+            var rejected = false
 
             public mutating func next() async throws -> Element? {
+                guard !rejected else { return nil }
                 guard !Task.isCancelled else {
                     // Ends the stream, which cancels the upstream and the strategy.
                     continuation?.finish()
                     throw CancellationError()
                 }
                 if iterator == nil {
+                    // Before anything starts, so an out-of-range argument is the first thing the
+                    // caller hears and no element is read or emitted.
+                    do {
+                        try (strategy as? any ValidatedBatchStrategy)?.validate()
+                    } catch {
+                        rejected = true
+                        throw error
+                    }
                     let (stream, continuation) = start()
                     iterator = stream.makeAsyncIterator()
                     self.continuation = continuation

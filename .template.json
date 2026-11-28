@@ -1,5 +1,5 @@
 {
-  "commit": "acd3baf69ef9a3db8b893cd7586d9d765de48d27",
+  "commit": "7bc5bc74a121740508adc8007dd8bd25cea9e411",
   "name": "Afluent",
   "type": "library",
   "benchmarks": true,
@@ -11,5 +11,6 @@
   "fly": false,
   "database": false,
   "ci": true,
-  "trunk": true
+  "trunk": true,
+  "performance": false
 }

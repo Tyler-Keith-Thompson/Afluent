@@ -9,9 +9,9 @@ so Bazel measures a target again only when its sources, the modules it imports, 
 the harness changed, and serves the rest from the disk cache or BuildBuddy. The results are
 written to Benchmarks/.benchmarkBaselines/<Target>/<baseline>/results.json, where
 `swift package benchmark baseline compare` reads them: pretty-printed, keys and benchmarks sorted.
-A benchmark whose instruction and malloc counts moved less than compare's threshold keeps the entry
-already recorded there, so the file changes only where a benchmark did; --fresh writes every entry
-as measured.
+A benchmark measured over as many iterations as before, whose instruction and malloc counts moved
+less than compare's threshold, keeps the entry already recorded there, so the file changes only
+where a benchmark did; --fresh writes every entry as measured.
 
 Any other option (--filter, --skip, --iterations, ...) runs the harness directly on the package,
 uncached, as `benchmark-harness baseline update` would; what it writes is then rewritten the same
@@ -247,6 +247,11 @@ def moved(recorded, measured):
         new_values = sorted(histogram_values(new["statistics"]["histogram"]))
         if not old_values or not new_values:
             return old_values != new_values
+        # A different number of iterations is a different measurement: an entry recorded from one
+        # iteration (a cold one, whose cache misses are inflated) would otherwise never be replaced
+        # by the full measurement of an unchanged benchmark.
+        if len(old_values) != len(new_values):
+            return True
         for p, threshold in THRESHOLDS.items():
             base, comparison = percentile(old_values, p), percentile(new_values, p)
             if not comparison:

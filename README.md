@@ -172,7 +172,8 @@ are generated from one module table, `scripts/modules.py`. Install Bazelisk and
 | `just generate` | An Xcode project from the Bazel graph, in `xcode/` |
 
 Pull requests merge through [Trunk's merge queue](https://docs.trunk.io/merge-queue): comment
-`/trunk merge` on one once it is approved. `AGENTS.md` has the layout and the rules in full.
+`/trunk merge` on one once it is approved. `AGENTS.md` describes the layout, the workflow and the
+house rules; `docs/agents/` holds its step-by-step how-tos.
 
 <details>
   <summary><strong>Frequently Asked Questions (FAQs)</strong></summary>

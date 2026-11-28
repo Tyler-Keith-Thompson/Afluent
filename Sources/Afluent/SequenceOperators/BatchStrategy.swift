@@ -85,3 +85,14 @@ extension BatchStrategy {
 
     public func run(_ flusher: BatchFlusher) async throws {}
 }
+
+/// A built-in strategy whose arguments can be out of range, checked before batching starts.
+///
+/// Internal, so the public protocol stays two requirements with defaults. A strategy that
+/// conforms is checked when it is the batched sequence's strategy or one of
+/// ``EitherBatchStrategy``'s; one a custom strategy wraps is not.
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, visionOS 1.0, *)
+protocol ValidatedBatchStrategy {
+    /// Throws the typed error for the first argument that is out of range.
+    func validate() throws
+}

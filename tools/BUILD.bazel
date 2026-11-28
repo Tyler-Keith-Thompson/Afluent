@@ -13,6 +13,14 @@ python_test(
     ],
 )
 
+# The PreToolUse hook (.claude/settings.json) that holds back heavy commands on a busy machine.
+python_test(
+    name = "load_gate_test",
+    size = "small",
+    src = "load_gate_test.py",
+    data = ["load-gate"],
+)
+
 # Source locations for the DocC rules (tools/docc.bzl), wherever a module's compile ran.
 exports_files(["docc_symbol_graph.py"])
 

@@ -14,9 +14,10 @@ bazel_dep(name = "rules_swift", version = "4.3.0")
 # on it failed before it ran.
 bazel_dep(name = "rules_apple", version = "5.4.0")
 
-# rules_swift's @system_sdk holds only the macOS and iOS SDKs unless the root module names more,
-# and analysis of a watchOS, tvOS or visionOS target fails without its SDK there. //Platforms
-# builds Afluent for each of them (PLATFORMS in scripts/modules.py).
+# rules_swift reads the modules of the macOS and iOS SDKs alone unless the root module names more,
+# and analysis of a tvOS, watchOS or visionOS target (a build test, an example app) fails without
+# its SDK ("doesn't match this configuration"). PLATFORMS in scripts/modules.py lists all three,
+# and //Platforms builds Afluent for each of them.
 system_sdk = use_extension("@rules_swift//swift:extensions.bzl", "system_sdk")
 system_sdk.configure_sdks(names = [
     "AppleTVOS",

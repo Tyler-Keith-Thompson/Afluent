@@ -39,7 +39,8 @@ harness's other options measure directly, uncached, and the result is written in
 
 The `simulated` baseline is pretty-printed, keys and benchmarks sorted, so each benchmark's entry
 has lines of its own. Re-recording rewrites only the entries whose instruction or malloc counts
-moved past `baseline compare`'s threshold (5% at p25, p50 and p75); the others keep their recorded
-entry, whose cache-miss and branch counts would otherwise vary a little from run to run. Branches
-that change different benchmarks of one target therefore merge cleanly. `bench-simulated-compare`
-writes `simulated-current` as measured.
+moved past `baseline compare`'s threshold (5% at p25, p50 and p75), or that were measured over a
+different number of iterations; the others keep their recorded entry, whose cache-miss and branch
+counts would otherwise vary a little from run to run. Branches that change different benchmarks of
+one target therefore merge cleanly. `bench-simulated-compare` writes `simulated-current` as
+measured.

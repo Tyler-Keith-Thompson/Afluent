@@ -57,6 +57,9 @@ jobs:
               echo "build --remote_cache_compression"
               echo "common --experimental_remote_cache_chunking"
             } >> user.bazelrc
+          else
+            # Optional, and fork pull requests never see it, so warn rather than fail.
+            echo "::warning::BUILDBUDDY_API_KEY is not set; Bazel runs without the remote cache (run just ci-secrets)"
           fi
       # Debug only: the release configuration's performance tests run locally before a push.
       - name: Test (debug)

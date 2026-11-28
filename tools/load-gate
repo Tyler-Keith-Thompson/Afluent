@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+"""Holds back a heavy shell command while the machine is already busy.
+
+Claude Code runs this before each Bash command (a PreToolUse hook in .claude/settings.json). Several
+agents on one machine, each in its own worktree with its own Bazel server, otherwise start builds
+together, and each build takes every core: the machine thrashes and every one of them slows down.
+A command that builds or tests (Bazel, SwiftPM, xcodebuild, docker build, a `just` recipe that
+isn't a listed light one) waits here until the one-minute load average per core is at most
+LOAD_GATE_MAX_LOAD, and until LOAD_GATE_SPACING seconds have passed since the last command this
+gate let through, on any checkout, so two agents never start at the same moment before the load
+average has seen either. After LOAD_GATE_MAX_WAIT seconds it lets the command through anyway: a
+slow build beats a stalled agent. Other commands pass at once.
+
+    LOAD_GATE=off            let everything through
+    LOAD_GATE_MAX_LOAD=1.0   load average per core above which heavy commands wait
+    LOAD_GATE_SPACING=20     seconds between two heavy commands starting
+    LOAD_GATE_MAX_WAIT=600   seconds a command waits at most (the hook's timeout is longer)
+    LOAD_GATE_STATE=DIR      where the time of the last admission is kept (~/.cache/load-gate)
+
+It reads the hook's JSON on standard input and always exits 0, so it never blocks a command for
+good; when it held one back, it says how long in the hook's additionalContext.
+"""
+
+import fcntl
+import json
+import os
+import re
+import sys
+import time
+
+POLL_SECONDS = 5
+
+# Bazel and SwiftPM commands that compile, and other tools that build.
+HEAVY = re.compile(
+    r"(?:^|[\s;&|(])(?:"
+    r"(?:bazel|bazelisk|tools/bazel)\s+(?:-\S*\s+)*(?:build|test|run|coverage|mobile-install)\b"
+    r"|swift\s+(?:build|test|run|package\s+benchmark)\b"
+    r"|xcodebuild\b"
+    r"|docker\s+(?:build|buildx\s+build|compose\s+(?:up|build))\b"
+    r"|idf\.py\s+(?:build|flash)\b"
+    r"|kanban\s+checks\b"
+    r")"
+)
+
+# A `just` recipe, which builds or tests unless it is one of LIGHT_RECIPES.
+JUST = re.compile(r"(?:^|[\s;&|(])just\s+(?:-\S+\s+)*([A-Za-z][\w-]*)")
+
+# Recipes that only generate files, ask questions or change settings.
+LIGHT_RECIPES = frozenset({
+    "modules", "resolve", "buildbuddy-key", "ci-secrets", "template-update", "menuconfig",
+    "monitor", "phone-provision",
+})
+
+
+def is_heavy(command):
+    """Whether a shell command builds or tests."""
+    if HEAVY.search(command):
+        return True
+    return any(recipe not in LIGHT_RECIPES for recipe in JUST.findall(command))
+
+
+def setting(name, default):
+    try:
+        return float(os.environ.get(name, default))
+    except ValueError:
+        return float(default)
+
+
+def load_per_core():
+    return os.getloadavg()[0] / (os.cpu_count() or 1)
+
+
+class Gate:
+    """The admission rule, with the clock, the load and sleeping passed in so tests can drive them."""
+
+    def __init__(self, state, max_load, spacing, max_wait, clock=time.time, load=load_per_core, sleep=time.sleep):
+        self.state = state
+        self.max_load = max_load
+        self.spacing = spacing
+        self.max_wait = max_wait
+        self.clock = clock
+        self.load = load
+        self.sleep = sleep
+
+    def wait(self):
+        """Blocks until the command may start; returns the seconds it waited."""
+        os.makedirs(self.state, exist_ok=True)
+        start = self.clock()
+        stamp = os.path.join(self.state, "last-admission")
+        # The lock makes reading the last admission and writing this one a single step, so two
+        # gates can't both find the spacing passed.
+        with open(os.path.join(self.state, "lock"), "a") as lock:
+            while True:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                try:
+                    now = self.clock()
+                    try:
+                        with open(stamp, encoding="utf-8") as file:
+                            last = float(file.read().strip() or 0)
+                    except (OSError, ValueError):
+                        last = 0.0
+                    spaced = now - last >= self.spacing
+                    if (spaced and self.load() <= self.max_load) or now - start >= self.max_wait:
+                        with open(stamp, "w", encoding="utf-8") as file:
+                            file.write(f"{now}\n")
+                        return now - start
+                finally:
+                    fcntl.flock(lock, fcntl.LOCK_UN)
+                self.sleep(POLL_SECONDS)
+
+
+def main():
+    if os.environ.get("LOAD_GATE", "").lower() in ("off", "0", "false"):
+        return
+    try:
+        command = json.load(sys.stdin).get("tool_input", {}).get("command", "")
+    except (ValueError, AttributeError):
+        return
+    if not isinstance(command, str) or not is_heavy(command):
+        return
+    gate = Gate(
+        state=os.environ.get("LOAD_GATE_STATE") or os.path.expanduser("~/.cache/load-gate"),
+        max_load=setting("LOAD_GATE_MAX_LOAD", 1.0),
+        spacing=setting("LOAD_GATE_SPACING", 20),
+        max_wait=setting("LOAD_GATE_MAX_WAIT", 600),
+    )
+    try:
+        waited = gate.wait()
+    except OSError as error:
+        print(f"load-gate: {error}; letting the command through", file=sys.stderr)
+        return
+    if waited >= 1:
+        message = (
+            f"tools/load-gate held this command for {waited:.0f} s while the machine was busy "
+            f"(load per core {load_per_core():.2f})."
+        )
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": message}}))
+
+
+if __name__ == "__main__":
+    main()

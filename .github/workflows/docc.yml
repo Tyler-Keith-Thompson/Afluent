@@ -59,6 +59,9 @@ jobs:
               echo "build --remote_cache_compression"
               echo "common --experimental_remote_cache_chunking"
             } >> user.bazelrc
+          else
+            # Optional, and fork pull requests never see it, so warn rather than fail.
+            echo "::warning::BUILDBUDDY_API_KEY is not set; Bazel runs without the remote cache (run just ci-secrets)"
           fi
       - name: Check Package.swift against the Bazel graph
         run: bazel test //:package_swift_test --test_output=errors

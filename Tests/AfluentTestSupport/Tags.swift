@@ -9,8 +9,6 @@ extension Tag {
     @Tag public static var randomized: Self
     /// Laws required by Swift protocols: Equatable, Hashable, Collection, Codable.
     @Tag public static var conformance: Self
-    /// Exit tests asserting that a precondition traps.
-    @Tag public static var precondition: Self
     /// Tests over named fixtures with known properties.
     @Tag public static var fixture: Self
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Builds the SwiftPM test targets for wasm32-unknown-wasi and runs them under wasmtime: the
-32-bit `Int` check. See AGENTS.md ("32-bit `Int` (WebAssembly)").
+32-bit `Int` check. See docs/agents/wasm.md.
 
     python3 scripts/wasi_test.py                     # every test target, debug
     python3 scripts/wasi_test.py -c release          # every test target, release
@@ -25,6 +25,7 @@ an older Xcode: `--xcode /Applications/Xcode-26.2.0.app` (or set <PROJECT>_WASI_
 """
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -79,15 +80,37 @@ LINEAR_STACK = 64 * 1024 * 1024
 WASM_STACK = 256 * 1024 * 1024
 
 
+class TestBinaries:
+    """The test binaries a group's build wrote, and the group's targets it wrote none for."""
+
+    def __init__(self, binaries, missing):
+        self.binaries = binaries
+        self.missing = missing
+
+
+def stack_toolset():
+    """The path of a toolset file, written under .build/wasm, that links wasm binaries with
+    LINEAR_STACK, the linear-memory stack deep chains of non-suspending awaits overrun.
+
+    A toolset applies to the target's tools alone. `-Xlinker` would also reach the host link of a
+    macro's compiler plugin (MACROS in scripts/modules.py), and the macOS linker has no `-z`."""
+    path = os.path.join(SCRATCH, "stack-toolset.json")
+    os.makedirs(SCRATCH, exist_ok=True)
+    with open(path, "w") as file:
+        json.dump({"schemaVersion": "1.0", "linker": {"extraCLIOptions": ["-z", f"stack-size={LINEAR_STACK}"]}}, file)
+    return path
+
+
 def test_binaries(products, group):
     """The test binaries a group's build wrote: one `<Target>-test-runner.wasm` per target, else (an
-    older toolchain) the one `<Project>PackageTests.xctest`."""
-    runners = [os.path.join(products, f"{target}-test-runner.wasm") for target in group]
-    runners = [path for path in runners if os.path.isfile(path)]
-    if runners:
-        return runners
+    older toolchain) the one `<Project>PackageTests.xctest`. Once any target has its runner, every
+    target must: one without would otherwise go untested while the group passes."""
+    runners = {target: os.path.join(products, f"{target}-test-runner.wasm") for target in group}
+    written = [target for target in group if os.path.isfile(runners[target])]
+    if written:
+        return TestBinaries([runners[target] for target in written], [t for t in group if t not in written])
     bundle = os.path.join(products, f"{modules.PROJECT}PackageTests.xctest")
-    return [bundle] if os.path.isfile(bundle) else []
+    return TestBinaries([bundle], []) if os.path.isfile(bundle) else TestBinaries([], list(group))
 
 
 def main():
@@ -103,10 +126,11 @@ def main():
     args = parser.parse_args()
     sdk = args.sdk or f"swift-{args.swift}-RELEASE_wasm"
     targets = args.targets.split(",") if args.targets else all_targets()
-    # Afluent's own: a name the manifest doesn't know would build nothing for it and pass silently.
-    unknown = sorted(set(targets) - set(all_targets()))
+    # A name Package.swift doesn't declare would build nothing and run nothing, and the run would
+    # still pass.
+    unknown = [target for target in targets if target not in all_targets()]
     if unknown:
-        print("Unknown test targets: " + ", ".join(unknown))
+        print(f"Unknown test targets: {', '.join(unknown)} (TEST_TARGETS in scripts/modules.py: {', '.join(all_targets())})")
         return 2
     env = dict(os.environ)
     if args.xcode:
@@ -120,30 +144,21 @@ def main():
         group = targets[start:start + args.group_size]
         env[f"{modules.PROJECT.upper()}_WASI_TESTS"] = ",".join(group)
         tag = f"{args.configuration}-{start // args.group_size:02}"
-        # `-enable-testing`: suites `@testable import Afluent`, which a release build otherwise
-        # refuses ("not compiled for testing").
+        # Debug builds are testable already; a release one must be too, for `@testable import`.
+        testable = ["-Xswiftc", "-enable-testing"] if args.configuration == "release" else []
         build = ["swiftly", "run", "swift", "build", "-c", args.configuration, "--build-tests",
-                 "-Xswiftc", "-enable-testing", "--swift-sdk", sdk, "--scratch-path", SCRATCH,
-                 # The linear-memory stack, which deep chains of non-suspending awaits overrun.
-                 "-Xlinker", "-z", "-Xlinker", f"stack-size={LINEAR_STACK}", f"+{args.swift}"]
+                 "--swift-sdk", sdk, "--scratch-path", SCRATCH, *testable,
+                 "--toolset", stack_toolset(), f"+{args.swift}"]
         if run(build, env, os.path.join(logs, tag + "-build.log"), args.timeout) != 0:
             print(f"{tag} build FAILED ({', '.join(group)}): see .build/wasm/logs/{tag}-build.log")
             failed.append(tag)
             continue
-        binaries = test_binaries(products, group)
-        if not binaries:
-            print(f"{tag} FAILED ({', '.join(group)}): the build wrote no test binary to .build/wasm/{args.configuration}")
+        found = test_binaries(products, group)
+        if found.missing:
+            print(f"{tag} FAILED: the build wrote no test binary for {', '.join(found.missing)} to .build/wasm/{args.configuration}")
             failed.append(tag)
             continue
-        # Afluent's own: with per-target runners, every target in the group must have one, or its
-        # tests would be skipped while the run reports success.
-        if binaries[0].endswith("-test-runner.wasm"):
-            missing = [target for target in group
-                       if not os.path.isfile(os.path.join(products, f"{target}-test-runner.wasm"))]
-            if missing:
-                print(f"{tag} FAILED: the build wrote no runner for {', '.join(missing)}")
-                failed.append(f"{tag} {','.join(missing)}")
-        for binary in binaries:
+        for binary in found.binaries:
             name = os.path.basename(binary).removesuffix(".wasm").removesuffix(".xctest")
             # In parallel by default: on WASI a time limit's timer holds the one thread until it
             # expires, so every time-limited test reports its limit as exceeded. In parallel the

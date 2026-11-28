@@ -8,6 +8,12 @@ failure, keeps a fixture that fails for another reason (a missing module, a typo
 With no `expected_errors` it passes only when the source compiles: a control, which shows that
 the search paths and the plugin work.
 
+`copts` are compiler flags, passed after the search paths in both modes, so a fixture type-checks
+under the settings of the target it stands for (`["-default-isolation", "MainActor"]`,
+`["-enable-upcoming-feature", "InferIsolatedConformances"]`). `error_count`, when set, is how many
+`error:` lines the output must hold, for a fixture whose rule is that nothing adds a second; it
+needs `expected_errors`.
+
 Fixtures and their tests live in `Tests/CompileFailures` (hand-written BUILD.bazel), which the root
 BUILD.bazel leaves out of the test bundles by name and no Package.swift target holds:
 
@@ -61,6 +67,11 @@ while IFS= read -r expected; do
 done <<'EXPECTED'
 %s
 EXPECTED
+count="$(printf '%%s\n' "$output" | grep -cE '(^|: )error: ')"
+if [ %d -ne 0 ] && [ "$count" -ne %d ]; then
+    echo "The compiler reported $count errors, not %d."
+    missing=1
+fi
 if [ "$missing" -ne 0 ]; then
     echo
     echo "$output"
@@ -72,6 +83,10 @@ def _quote(text):
     return "'" + text.replace("'", "'\\''") + "'"
 
 def _swift_compile_failure_test_impl(ctx):
+    if ctx.attr.error_count < 0:
+        fail("error_count must be 0 (unchecked) or more.")
+    if ctx.attr.error_count and not ctx.attr.expected_errors:
+        fail("error_count needs expected_errors: a source with none must compile.")
     modules = depset(transitive = [dep[SwiftInfo].transitive_modules for dep in ctx.attr.deps]).to_list()
     files = []
     transitive_files = []
@@ -94,7 +109,7 @@ def _swift_compile_failure_test_impl(ctx):
                     # under external/; the test runs from the main repository's runfiles, beside
                     # the others'.
                     arguments += ["-Xcc", "-I" + ("../" + include.removeprefix("external/") if include.startswith("external/") else include)]
-    arguments = ["-I " + _quote(directory) for directory in directories] + [_quote(argument) for argument in arguments]
+    arguments = ["-I " + _quote(directory) for directory in directories] + [_quote(argument) for argument in arguments + ctx.attr.copts]
     if ctx.attr.plugin:
         plugin = ctx.executable.plugin
         files.append(plugin)
@@ -109,6 +124,9 @@ def _swift_compile_failure_test_impl(ctx):
             ctx.file.src.short_path,
             ctx.file.src.short_path,
             "\n".join(ctx.attr.expected_errors),
+            ctx.attr.error_count,
+            ctx.attr.error_count,
+            ctx.attr.error_count,
         ),
         is_executable = True,
     )
@@ -119,13 +137,15 @@ def _swift_compile_failure_test_impl(ctx):
 
 swift_compile_failure_test = rule(
     implementation = _swift_compile_failure_test_impl,
-    doc = "Passes when `src` fails to type-check against `deps` with every one of `expected_errors`, or compiles when there are none.",
+    doc = "Passes when `src` fails to type-check against `deps` with every one of `expected_errors` (and `error_count` errors, when set), or compiles when there are none.",
     attrs = {
         "src": attr.label(allow_single_file = [".swift"], mandatory = True),
         "deps": attr.label_list(providers = [SwiftInfo]),
         "plugin": attr.label(executable = True, cfg = "exec"),
         "plugin_module_name": attr.string(doc = "The plugin's module name, which `-load-plugin-executable` pairs with it."),
         "expected_errors": attr.string_list(doc = "Text the compiler's output must hold; none for a source that must compile."),
+        "copts": attr.string_list(doc = "Compiler flags, passed after the search paths whether the source must fail or compile."),
+        "error_count": attr.int(doc = "How many `error:` lines the compiler's output must hold, or 0 to leave the count unchecked."),
     },
     test = True,
 )
